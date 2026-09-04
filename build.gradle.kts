@@ -83,7 +83,7 @@ tasks.named<JacocoReport>("jacocoTestReport") {
                 fileTree(it) {
                     exclude(
                         "**/config/**",
-                        "**/SpringBootTemplateApplication.class"
+                        "**/PrismaAPIApplication.class"
                     )
                 }
             }

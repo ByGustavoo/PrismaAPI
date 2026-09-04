@@ -3,11 +3,11 @@ logging:
 
 server:
   servlet:
-    context-path: /SpringBootTemplate
+    context-path: /PrismaAPI
 
 spring:
   application:
-    name: springbootemplate
+    name: prismaapi
 
   servlet:
     encoding:
@@ -19,9 +19,9 @@ spring:
 
   flyway:
     enabled: true
-    schema: springbootemplate
+    schema: prismaapi
     baseline-on-migrate: true
-    default-schema: springbootemplate
+    default-schema: prismaapi
 
   web:
     error:

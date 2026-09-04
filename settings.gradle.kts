@@ -1,1 +1,1 @@
-rootProject.name = "Spring-Boot-Template"
+rootProject.name = "PrismaAPI"
