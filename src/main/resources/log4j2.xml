@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+
+    <Properties>
+        <Property name="filepath">/app/logs</Property>
+    </Properties>
+
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%highlight{%d{HH:mm:ss.SSS} [%t] %-4level %c{1} - %msg%n}{ERROR=red, WARN=yellow, INFO=green, DEBUG=white}" />
+        </Console>
+
+        <SpringProfile name="prod">
+            <RollingFile name="File"
+                         fileName="${filepath}/SpringBootTemplate.log"
+                         filePattern="${filepath}/SpringBootTemplate-%d{yyyy-MM-dd}.log">
+
+                <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %c{1} - %msg%n"/>
+
+                <Policies>
+                    <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+                </Policies>
+
+                <DefaultRolloverStrategy>
+                    <Delete basePath="${filepath}/">
+                        <IfFileName glob="*.log"/>
+                        <IfLastModified age="30d"/>
+                    </Delete>
+                </DefaultRolloverStrategy>
+
+            </RollingFile>
+        </SpringProfile>
+
+    </Appenders>
+
+    <Loggers>
+
+        <Logger name="org.hibernate.orm.connections.pooling" level="ERROR" additivity="false">
+            <AppenderRef ref="Console"/>
+        </Logger>
+
+        <Root level="INFO">
+            <AppenderRef ref="Console"/>
+
+            <SpringProfile name="prod">
+                <AppenderRef ref="File"/>
+            </SpringProfile>
+        </Root>
+
+    </Loggers>
+</Configuration>
