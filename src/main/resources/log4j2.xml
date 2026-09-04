@@ -12,8 +12,8 @@
 
         <SpringProfile name="prod">
             <RollingFile name="File"
-                         fileName="${filepath}/SpringBootTemplate.log"
-                         filePattern="${filepath}/SpringBootTemplate-%d{yyyy-MM-dd}.log">
+                         fileName="${filepath}/PrismaAPI.log"
+                         filePattern="${filepath}/PrismaAPI-%d{yyyy-MM-dd}.log">
 
                 <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %c{1} - %msg%n"/>
 
