@@ -67,7 +67,7 @@ relatório HTML em `build/reports/jacoco`.
 
 ## Convenções
 
-- Pacote raiz `br.com.software`; código em português nos identificadores de negócio
+- Pacote raiz `br.com.prismaapi`; código em português nos identificadores de negócio
   (ver `DataBaseConfig`: `ip`, `porta`, `nome`, `usuario`, `senha`)
 - `spring.jpa.open-in-view: false` — carregue o que a resposta precisa dentro da
   transação; não conte com lazy loading no controller

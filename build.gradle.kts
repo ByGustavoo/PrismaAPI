@@ -6,7 +6,7 @@ plugins {
 }
 
 version = "1.0.0"
-group = "br.com.software"
+group = "br.com.prismaapi"
 
 java {
     toolchain {
