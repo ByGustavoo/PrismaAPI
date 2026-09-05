@@ -1,4 +1,4 @@
-package br.com.software;
+package br.com.prismaapi;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
