@@ -12,19 +12,25 @@
 
 ## 🚀 Ferramentas Utilizadas
 
+* 🕊️ Flyway
+
+* 📊 JaCoCo
+
+* 📝 Log4j2
+
+* 🔴 Lombok
+
 * ☕️ Java 21
+
+* 🗺️ MapStruct
+
+* 🐘 PostgreSQL
 
 * 🟢 Spring Boot 4.1.1
 
-* 🐘 Gradle 9.6.1 (Kotlin DSL)
-
-* 🐘 PostgreSQL + Flyway
-
-* 🗺️ MapStruct + Lombok
+* 🐘 Gradle 9.7.1 (Kotlin DSL)
 
 * 📄 Springdoc OpenAPI (Swagger UI)
-
-* 📊 Log4j2 + JaCoCo
 
 <br> 
 

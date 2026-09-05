@@ -43,6 +43,8 @@ dependencies {
 
     // PostgreSQL
     runtimeOnly("org.postgresql:postgresql")
+
+    // Flyway
     implementation("org.flywaydb:flyway-database-postgresql")
 
     // Logging
