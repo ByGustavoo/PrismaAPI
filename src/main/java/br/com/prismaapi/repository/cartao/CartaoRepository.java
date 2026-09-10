@@ -17,6 +17,8 @@ public interface CartaoRepository extends JpaRepository<Cartao, UUID> {
 
     boolean existsByContaId(UUID contaId);
 
+    long countByContaId(UUID contaId);
+
     Page<Cartao> findByTipoAndSituacao(TipoCartao tipo, Situacao situacao, Pageable pageable);
 
     List<Cartao> findByContaId(UUID contaId);

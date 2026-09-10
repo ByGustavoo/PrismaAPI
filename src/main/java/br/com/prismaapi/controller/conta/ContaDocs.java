@@ -131,9 +131,12 @@ public interface ContaDocs {
                     Remove a conta de forma definitiva e responde sem corpo.
 
                     Excluir não apaga histórico: se a conta aparecer em qualquer lançamento, como \
-                    origem ou como destino de transferência, a exclusão é recusada. Nesse caso, o \
-                    caminho é marcar a conta como inativa, o que a tira do saldo total e dos seletores \
-                    sem esconder o passado.""")
+                    origem ou como destino de transferência, ou pagar alguma despesa recorrente, a \
+                    exclusão é recusada. Nesse caso, o caminho é marcar a conta como inativa, o que a \
+                    tira do saldo total e dos seletores sem esconder o passado.
+
+                    A exclusão também é recusada enquanto a conta estiver vinculada a um cartão de \
+                    débito: antes, é preciso trocar a conta desse cartão ou excluí-lo.""")
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "204",
@@ -148,7 +151,7 @@ public interface ContaDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "409",
-                    description = "A conta tem lançamentos no histórico!",
+                    description = "A conta tem registros no histórico ou cartão de débito vinculado!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "500",

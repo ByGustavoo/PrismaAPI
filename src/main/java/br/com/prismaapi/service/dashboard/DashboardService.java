@@ -1,6 +1,6 @@
 package br.com.prismaapi.service.dashboard;
 
-import br.com.prismaapi.enums.Tendencia;
+import br.com.prismaapi.enums.MesDoAno;
 import br.com.prismaapi.enums.TipoLancamento;
 import br.com.prismaapi.exceptions.RequisicaoInvalidaException;
 import br.com.prismaapi.model.dto.dashboard.DashboardDTO;
@@ -17,10 +17,10 @@ import br.com.prismaapi.model.entity.categoria.Categoria;
 import br.com.prismaapi.model.mapper.categoria.CategoriaMapper;
 import br.com.prismaapi.model.mapper.lancamento.LancamentoMapper;
 import br.com.prismaapi.repository.categoria.CategoriaRepository;
-import br.com.prismaapi.repository.conta.ContaRepository;
 import br.com.prismaapi.repository.investimento.InvestimentoRepository;
 import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import br.com.prismaapi.service.fatura.FaturaService;
+import br.com.prismaapi.service.saldo.SaldoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -38,24 +38,15 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class DashboardService {
 
-    private static final String[] ROTULOS_DOS_MESES = {
-            "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
-            "Jul", "Ago", "Set", "Out", "Nov", "Dez"
-    };
-
-    private static final int CASAS_DO_PERCENTUAL = 1;
-    private static final int CASAS_DA_PARTICIPACAO = 4;
-
+    private final SaldoService saldoService;
     private final FaturaService faturaService;
-    private final ContaRepository contaRepository;
     private final CategoriaMapper categoriaMapper;
     private final LancamentoMapper lancamentoMapper;
+    private static final int CASAS_DA_PARTICIPACAO = 4;
     private final CategoriaRepository categoriaRepository;
     private final LancamentoRepository lancamentoRepository;
     private final InvestimentoRepository investimentoRepository;
-
     private static final String PERIODO_INVALIDO = "O período informado é inválido!";
-    private static final BigDecimal FAIXA_DA_ESTABILIDADE = new BigDecimal("0.05");
 
     @Transactional(readOnly = true)
     public DashboardDTO resumir(YearMonth dataInicial, YearMonth dataFinal) {
@@ -79,11 +70,11 @@ public class DashboardService {
                 periodo.dataInicial().toString(),
                 periodo.dataFinal().toString(),
                 dinheiro(saldoAtual),
-                variacao(saldoAtual, saldoAnterior),
+                VariacaoDTO.entre(saldoAtual, saldoAnterior),
                 dinheiro(receitas),
-                variacao(receitas, receitasAnteriores),
+                VariacaoDTO.entre(receitas, receitasAnteriores),
                 dinheiro(despesas),
-                variacao(despesas, despesasAnteriores),
+                VariacaoDTO.entre(despesas, despesasAnteriores),
                 dinheiro(totalInvestido(carteira)),
                 rentabilidade(carteira),
                 faturaService.faturaEmDestaque(periodo.dataFinal(), periodo.hoje()),
@@ -106,35 +97,16 @@ public class DashboardService {
 
     private LinhaDoSaldo montarLinhaDoSaldo(PeriodoDashboard periodo, PeriodoDashboard anterior) {
         var datasDeCorte = new ArrayList<LocalDate>();
-        datasDeCorte.add(periodo.hoje());
         datasDeCorte.add(periodo.dataDeCorte());
         datasDeCorte.add(anterior.dataDeCorte());
         periodo.mesesDaJanela().forEach(mes -> datasDeCorte.add(periodo.dataDeCorte(mes)));
 
-        var inicio = Collections.min(datasDeCorte);
-        var fim = Collections.max(datasDeCorte);
-
-        var movimentos = new TreeMap<LocalDate, BigDecimal>();
-
-        lancamentoRepository.agruparMovimentoDoTotalPorDia(inicio, fim)
-                .forEach(movimento -> movimentos.merge(movimento.data(), comSinal(movimento), BigDecimal::add));
-
-        lancamentoRepository.agruparTransferenciasQueSaemDoTotal(inicio, fim)
-                .forEach(saida -> movimentos.merge(saida.data(), saida.valor().negate(), BigDecimal::add));
-
-        lancamentoRepository.agruparTransferenciasQueEntramNoTotal(inicio, fim)
-                .forEach(entrada -> movimentos.merge(entrada.data(), entrada.valor(), BigDecimal::add));
-
-        return new LinhaDoSaldo(periodo.hoje(), zeroSeNulo(contaRepository.somarSaldoDoTotal()), movimentos);
-    }
-
-    private static BigDecimal comSinal(MovimentoDiarioProjecao movimento) {
-        return movimento.tipo() == TipoLancamento.RECEITA ? movimento.valor() : movimento.valor().negate();
+        return saldoService.linhaDoSaldo(datasDeCorte, periodo.hoje());
     }
 
     private List<SaldoDTO> historicoSaldo(PeriodoDashboard periodo, LinhaDoSaldo linhaDoSaldo) {
         return periodo.mesesDaJanela().stream()
-                .map(mes -> new SaldoDTO(rotulo(mes), dinheiro(linhaDoSaldo.em(periodo.dataDeCorte(mes)))))
+                .map(mes -> new SaldoDTO(MesDoAno.rotulo(mes), dinheiro(linhaDoSaldo.em(periodo.dataDeCorte(mes)))))
                 .toList();
     }
 
@@ -150,7 +122,7 @@ public class DashboardService {
                 .map(mes -> {
                     var doMes = totais.getOrDefault(mes, Map.of());
                     return new FluxoDTO(
-                            rotulo(mes),
+                            MesDoAno.rotulo(mes),
                             dinheiro(doMes.get(TipoLancamento.RECEITA)),
                             dinheiro(doMes.get(TipoLancamento.DESPESA)));
                 })
@@ -209,37 +181,11 @@ public class DashboardService {
 
     private static VariacaoDTO rentabilidade(CarteiraProjecao carteira) {
         if (carteira == null) {
-            return estavel();
+            return VariacaoDTO.estavel();
         }
 
         var aportado = zeroSeNulo(carteira.aportado());
-        return variacao(zeroSeNulo(carteira.valorAtual()), aportado);
-    }
-
-    private static VariacaoDTO variacao(BigDecimal atual, BigDecimal anterior) {
-        if (anterior == null || anterior.signum() == 0) {
-            return estavel();
-        }
-
-        var percentual = atual.subtract(anterior)
-                .multiply(BigDecimal.valueOf(100))
-                .divide(anterior.abs(), CASAS_DO_PERCENTUAL + 2, RoundingMode.HALF_UP);
-
-        var tendencia = tendencia(percentual);
-        var arredondado = percentual.setScale(CASAS_DO_PERCENTUAL, RoundingMode.HALF_UP);
-
-        return new VariacaoDTO(tendencia == Tendencia.ESTAVEL ? zero(CASAS_DO_PERCENTUAL) : arredondado, tendencia);
-    }
-
-    private static Tendencia tendencia(BigDecimal percentual) {
-        if (percentual.abs().compareTo(FAIXA_DA_ESTABILIDADE) <= 0) {
-            return Tendencia.ESTAVEL;
-        }
-        return percentual.signum() > 0 ? Tendencia.ALTA : Tendencia.BAIXA;
-    }
-
-    private static VariacaoDTO estavel() {
-        return new VariacaoDTO(zero(CASAS_DO_PERCENTUAL), Tendencia.ESTAVEL);
+        return VariacaoDTO.entre(zeroSeNulo(carteira.valorAtual()), aportado);
     }
 
     private static BigDecimal participacao(BigDecimal valor, BigDecimal total) {
@@ -247,10 +193,6 @@ public class DashboardService {
             return zero(CASAS_DA_PARTICIPACAO);
         }
         return valor.divide(total, CASAS_DA_PARTICIPACAO, RoundingMode.HALF_UP);
-    }
-
-    private static String rotulo(YearMonth mes) {
-        return ROTULOS_DOS_MESES[mes.getMonthValue() - 1];
     }
 
     private static BigDecimal dinheiro(BigDecimal valor) {

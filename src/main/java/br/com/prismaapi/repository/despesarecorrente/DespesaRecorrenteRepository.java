@@ -5,6 +5,7 @@ import br.com.prismaapi.model.entity.despesarecorrente.DespesaRecorrente;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
@@ -20,8 +21,22 @@ public interface DespesaRecorrenteRepository extends JpaRepository<DespesaRecorr
 
     boolean existsByCartaoId(UUID cartaoId);
 
+    long countByContaId(UUID contaId);
+
+    long countByCartaoId(UUID cartaoId);
+
     Page<DespesaRecorrente> findBySituacao(SituacaoDespesaRecorrente situacao, Pageable pageable);
+
+    List<DespesaRecorrente> findBySituacao(SituacaoDespesaRecorrente situacao);
 
     List<DespesaRecorrente> findBySituacaoAndProximoVencimentoLessThanEqual(SituacaoDespesaRecorrente situacao, LocalDate limite);
 
+    @Query("""
+            SELECT despesa
+            FROM DespesaRecorrente despesa
+            LEFT JOIN FETCH despesa.categoria
+            LEFT JOIN FETCH despesa.conta
+            LEFT JOIN FETCH despesa.cartao
+            """)
+    List<DespesaRecorrente> buscarComOrigemECategoria();
 }

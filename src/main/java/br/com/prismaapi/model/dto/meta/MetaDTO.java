@@ -1,10 +1,12 @@
 package br.com.prismaapi.model.dto.meta;
 
 import br.com.prismaapi.enums.SituacaoMeta;
+import br.com.prismaapi.model.dto.metapreco.MetaPrecoDTO;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 @Schema(description = "Representa o modelo de dados de uma Meta.")
@@ -22,10 +24,9 @@ public record MetaDTO(
 
         String observacoes,
 
-        @JsonFormat(pattern = "dd/MM/yyyy - HH:mm:ss")
-        OffsetDateTime dataCriacao,
+        @JsonFormat(pattern = "yyyy-MM-dd")
+        LocalDate dataCriacao,
 
-        @JsonFormat(pattern = "dd/MM/yyyy - HH:mm:ss")
-        OffsetDateTime dataAtualizacao
+        List<MetaPrecoDTO> historico
 
 ) {}

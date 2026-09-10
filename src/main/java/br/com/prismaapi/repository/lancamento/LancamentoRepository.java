@@ -6,6 +6,7 @@ import br.com.prismaapi.model.dto.dashboard.projection.GastoCategoriaProjecao;
 import br.com.prismaapi.model.dto.dashboard.projection.MovimentoDiarioProjecao;
 import br.com.prismaapi.model.dto.dashboard.projection.TotalMensalProjecao;
 import br.com.prismaapi.model.dto.dashboard.projection.ValorPorDataProjecao;
+import br.com.prismaapi.model.dto.relatorio.projection.GastoOrigemProjecao;
 import br.com.prismaapi.model.entity.lancamento.Lancamento;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -34,6 +35,8 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, UUID>, J
     long countByContaIdOrContaDestinoId(UUID contaId, UUID contaDestinoId);
 
     long countByCartaoId(UUID cartaoId);
+
+    long countByTipoNotAndDataBetween(TipoLancamento tipo, LocalDate inicio, LocalDate fim);
 
     Page<Lancamento> findByDataBetween(LocalDate inicio, LocalDate fim, Pageable pageable);
 
@@ -66,6 +69,19 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, UUID>, J
                                                   @Param("fim") LocalDate fim);
 
     @Query("""
+            SELECT new br.com.prismaapi.model.dto.dashboard.projection.MovimentoDiarioProjecao(
+                       lancamento.data,
+                       lancamento.tipo,
+                       SUM(lancamento.valor))
+            FROM Lancamento lancamento
+            WHERE lancamento.tipo <> br.com.prismaapi.enums.TipoLancamento.TRANSFERENCIA
+              AND lancamento.data BETWEEN :inicio AND :fim
+            GROUP BY lancamento.data, lancamento.tipo
+            """)
+    List<MovimentoDiarioProjecao> agruparReceitasEDespesasPorDia(@Param("inicio") LocalDate inicio,
+                                                                 @Param("fim") LocalDate fim);
+
+    @Query("""
             SELECT new br.com.prismaapi.model.dto.dashboard.projection.ValorPorDataProjecao(
                        lancamento.data,
                        SUM(lancamento.valor))
@@ -90,6 +106,39 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, UUID>, J
             """)
     List<GastoCategoriaProjecao> agruparDespesasPorCategoria(@Param("inicio") LocalDate inicio,
                                                              @Param("fim") LocalDate fim);
+
+    @Query("""
+            SELECT new br.com.prismaapi.model.dto.dashboard.projection.GastoCategoriaProjecao(
+                       lancamento.categoria.id,
+                       SUM(lancamento.valor))
+            FROM Lancamento lancamento
+            WHERE lancamento.tipo = :tipo
+              AND lancamento.categoria IS NOT NULL
+              AND lancamento.data BETWEEN :inicio AND :fim
+            GROUP BY lancamento.categoria.id
+            ORDER BY SUM(lancamento.valor) DESC
+            """)
+    List<GastoCategoriaProjecao> agruparPorCategoria(@Param("tipo") TipoLancamento tipo,
+                                                     @Param("inicio") LocalDate inicio,
+                                                     @Param("fim") LocalDate fim);
+
+    @Query("""
+            SELECT new br.com.prismaapi.model.dto.relatorio.projection.GastoOrigemProjecao(
+                       conta.id,
+                       conta.nome,
+                       cartao.id,
+                       cartao.nome,
+                       SUM(lancamento.valor))
+            FROM Lancamento lancamento
+            LEFT JOIN lancamento.conta conta
+            LEFT JOIN lancamento.cartao cartao
+            WHERE lancamento.tipo = br.com.prismaapi.enums.TipoLancamento.DESPESA
+              AND lancamento.data BETWEEN :inicio AND :fim
+            GROUP BY conta.id, conta.nome, cartao.id, cartao.nome
+            ORDER BY SUM(lancamento.valor) DESC
+            """)
+    List<GastoOrigemProjecao> agruparDespesasPorOrigem(@Param("inicio") LocalDate inicio,
+                                                       @Param("fim") LocalDate fim);
 
     @Query("""
             SELECT new br.com.prismaapi.model.dto.dashboard.projection.MovimentoDiarioProjecao(
@@ -194,4 +243,13 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, UUID>, J
     List<Lancamento> buscarRecentes(@Param("inicio") LocalDate inicio,
                                     @Param("fim") LocalDate fim,
                                     Pageable pageable);
+
+    @Query("""
+            SELECT lancamento
+            FROM Lancamento lancamento
+            LEFT JOIN FETCH lancamento.categoria
+            WHERE lancamento.situacao <> br.com.prismaapi.enums.SituacaoLancamento.PAGO
+              AND lancamento.data <= :limite
+            """)
+    List<Lancamento> buscarNaoPagosAte(@Param("limite") LocalDate limite);
 }

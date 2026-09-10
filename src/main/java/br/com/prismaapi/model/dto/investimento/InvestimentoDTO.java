@@ -6,7 +6,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Schema(description = "Representa o modelo de dados de um Investimento.")
@@ -24,15 +23,9 @@ public record InvestimentoDTO(
 
         BigDecimal valorAtual,
 
-        @JsonFormat(pattern = "dd/MM/yyyy")
+        @JsonFormat(pattern = "yyyy-MM-dd")
         LocalDate dataInicio,
 
-        String observacoes,
-
-        @JsonFormat(pattern = "dd/MM/yyyy - HH:mm:ss")
-        OffsetDateTime dataCriacao,
-
-        @JsonFormat(pattern = "dd/MM/yyyy - HH:mm:ss")
-        OffsetDateTime dataAtualizacao
+        String observacoes
 
 ) {}

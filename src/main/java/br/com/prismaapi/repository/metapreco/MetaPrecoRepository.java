@@ -8,6 +8,8 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -20,4 +22,7 @@ public interface MetaPrecoRepository extends JpaRepository<MetaPreco, UUID> {
 
     Optional<MetaPreco> findFirstByMetaIdOrderByDataDesc(UUID metaId);
 
+    List<MetaPreco> findByMetaIdOrderByDataAscDataCriacaoAsc(UUID metaId);
+
+    List<MetaPreco> findByMetaIdInOrderByDataAscDataCriacaoAsc(Collection<UUID> idsMetas);
 }

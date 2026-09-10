@@ -1,9 +1,11 @@
 package br.com.prismaapi.model.mapper.investimento;
 
 import br.com.prismaapi.model.dto.investimento.InvestimentoDTO;
+import br.com.prismaapi.model.dto.investimento.SalvarInvestimentoDTO;
 import br.com.prismaapi.model.entity.investimento.Investimento;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
 
 @Mapper(componentModel = "spring")
 public interface InvestimentoMapper {
@@ -15,4 +17,13 @@ public interface InvestimentoMapper {
     @Mapping(target = "dataAtualizacao", ignore = true)
     Investimento toEntity(InvestimentoDTO dto);
 
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "dataCriacao", ignore = true)
+    @Mapping(target = "dataAtualizacao", ignore = true)
+    Investimento toEntity(SalvarInvestimentoDTO salvarInvestimentoDTO);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "dataCriacao", ignore = true)
+    @Mapping(target = "dataAtualizacao", ignore = true)
+    void updateEntity(SalvarInvestimentoDTO salvarInvestimentoDTO, @MappingTarget Investimento investimento);
 }

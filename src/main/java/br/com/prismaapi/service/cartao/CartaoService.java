@@ -14,6 +14,7 @@ import br.com.prismaapi.model.mapper.cartao.CartaoMapper;
 import br.com.prismaapi.repository.cartao.CartaoRepository;
 import br.com.prismaapi.repository.compraparcelada.CompraParceladaRepository;
 import br.com.prismaapi.repository.conta.ContaRepository;
+import br.com.prismaapi.repository.despesarecorrente.DespesaRecorrenteRepository;
 import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import br.com.prismaapi.service.fatura.FaturaService;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +39,7 @@ public class CartaoService {
     private final CartaoRepository cartaoRepository;
     private final LancamentoRepository lancamentoRepository;
     private final CompraParceladaRepository compraParceladaRepository;
+    private final DespesaRecorrenteRepository despesaRecorrenteRepository;
     private static final Collator ORDEM_ALFABETICA = Collator.getInstance(Locale.forLanguageTag("pt-BR"));
     private static final List<TipoCartao> ORDEM_DOS_TIPOS = List.of(TipoCartao.CREDITO, TipoCartao.DEBITO, TipoCartao.VALE_ALIMENTACAO, TipoCartao.VALE_REFEICAO);
 
@@ -88,7 +90,7 @@ public class CartaoService {
     }
 
     private void validarHistorico(UUID id) {
-        var quantidade = lancamentoRepository.countByCartaoId(id) + compraParceladaRepository.countByCartaoId(id);
+        var quantidade = lancamentoRepository.countByCartaoId(id) + compraParceladaRepository.countByCartaoId(id) + despesaRecorrenteRepository.countByCartaoId(id);
 
         if (quantidade > 0) {
             var registros = quantidade == 1 ? "registro" : "registros";

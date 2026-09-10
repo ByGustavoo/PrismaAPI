@@ -2,7 +2,8 @@ package br.com.prismaapi.service.conta;
 
 import br.com.prismaapi.enums.Situacao;
 import br.com.prismaapi.enums.TipoCartao;
-import br.com.prismaapi.exceptions.ContaComLancamentosException;
+import br.com.prismaapi.exceptions.ContaComCartaoVinculadoException;
+import br.com.prismaapi.exceptions.ContaComHistoricoException;
 import br.com.prismaapi.exceptions.ContaDuplicadaException;
 import br.com.prismaapi.exceptions.ContaNaoEncontradaException;
 import br.com.prismaapi.model.dto.conta.ContaDTO;
@@ -13,6 +14,7 @@ import br.com.prismaapi.model.mapper.cartao.CartaoMapper;
 import br.com.prismaapi.model.mapper.conta.ContaMapper;
 import br.com.prismaapi.repository.cartao.CartaoRepository;
 import br.com.prismaapi.repository.conta.ContaRepository;
+import br.com.prismaapi.repository.despesarecorrente.DespesaRecorrenteRepository;
 import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -34,6 +36,7 @@ public class ContaService {
     private final ContaRepository contaRepository;
     private final CartaoRepository cartaoRepository;
     private final LancamentoRepository lancamentoRepository;
+    private final DespesaRecorrenteRepository despesaRecorrenteRepository;
     private static final Collator ORDEM_ALFABETICA = Collator.getInstance(Locale.forLanguageTag("pt-BR"));
 
     @Transactional(readOnly = true)
@@ -89,6 +92,7 @@ public class ContaService {
         var conta = buscar(id);
 
         validarHistorico(id);
+        validarCartoesVinculados(id);
 
         contaRepository.delete(conta);
     }
@@ -112,11 +116,23 @@ public class ContaService {
     }
 
     private void validarHistorico(UUID id) {
-        var quantidade = lancamentoRepository.countByContaIdOrContaDestinoId(id, id);
+        var quantidade = lancamentoRepository.countByContaIdOrContaDestinoId(id, id) + despesaRecorrenteRepository.countByContaId(id);
 
         if (quantidade > 0) {
-            var lancamentos = quantidade == 1 ? "lançamento" : "lançamentos";
-            throw new ContaComLancamentosException("Esta conta tem %d %s no histórico. Marque-a como inativa para tirá-la do saldo sem apagar o passado!".formatted(quantidade, lancamentos));
+            var registros = quantidade == 1 ? "registro" : "registros";
+            throw new ContaComHistoricoException("Esta conta tem %d %s no histórico. Marque-a como inativa para tirá-la do saldo sem apagar o passado!".formatted(quantidade, registros));
+        }
+    }
+
+    private void validarCartoesVinculados(UUID id) {
+        var quantidade = cartaoRepository.countByContaId(id);
+
+        if (quantidade == 1) {
+            throw new ContaComCartaoVinculadoException("Esta conta está vinculada a um cartão de débito. Troque a conta desse cartão ou exclua-o antes de excluir a conta!");
+        }
+
+        if (quantidade > 1) {
+            throw new ContaComCartaoVinculadoException("Esta conta está vinculada a %d cartões de débito. Troque a conta desses cartões ou exclua-os antes de excluir a conta!".formatted(quantidade));
         }
     }
 

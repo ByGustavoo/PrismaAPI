@@ -136,6 +136,14 @@ public class FaturaService {
         return cronograma;
     }
 
+    public BigDecimal parcelasNoMes(List<ParcelaProjecao> parcelas, YearMonth mes) {
+        return parcelas.stream()
+                .filter(parcela -> !mes.isBefore(YearMonth.from(parcela.primeiroMes())))
+                .filter(parcela -> alcancaOMes(parcela.primeiroMes(), parcela.parcelas(), mes))
+                .map(parcela -> valorDaParcela(parcela.valorTotal(), parcela.parcelas(), YearMonth.from(parcela.primeiroMes()).until(mes, ChronoUnit.MONTHS)))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
     private List<FaturaCartaoDTO> montarFaturas(List<Cartao> cartoes, LocalDate hoje) {
         var cartoesDeCredito = cartoes.stream()
                 .filter(cartao -> cartao.getTipo() == TipoCartao.CREDITO)

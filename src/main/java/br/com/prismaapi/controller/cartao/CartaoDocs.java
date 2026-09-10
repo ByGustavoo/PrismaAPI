@@ -114,8 +114,9 @@ public interface CartaoDocs {
             description = """
                     Remove o cartão de forma definitiva e responde sem corpo.
 
-                    Excluir não apaga histórico: se o cartão for origem de algum lançamento ou tiver \
-                    compras parceladas, a exclusão é recusada. Nesse caso, o caminho é marcar o cartão \
+                    Excluir não apaga histórico: se o cartão for origem de algum lançamento ou de \
+                    alguma despesa recorrente, ou tiver compras parceladas, a exclusão é recusada. \
+                    Nesse caso, o caminho é marcar o cartão \
                     como inativo, o que o tira dos novos lançamentos sem esconder o passado.""")
     @ApiResponses(value = {
             @ApiResponse(
