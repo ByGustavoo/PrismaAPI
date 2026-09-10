@@ -7,10 +7,10 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum FormaLancamento {
 
-    CONTA("Conta"),
-    CARTAO_CREDITO("Cartão de crédito"),
-    PIX("Pix"),
-    DINHEIRO("Dinheiro");
+    PIX("PIX"),
+    CONTA("CONTA"),
+    DINHEIRO("DINHEIRO"),
+    CARTAO_CREDITO("CARTÃO DE CRÉDITO");
 
     private final String descricao;
 

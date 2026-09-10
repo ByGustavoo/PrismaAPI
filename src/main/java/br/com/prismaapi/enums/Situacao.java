@@ -7,8 +7,8 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum Situacao {
 
-    ATIVO("Ativo"),
-    INATIVO("Inativo");
+    ATIVO("ATIVO"),
+    INATIVO("INATIVO");
 
     private final String descricao;
 

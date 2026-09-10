@@ -5,13 +5,11 @@ import lombok.Getter;
 
 @Getter
 @AllArgsConstructor
-public enum TipoConta {
+public enum Tendencia {
 
-    OUTRA("OUTRA"),
-    CORRENTE("CONTA CORRENTE"),
-    SALARIO("CONTA SALÁRIO"),
-    EMERGENCIA("RESERVA DE EMERGÊNCIA");
+    ALTA("ALTA"),
+    BAIXA("BAIXA"),
+    ESTAVEL("ESTÁVEL");
 
     private final String descricao;
-
 }

@@ -7,8 +7,8 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum SituacaoDespesaRecorrente {
 
-    ATIVO("Ativo"),
-    PAUSADO("Pausado");
+    ATIVO("ATIVO"),
+    PAUSADO("PAUSADO");
 
     private final String descricao;
 

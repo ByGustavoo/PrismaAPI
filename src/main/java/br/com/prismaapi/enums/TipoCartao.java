@@ -7,10 +7,10 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum TipoCartao {
 
-    CREDITO("Crédito"),
-    DEBITO("Débito"),
-    VALE_ALIMENTACAO("Vale alimentação"),
-    VALE_REFEICAO("Vale refeição");
+    CREDITO("CRÉDITO"),
+    DEBITO("DÉBITO"),
+    VALE_REFEICAO("VALE REFEIÇÃO"),
+    VALE_ALIMENTACAO("VALE ALIMENTAÇÃO");
 
     private final String descricao;
 

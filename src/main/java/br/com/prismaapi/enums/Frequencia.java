@@ -7,13 +7,13 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum Frequencia {
 
-    SEMANAL("Semanal"),
-    QUINZENAL("Quinzenal"),
-    MENSAL("Mensal"),
-    BIMESTRAL("Bimestral"),
-    TRIMESTRAL("Trimestral"),
-    SEMESTRAL("Semestral"),
-    ANUAL("Anual");
+    ANUAL("ANUAL"),
+    MENSAL("MENSAL"),
+    SEMANAL("SEMANAL"),
+    QUINZENAL("QUINZENAL"),
+    BIMESTRAL("BIMESTRAL"),
+    SEMESTRAL("SEMESTRAL"),
+    TRIMESTRAL("TRIMESTRAL");
 
     private final String descricao;
 

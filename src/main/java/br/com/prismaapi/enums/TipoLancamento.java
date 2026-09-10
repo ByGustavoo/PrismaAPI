@@ -7,9 +7,9 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum TipoLancamento {
 
-    RECEITA("Receita"),
-    DESPESA("Despesa"),
-    TRANSFERENCIA("Transferência");
+    DESPESA("DESPESA"),
+    RECEITA("RECEITA"),
+    TRANSFERENCIA("TRANSFERÊNCIA");
 
     private final String descricao;
 

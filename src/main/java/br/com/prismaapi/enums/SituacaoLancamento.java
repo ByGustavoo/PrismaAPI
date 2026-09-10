@@ -7,9 +7,9 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum SituacaoLancamento {
 
-    PAGO("Pago"),
-    PENDENTE("Pendente"),
-    AGENDADO("Agendado");
+    PAGO("PAGO"),
+    PENDENTE("PENDENTE"),
+    AGENDADO("AGENDADO");
 
     private final String descricao;
 

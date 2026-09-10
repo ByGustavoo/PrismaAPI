@@ -7,14 +7,14 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum ClasseAtivo {
 
-    RENDA_FIXA("Renda fixa"),
     CDB("CDB"),
-    TESOURO("Tesouro Direto"),
-    ACOES("Ações"),
     ETF("ETF"),
-    FUNDOS("Fundos"),
-    CRIPTO("Cripto"),
-    OUTROS("Outros");
+    ACOES("AÇÕES"),
+    CRIPTO("CRIPTO"),
+    OUTROS("OUTROS"),
+    FUNDOS("FUNDOS"),
+    RENDA_FIXA("RENDA FIXA"),
+    TESOURO("TESOURO DIRETO");
 
     private final String descricao;
 

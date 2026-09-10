@@ -20,4 +20,5 @@ public interface CartaoRepository extends JpaRepository<Cartao, UUID> {
 
     List<Cartao> findByContaId(UUID contaId);
 
+    List<Cartao> findByTipoAndSituacao(TipoCartao tipo, Situacao situacao);
 }

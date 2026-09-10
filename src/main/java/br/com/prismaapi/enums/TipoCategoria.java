@@ -7,8 +7,8 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum TipoCategoria {
 
-    RECEITA("Receita"),
-    DESPESA("Despesa");
+    RECEITA("RECEITA"),
+    DESPESA("DESPESA");
 
     private final String descricao;
 

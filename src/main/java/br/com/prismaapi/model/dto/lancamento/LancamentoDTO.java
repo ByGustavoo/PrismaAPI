@@ -3,14 +3,16 @@ package br.com.prismaapi.model.dto.lancamento;
 import br.com.prismaapi.enums.FormaLancamento;
 import br.com.prismaapi.enums.SituacaoLancamento;
 import br.com.prismaapi.enums.TipoLancamento;
+import br.com.prismaapi.model.dto.categoria.CategoriaDTO;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.OffsetDateTime;
 import java.util.UUID;
 
+@JsonInclude(JsonInclude.Include.NON_NULL)
 @Schema(description = "Representa o modelo de dados de um Lançamento.")
 public record LancamentoDTO(
 
@@ -26,23 +28,19 @@ public record LancamentoDTO(
 
         FormaLancamento forma,
 
-        @JsonFormat(pattern = "dd/MM/yyyy")
+        @JsonFormat(pattern = "yyyy-MM-dd")
         LocalDate data,
 
-        UUID categoriaId,
+        CategoriaDTO categoria,
 
-        UUID contaId,
+        UUID idOrigem,
 
-        UUID cartaoId,
+        String nomeOrigem,
 
-        UUID contaDestinoId,
+        UUID idContaDestino,
 
-        String observacoes,
+        String nomeContaDestino,
 
-        @JsonFormat(pattern = "dd/MM/yyyy - HH:mm:ss")
-        OffsetDateTime dataCriacao,
-
-        @JsonFormat(pattern = "dd/MM/yyyy - HH:mm:ss")
-        OffsetDateTime dataAtualizacao
+        String observacoes
 
 ) {}

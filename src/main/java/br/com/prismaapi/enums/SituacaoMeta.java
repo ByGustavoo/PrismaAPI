@@ -7,9 +7,9 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum SituacaoMeta {
 
-    ACOMPANHANDO("Acompanhando"),
-    COMPRADA("Comprada"),
-    CANCELADA("Cancelada");
+    COMPRADA("COMPRADA"),
+    CANCELADA("CANCELADA"),
+    ACOMPANHANDO("ACOMPANHANDO");
 
     private final String descricao;
 
