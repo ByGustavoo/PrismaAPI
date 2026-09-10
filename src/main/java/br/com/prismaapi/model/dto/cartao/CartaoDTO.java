@@ -2,13 +2,13 @@ package br.com.prismaapi.model.dto.cartao;
 
 import br.com.prismaapi.enums.Situacao;
 import br.com.prismaapi.enums.TipoCartao;
-import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
-import java.time.OffsetDateTime;
 import java.util.UUID;
 
+@JsonInclude(JsonInclude.Include.NON_NULL)
 @Schema(description = "Representa o modelo de dados de um Cartão.")
 public record CartaoDTO(
 
@@ -28,18 +28,16 @@ public record CartaoDTO(
 
         BigDecimal limiteCredito,
 
+        BigDecimal limiteComprometido,
+
         Short diaFechamento,
 
         Short diaVencimento,
 
-        UUID contaId,
+        UUID idConta,
 
-        BigDecimal saldo,
+        String nomeConta,
 
-        @JsonFormat(pattern = "dd/MM/yyyy - HH:mm:ss")
-        OffsetDateTime dataCriacao,
-
-        @JsonFormat(pattern = "dd/MM/yyyy - HH:mm:ss")
-        OffsetDateTime dataAtualizacao
+        BigDecimal saldo
 
 ) {}

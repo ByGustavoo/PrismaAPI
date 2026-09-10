@@ -20,6 +20,7 @@ import br.com.prismaapi.repository.categoria.CategoriaRepository;
 import br.com.prismaapi.repository.conta.ContaRepository;
 import br.com.prismaapi.repository.investimento.InvestimentoRepository;
 import br.com.prismaapi.repository.lancamento.LancamentoRepository;
+import br.com.prismaapi.service.fatura.FaturaService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -42,9 +43,7 @@ public class DashboardService {
             "Jul", "Ago", "Set", "Out", "Nov", "Dez"
     };
 
-    private static final int CASAS_DO_DINHEIRO = 2;
     private static final int CASAS_DO_PERCENTUAL = 1;
-    private static final int LANCAMENTOS_RECENTES = 6;
     private static final int CASAS_DA_PARTICIPACAO = 4;
 
     private final FaturaService faturaService;
@@ -59,10 +58,10 @@ public class DashboardService {
     private static final BigDecimal FAIXA_DA_ESTABILIDADE = new BigDecimal("0.05");
 
     @Transactional(readOnly = true)
-    public DashboardDTO resumir(YearMonth de, YearMonth ate) {
-        validar(de, ate);
+    public DashboardDTO resumir(YearMonth dataInicial, YearMonth dataFinal) {
+        validar(dataInicial, dataFinal);
 
-        var periodo = PeriodoDashboard.resolver(de, ate, LocalDate.now());
+        var periodo = PeriodoDashboard.resolver(dataInicial, dataFinal, LocalDate.now());
         var anterior = periodo.anterior();
         var linhaDoSaldo = montarLinhaDoSaldo(periodo, anterior);
 
@@ -77,8 +76,8 @@ public class DashboardService {
         var carteira = investimentoRepository.resumirCarteira();
 
         return new DashboardDTO(
-                periodo.de().toString(),
-                periodo.ate().toString(),
+                periodo.dataInicial().toString(),
+                periodo.dataFinal().toString(),
                 dinheiro(saldoAtual),
                 variacao(saldoAtual, saldoAnterior),
                 dinheiro(receitas),
@@ -87,7 +86,7 @@ public class DashboardService {
                 variacao(despesas, despesasAnteriores),
                 dinheiro(totalInvestido(carteira)),
                 rentabilidade(carteira),
-                faturaService.faturaEmDestaque(periodo.ate(), periodo.hoje()),
+                faturaService.faturaEmDestaque(periodo.dataFinal(), periodo.hoje()),
                 historicoSaldo(periodo, linhaDoSaldo),
                 fluxoCaixa(periodo),
                 gastoDiario(periodo),
@@ -95,12 +94,12 @@ public class DashboardService {
                 lancamentosRecentes(periodo));
     }
 
-    private static void validar(YearMonth de, YearMonth ate) {
-        if ((de == null) != (ate == null)) {
+    private static void validar(YearMonth dataInicial, YearMonth dataFinal) {
+        if ((dataInicial == null) != (dataFinal == null)) {
             throw new RequisicaoInvalidaException(PERIODO_INVALIDO);
         }
 
-        if (de != null && de.isAfter(ate)) {
+        if (dataInicial != null && dataInicial.isAfter(dataFinal)) {
             throw new RequisicaoInvalidaException(PERIODO_INVALIDO);
         }
     }
@@ -194,7 +193,7 @@ public class DashboardService {
 
     private List<LancamentoDTO> lancamentosRecentes(PeriodoDashboard periodo) {
         return lancamentoRepository
-                .buscarRecentes(periodo.primeiroDia(), periodo.ultimoDia(), PageRequest.ofSize(LANCAMENTOS_RECENTES))
+                .buscarRecentes(periodo.primeiroDia(), periodo.ultimoDia(), PageRequest.ofSize(6))
                 .stream()
                 .map(lancamentoMapper::toDTO)
                 .toList();
@@ -255,7 +254,7 @@ public class DashboardService {
     }
 
     private static BigDecimal dinheiro(BigDecimal valor) {
-        return zeroSeNulo(valor).setScale(CASAS_DO_DINHEIRO, RoundingMode.HALF_UP);
+        return zeroSeNulo(valor).setScale(2, RoundingMode.HALF_UP);
     }
 
     private static BigDecimal zeroSeNulo(BigDecimal valor) {

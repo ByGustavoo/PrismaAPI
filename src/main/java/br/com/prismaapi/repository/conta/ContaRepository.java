@@ -15,11 +15,13 @@ import java.util.UUID;
 @Repository
 public interface ContaRepository extends JpaRepository<Conta, UUID> {
 
-    boolean existsByNomeAndInstituicao(String nome, String instituicao);
+    boolean existsByNomeIgnoreCaseAndInstituicaoIgnoreCase(String nome, String instituicao);
 
-    boolean existsByNomeAndInstituicaoAndIdNot(String nome, String instituicao, UUID id);
+    boolean existsByNomeIgnoreCaseAndInstituicaoIgnoreCaseAndIdNot(String nome, String instituicao, UUID id);
 
     Page<Conta> findBySituacao(Situacao situacao, Pageable pageable);
+
+    List<Conta> findBySituacao(Situacao situacao);
 
     List<Conta> findBySituacaoAndIncluirNoTotal(Situacao situacao, Boolean incluirNoTotal);
 

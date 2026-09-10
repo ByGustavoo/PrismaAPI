@@ -8,9 +8,9 @@ import java.util.List;
 
 public record PeriodoDashboard(
 
-        YearMonth de,
+        YearMonth dataInicial,
 
-        YearMonth ate,
+        YearMonth dataFinal,
 
         YearMonth inicioDaJanela,
 
@@ -18,15 +18,13 @@ public record PeriodoDashboard(
 
 ) {
 
-    private static final int MESES_DA_JANELA_MINIMA = 6;
-
-    public static PeriodoDashboard resolver(YearMonth de, YearMonth ate, LocalDate hoje) {
+    public static PeriodoDashboard resolver(YearMonth dataInicial, YearMonth dataFinal, LocalDate hoje) {
         var mesAtual = YearMonth.from(hoje);
-        var inicio = de != null ? de : mesAtual;
-        var fim = ate != null ? ate : mesAtual;
+        var inicio = dataInicial != null ? dataInicial : mesAtual;
+        var fim = dataFinal != null ? dataFinal : mesAtual;
 
         var inicioDaJanela = inicio.equals(fim)
-                ? inicio.minusMonths(MESES_DA_JANELA_MINIMA - 1L)
+                ? inicio.minusMonths(5)
                 : inicio;
 
         return new PeriodoDashboard(inicio, fim, inicioDaJanela, hoje);
@@ -34,19 +32,19 @@ public record PeriodoDashboard(
 
     public PeriodoDashboard anterior() {
         var meses = quantidadeDeMeses();
-        return resolver(de.minusMonths(meses), ate.minusMonths(meses), hoje);
+        return resolver(dataInicial.minusMonths(meses), dataFinal.minusMonths(meses), hoje);
     }
 
     public int quantidadeDeMeses() {
-        return (int) ChronoUnit.MONTHS.between(de, ate) + 1;
+        return (int) ChronoUnit.MONTHS.between(dataInicial, dataFinal) + 1;
     }
 
     public LocalDate primeiroDia() {
-        return de.atDay(1);
+        return dataInicial.atDay(1);
     }
 
     public LocalDate ultimoDia() {
-        return ate.atEndOfMonth();
+        return dataFinal.atEndOfMonth();
     }
 
     public LocalDate primeiroDiaDaJanela() {
@@ -54,19 +52,19 @@ public record PeriodoDashboard(
     }
 
     public LocalDate ultimoDiaDaJanela() {
-        return ate.atEndOfMonth();
+        return dataFinal.atEndOfMonth();
     }
 
     public List<YearMonth> mesesDaJanela() {
         var meses = new ArrayList<YearMonth>();
-        for (var mes = inicioDaJanela; !mes.isAfter(ate); mes = mes.plusMonths(1)) {
+        for (var mes = inicioDaJanela; !mes.isAfter(dataFinal); mes = mes.plusMonths(1)) {
             meses.add(mes);
         }
         return meses;
     }
 
     public LocalDate dataDeCorte() {
-        return dataDeCorte(ate);
+        return dataDeCorte(dataFinal);
     }
 
     public LocalDate dataDeCorte(YearMonth mes) {

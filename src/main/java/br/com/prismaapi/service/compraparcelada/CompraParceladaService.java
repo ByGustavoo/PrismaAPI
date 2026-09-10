@@ -1,0 +1,140 @@
+package br.com.prismaapi.service.compraparcelada;
+
+import br.com.prismaapi.enums.SituacaoParcela;
+import br.com.prismaapi.enums.TipoCartao;
+import br.com.prismaapi.exceptions.CartaoInexistenteException;
+import br.com.prismaapi.exceptions.CartaoNaoAceitaParcelamentoException;
+import br.com.prismaapi.exceptions.CategoriaInexistenteException;
+import br.com.prismaapi.exceptions.CompraParceladaNaoEncontradaException;
+import br.com.prismaapi.model.dto.compraparcelada.CompraParceladaDTO;
+import br.com.prismaapi.model.dto.compraparcelada.ParcelaDTO;
+import br.com.prismaapi.model.dto.compraparcelada.PlanoCompraParceladaDTO;
+import br.com.prismaapi.model.dto.compraparcelada.SalvarCompraParceladaDTO;
+import br.com.prismaapi.model.entity.cartao.Cartao;
+import br.com.prismaapi.model.entity.categoria.Categoria;
+import br.com.prismaapi.model.entity.compraparcelada.CompraParcelada;
+import br.com.prismaapi.model.mapper.compraparcelada.CompraParceladaMapper;
+import br.com.prismaapi.repository.cartao.CartaoRepository;
+import br.com.prismaapi.repository.categoria.CategoriaRepository;
+import br.com.prismaapi.repository.compraparcelada.CompraParceladaRepository;
+import br.com.prismaapi.service.fatura.FaturaService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.util.Comparator;
+import java.util.List;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class CompraParceladaService {
+
+    private final FaturaService faturaService;
+    private final CartaoRepository cartaoRepository;
+    private final CategoriaRepository categoriaRepository;
+    private final CompraParceladaMapper compraParceladaMapper;
+    private final CompraParceladaRepository compraParceladaRepository;
+
+    @Transactional(readOnly = true)
+    public List<PlanoCompraParceladaDTO> listar(UUID idCartao) {
+        var hoje = LocalDate.now();
+
+        return compraParceladaRepository.buscarComCartaoECategoria()
+                .stream()
+                .filter(compra -> idCartao == null || compra.getCartao().getId().equals(idCartao))
+                .map(compra -> planejar(compra, hoje))
+                .sorted(Comparator.comparing((PlanoCompraParceladaDTO plano) -> plano.parcelasRestantes() == 0)
+                        .thenComparing(plano -> plano.compra().dataCompra(), Comparator.reverseOrder()))
+                .toList();
+    }
+
+    @Transactional
+    public CompraParceladaDTO salvar(SalvarCompraParceladaDTO salvarCompraParceladaDTO) {
+        var compra = compraParceladaMapper.toEntity(salvarCompraParceladaDTO);
+        preencher(compra, salvarCompraParceladaDTO);
+
+        return compraParceladaMapper.toDTO(compraParceladaRepository.save(compra));
+    }
+
+    @Transactional
+    public CompraParceladaDTO atualizar(UUID id, SalvarCompraParceladaDTO salvarCompraParceladaDTO) {
+        var compra = buscar(id);
+
+        compraParceladaMapper.updateEntity(salvarCompraParceladaDTO, compra);
+        preencher(compra, salvarCompraParceladaDTO);
+
+        return compraParceladaMapper.toDTO(compra);
+    }
+
+    @Transactional
+    public void deletar(UUID id) {
+        compraParceladaRepository.delete(buscar(id));
+    }
+
+    private CompraParcelada buscar(UUID id) {
+        return compraParceladaRepository.findById(id)
+                .orElseThrow(() -> new CompraParceladaNaoEncontradaException("Compra parcelada não encontrada!"));
+    }
+
+    private PlanoCompraParceladaDTO planejar(CompraParcelada compra, LocalDate hoje) {
+        var cronograma = faturaService.cronograma(compra, hoje);
+
+        var pagas = cronograma.stream()
+                .filter(parcela -> parcela.situacao() == SituacaoParcela.PAGA)
+                .toList();
+
+        var valorPago = pagas.stream()
+                .map(ParcelaDTO::valor)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, RoundingMode.HALF_UP);
+
+        var parcelaAtual = cronograma.stream()
+                .filter(parcela -> parcela.situacao() == SituacaoParcela.ATUAL)
+                .findFirst()
+                .orElse(null);
+
+        return new PlanoCompraParceladaDTO(
+                compraParceladaMapper.toDTO(compra),
+                cronograma.getFirst().valor(),
+                pagas.size(),
+                cronograma.size() - pagas.size(),
+                valorPago,
+                compra.getValorTotal().subtract(valorPago),
+                parcelaAtual,
+                cronograma);
+    }
+
+    private void preencher(CompraParcelada compra, SalvarCompraParceladaDTO salvarCompraParceladaDTO) {
+        compra.setDescricao(salvarCompraParceladaDTO.descricao().strip());
+        compra.setPrimeiroMes(salvarCompraParceladaDTO.primeiroMes().atDay(1));
+        compra.setObservacoes(textoOuNulo(salvarCompraParceladaDTO.observacoes()));
+        compra.setCartao(buscarCartaoDeCredito(salvarCompraParceladaDTO.idCartao()));
+        compra.setCategoria(buscarCategoria(salvarCompraParceladaDTO.idCategoria()));
+    }
+
+    private Cartao buscarCartaoDeCredito(UUID idCartao) {
+        var cartao = cartaoRepository.findById(idCartao)
+                .orElseThrow(() -> new CartaoInexistenteException("O cartão informado não existe!"));
+
+        if (cartao.getTipo() != TipoCartao.CREDITO) {
+            throw new CartaoNaoAceitaParcelamentoException("Só cartões de crédito aceitam compras parceladas!");
+        }
+
+        return cartao;
+    }
+
+    private Categoria buscarCategoria(UUID idCategoria) {
+        if (idCategoria == null) return null;
+
+        return categoriaRepository.findById(idCategoria)
+                .orElseThrow(() -> new CategoriaInexistenteException("A categoria informada não existe!"));
+    }
+
+    private static String textoOuNulo(String texto) {
+        return texto == null || texto.isBlank() ? null : texto.strip();
+    }
+}

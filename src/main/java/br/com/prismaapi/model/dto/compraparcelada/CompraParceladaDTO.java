@@ -1,11 +1,11 @@
 package br.com.prismaapi.model.dto.compraparcelada;
 
+import br.com.prismaapi.model.dto.categoria.CategoriaDTO;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Schema(description = "Representa o modelo de dados de uma Compra Parcelada.")
@@ -19,22 +19,18 @@ public record CompraParceladaDTO(
 
         Short parcelas,
 
-        @JsonFormat(pattern = "dd/MM/yyyy")
+        @JsonFormat(pattern = "yyyy-MM-dd")
         LocalDate dataCompra,
 
-        @JsonFormat(pattern = "dd/MM/yyyy")
+        @JsonFormat(pattern = "yyyy-MM")
         LocalDate primeiroMes,
 
-        UUID cartaoId,
+        UUID idCartao,
 
-        UUID categoriaId,
+        String nomeCartao,
 
-        String observacoes,
+        CategoriaDTO categoria,
 
-        @JsonFormat(pattern = "dd/MM/yyyy - HH:mm:ss")
-        OffsetDateTime dataCriacao,
-
-        @JsonFormat(pattern = "dd/MM/yyyy - HH:mm:ss")
-        OffsetDateTime dataAtualizacao
+        String observacoes
 
 ) {}

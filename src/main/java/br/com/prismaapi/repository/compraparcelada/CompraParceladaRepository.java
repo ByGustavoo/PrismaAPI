@@ -16,7 +16,7 @@ import java.util.UUID;
 @Repository
 public interface CompraParceladaRepository extends JpaRepository<CompraParcelada, UUID> {
 
-    boolean existsByCartaoId(UUID cartaoId);
+    long countByCartaoId(UUID cartaoId);
 
     boolean existsByCategoriaId(UUID categoriaId);
 
@@ -34,4 +34,33 @@ public interface CompraParceladaRepository extends JpaRepository<CompraParcelada
             WHERE compra.primeiroMes <= :mes
             """)
     List<ParcelaProjecao> buscarParcelasAte(@Param("mes") LocalDate mes);
+
+    @Query("""
+            SELECT new br.com.prismaapi.model.dto.dashboard.projection.ParcelaProjecao(
+                       compra.cartao.id,
+                       compra.valorTotal,
+                       compra.parcelas,
+                       compra.primeiroMes)
+            FROM CompraParcelada compra
+            WHERE compra.cartao.id IN :idsCartoes
+            """)
+    List<ParcelaProjecao> buscarParcelasDosCartoes(@Param("idsCartoes") List<UUID> idsCartoes);
+
+    @Query("""
+            SELECT compra
+            FROM CompraParcelada compra
+            LEFT JOIN FETCH compra.categoria
+            WHERE compra.cartao.id = :cartaoId
+              AND compra.primeiroMes <= :mes
+            """)
+    List<CompraParcelada> buscarDoCartaoAte(@Param("cartaoId") UUID cartaoId,
+                                            @Param("mes") LocalDate mes);
+
+    @Query("""
+            SELECT compra
+            FROM CompraParcelada compra
+            JOIN FETCH compra.cartao
+            LEFT JOIN FETCH compra.categoria
+            """)
+    List<CompraParcelada> buscarComCartaoECategoria();
 }

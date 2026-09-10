@@ -45,8 +45,8 @@ public interface DashboardDocs {
     @GetMapping("/resumo")
     ResponseEntity<DashboardDTO> getResumo(
             @Parameter(description = "Primeiro mês do recorte", example = "2026-09")
-            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM") YearMonth de,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM") YearMonth dataInicial,
 
             @Parameter(description = "Último mês do recorte, inclusivo", example = "2026-09")
-            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM") YearMonth ate);
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM") YearMonth dataFinal);
 }

@@ -95,6 +95,71 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(response);
     }
 
+    @ExceptionHandler(LancamentoNaoEncontradoException.class)
+    public ResponseEntity<ErrorResponseDTO> handleLancamentoNaoEncontradoException(LancamentoNaoEncontradoException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.NOT_FOUND.value(),
+                "Lançamento não encontrado!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/lancamento-nao-encontrado",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(ContaNaoEncontradaException.class)
+    public ResponseEntity<ErrorResponseDTO> handleContaNaoEncontradaException(ContaNaoEncontradaException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.NOT_FOUND.value(),
+                "Conta não encontrada!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/conta-nao-encontrada",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(CartaoNaoEncontradoException.class)
+    public ResponseEntity<ErrorResponseDTO> handleCartaoNaoEncontradoException(CartaoNaoEncontradoException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.NOT_FOUND.value(),
+                "Cartão não encontrado!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/cartao-nao-encontrado",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(FaturaNaoEncontradaException.class)
+    public ResponseEntity<ErrorResponseDTO> handleFaturaNaoEncontradaException(FaturaNaoEncontradaException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.NOT_FOUND.value(),
+                "Fatura não encontrada!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/fatura-nao-encontrada",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(CompraParceladaNaoEncontradaException.class)
+    public ResponseEntity<ErrorResponseDTO> handleCompraParceladaNaoEncontradaException(CompraParceladaNaoEncontradaException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.NOT_FOUND.value(),
+                "Compra parcelada não encontrada!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/compra-parcelada-nao-encontrada",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<ErrorResponseDTO> handleEntityNotFoundException(EntityNotFoundException ex, HttpServletRequest pHttpServletRequest) {
 
@@ -123,6 +188,45 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
+    @ExceptionHandler(ContaDuplicadaException.class)
+    public ResponseEntity<ErrorResponseDTO> handleContaDuplicadaException(ContaDuplicadaException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.CONFLICT.value(),
+                "Conta Duplicada!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/conta-duplicada",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(ContaComLancamentosException.class)
+    public ResponseEntity<ErrorResponseDTO> handleContaComLancamentosException(ContaComLancamentosException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.CONFLICT.value(),
+                "Conta com Lançamentos!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/conta-com-lancamentos",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(CartaoComHistoricoException.class)
+    public ResponseEntity<ErrorResponseDTO> handleCartaoComHistoricoException(CartaoComHistoricoException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.CONFLICT.value(),
+                "Cartão com Histórico!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/cartao-com-historico",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponseDTO> handleDuplicateResourceException(DataIntegrityViolationException ex, HttpServletRequest pHttpServletRequest) {
 
@@ -134,6 +238,110 @@ public class GlobalExceptionHandler {
                 ex.getMessage());
 
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(OrigemInexistenteException.class)
+    public ResponseEntity<ErrorResponseDTO> handleOrigemInexistenteException(OrigemInexistenteException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.UNPROCESSABLE_CONTENT.value(),
+                "Origem Inexistente!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/origem-inexistente",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(response);
+    }
+
+    @ExceptionHandler(ContaDestinoInexistenteException.class)
+    public ResponseEntity<ErrorResponseDTO> handleContaDestinoInexistenteException(ContaDestinoInexistenteException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.UNPROCESSABLE_CONTENT.value(),
+                "Conta de Destino Inexistente!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/conta-destino-inexistente",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(response);
+    }
+
+    @ExceptionHandler(OrigemTransferenciaInvalidaException.class)
+    public ResponseEntity<ErrorResponseDTO> handleOrigemTransferenciaInvalidaException(OrigemTransferenciaInvalidaException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.UNPROCESSABLE_CONTENT.value(),
+                "Origem da Transferência Inválida!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/origem-transferencia-invalida",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(response);
+    }
+
+    @ExceptionHandler(ContaDestinoIgualOrigemException.class)
+    public ResponseEntity<ErrorResponseDTO> handleContaDestinoIgualOrigemException(ContaDestinoIgualOrigemException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.UNPROCESSABLE_CONTENT.value(),
+                "Conta de Destino Igual à Origem!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/conta-destino-igual-origem",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(response);
+    }
+
+    @ExceptionHandler(CategoriaInexistenteException.class)
+    public ResponseEntity<ErrorResponseDTO> handleCategoriaInexistenteException(CategoriaInexistenteException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.UNPROCESSABLE_CONTENT.value(),
+                "Categoria Inexistente!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/categoria-inexistente",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(response);
+    }
+
+    @ExceptionHandler(ContaVinculadaInexistenteException.class)
+    public ResponseEntity<ErrorResponseDTO> handleContaVinculadaInexistenteException(ContaVinculadaInexistenteException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.UNPROCESSABLE_CONTENT.value(),
+                "Conta Vinculada Inexistente!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/conta-vinculada-inexistente",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(response);
+    }
+
+    @ExceptionHandler(CartaoInexistenteException.class)
+    public ResponseEntity<ErrorResponseDTO> handleCartaoInexistenteException(CartaoInexistenteException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.UNPROCESSABLE_CONTENT.value(),
+                "Cartão Inexistente!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/cartao-inexistente",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(response);
+    }
+
+    @ExceptionHandler(CartaoNaoAceitaParcelamentoException.class)
+    public ResponseEntity<ErrorResponseDTO> handleCartaoNaoAceitaParcelamentoException(CartaoNaoAceitaParcelamentoException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.UNPROCESSABLE_CONTENT.value(),
+                "Cartão Não Aceita Parcelamento!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/cartao-nao-aceita-parcelamento",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(response);
     }
 
     @ExceptionHandler(Exception.class)

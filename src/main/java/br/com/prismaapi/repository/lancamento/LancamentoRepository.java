@@ -1,6 +1,7 @@
 package br.com.prismaapi.repository.lancamento;
 
 import br.com.prismaapi.enums.TipoLancamento;
+import br.com.prismaapi.model.dto.cartao.projection.DespesaCartaoProjecao;
 import br.com.prismaapi.model.dto.dashboard.projection.GastoCategoriaProjecao;
 import br.com.prismaapi.model.dto.dashboard.projection.MovimentoDiarioProjecao;
 import br.com.prismaapi.model.dto.dashboard.projection.TotalMensalProjecao;
@@ -8,7 +9,11 @@ import br.com.prismaapi.model.dto.dashboard.projection.ValorPorDataProjecao;
 import br.com.prismaapi.model.entity.lancamento.Lancamento;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -19,13 +24,16 @@ import java.util.List;
 import java.util.UUID;
 
 @Repository
-public interface LancamentoRepository extends JpaRepository<Lancamento, UUID> {
+public interface LancamentoRepository extends JpaRepository<Lancamento, UUID>, JpaSpecificationExecutor<Lancamento> {
+
+    @EntityGraph(attributePaths = {"categoria", "conta", "cartao", "contaDestino"})
+    List<Lancamento> findAll(Specification<Lancamento> specification, Sort sort);
 
     boolean existsByCategoriaId(UUID categoriaId);
 
-    boolean existsByContaIdOrContaDestinoId(UUID contaId, UUID contaDestinoId);
+    long countByContaIdOrContaDestinoId(UUID contaId, UUID contaDestinoId);
 
-    boolean existsByCartaoId(UUID cartaoId);
+    long countByCartaoId(UUID cartaoId);
 
     Page<Lancamento> findByDataBetween(LocalDate inicio, LocalDate fim, Pageable pageable);
 
@@ -146,6 +154,32 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, UUID> {
     BigDecimal somarDespesasDoCartao(@Param("cartaoId") UUID cartaoId,
                                      @Param("inicio") LocalDate inicio,
                                      @Param("fim") LocalDate fim);
+
+    @Query("""
+            SELECT new br.com.prismaapi.model.dto.cartao.projection.DespesaCartaoProjecao(
+                       cartao.id,
+                       lancamento.data,
+                       SUM(lancamento.valor),
+                       COUNT(lancamento))
+            FROM Lancamento lancamento
+            JOIN lancamento.cartao cartao
+            WHERE lancamento.tipo = br.com.prismaapi.enums.TipoLancamento.DESPESA
+              AND cartao.id IN :idsCartoes
+            GROUP BY cartao.id, lancamento.data
+            """)
+    List<DespesaCartaoProjecao> agruparDespesasDosCartoes(@Param("idsCartoes") List<UUID> idsCartoes);
+
+    @Query("""
+            SELECT lancamento
+            FROM Lancamento lancamento
+            LEFT JOIN FETCH lancamento.categoria
+            WHERE lancamento.tipo = br.com.prismaapi.enums.TipoLancamento.DESPESA
+              AND lancamento.cartao.id = :cartaoId
+              AND lancamento.data BETWEEN :inicio AND :fim
+            """)
+    List<Lancamento> buscarDespesasDoCartao(@Param("cartaoId") UUID cartaoId,
+                                            @Param("inicio") LocalDate inicio,
+                                            @Param("fim") LocalDate fim);
 
     @Query("""
             SELECT lancamento

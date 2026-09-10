@@ -1,10 +1,12 @@
 package br.com.prismaapi.model.mapper.lancamento;
 
 import br.com.prismaapi.model.dto.lancamento.LancamentoDTO;
+import br.com.prismaapi.model.dto.lancamento.SalvarLancamentoDTO;
 import br.com.prismaapi.model.entity.lancamento.Lancamento;
 import br.com.prismaapi.model.mapper.categoria.CategoriaMapper;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
 
 import java.util.UUID;
 
@@ -16,6 +18,24 @@ public interface LancamentoMapper {
     @Mapping(target = "idContaDestino", source = "contaDestino.id")
     @Mapping(target = "nomeContaDestino", source = "contaDestino.nome")
     LancamentoDTO toDTO(Lancamento lancamento);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "categoria", ignore = true)
+    @Mapping(target = "conta", ignore = true)
+    @Mapping(target = "cartao", ignore = true)
+    @Mapping(target = "contaDestino", ignore = true)
+    @Mapping(target = "dataCriacao", ignore = true)
+    @Mapping(target = "dataAtualizacao", ignore = true)
+    Lancamento toEntity(SalvarLancamentoDTO salvarLancamentoDTO);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "categoria", ignore = true)
+    @Mapping(target = "conta", ignore = true)
+    @Mapping(target = "cartao", ignore = true)
+    @Mapping(target = "contaDestino", ignore = true)
+    @Mapping(target = "dataCriacao", ignore = true)
+    @Mapping(target = "dataAtualizacao", ignore = true)
+    void updateEntity(SalvarLancamentoDTO salvarLancamentoDTO, @MappingTarget Lancamento lancamento);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "categoria", ignore = true)
