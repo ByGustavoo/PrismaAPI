@@ -22,6 +22,7 @@ import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import br.com.prismaapi.service.investimento.InvestimentoService;
 import br.com.prismaapi.service.saldo.SaldoService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +38,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RelatorioService {
@@ -51,6 +53,7 @@ public class RelatorioService {
 
     @Transactional(readOnly = true)
     public RelatorioDTO resumir(LocalDate dataInicial, LocalDate dataFinal) {
+        log.info("Resumindo o relatório... - Data Inicial: {} - Data Final: {}", dataInicial, dataFinal);
         validar(dataInicial, dataFinal);
 
         var hoje = LocalDate.now();
@@ -89,10 +92,12 @@ public class RelatorioService {
 
     private static void validar(LocalDate dataInicial, LocalDate dataFinal) {
         if (dataInicial == null || dataFinal == null) {
+            log.warn("Informe o início e o fim do período!");
             throw new RequisicaoInvalidaException("Informe o início e o fim do período!");
         }
 
         if (dataInicial.isAfter(dataFinal)) {
+            log.warn("O período informado é inválido!");
             throw new RequisicaoInvalidaException("O período informado é inválido!");
         }
     }

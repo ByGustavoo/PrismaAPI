@@ -15,6 +15,7 @@ import br.com.prismaapi.repository.despesarecorrente.DespesaRecorrenteRepository
 import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import br.com.prismaapi.service.fatura.FaturaService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +28,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PrevisaoService {
@@ -40,9 +42,11 @@ public class PrevisaoService {
 
     @Transactional(readOnly = true)
     public PrevisaoDTO prever(Integer meses) {
+        log.info("Calculando a previsão... - Meses: {}", meses);
         var horizonte = meses != null ? meses : 6;
 
         if (horizonte < 1 || horizonte > 24) {
+            log.warn("Informe um horizonte entre 1 e 24 meses!");
             throw new RequisicaoInvalidaException("Informe um horizonte entre 1 e 24 meses!");
         }
 

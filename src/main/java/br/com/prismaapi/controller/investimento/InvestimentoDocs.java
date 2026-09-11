@@ -15,31 +15,10 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 
 @Tag(name = "Investimento", description = "Endpoints relacionados aos investimentos e à carteira consolidada")
 public interface InvestimentoDocs {
-
-    @Operation(
-            summary = "Lista os investimentos",
-            description = """
-                    Retorna os investimentos como estão cadastrados, sem os números da carteira: do maior \
-                    valor atual para o menor e, no empate, em ordem alfabética pelo nome.
-
-                    É a lista que alimenta o formulário de edição. A tela da carteira usa o resumo \
-                    consolidado, que já traz rendimento, rentabilidade e participação de cada posição.""")
-    @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Investimentos retornados com sucesso!"),
-            @ApiResponse(
-                    responseCode = "500",
-                    description = "Erro interno do servidor!",
-                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
-    })
-    @GetMapping
-    ResponseEntity<List<InvestimentoDTO>> listarInvestimentos();
 
     @Operation(
             summary = "Resumo consolidado da carteira",

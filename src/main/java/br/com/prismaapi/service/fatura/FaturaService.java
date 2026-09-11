@@ -19,6 +19,7 @@ import br.com.prismaapi.repository.cartao.CartaoRepository;
 import br.com.prismaapi.repository.compraparcelada.CompraParceladaRepository;
 import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,6 +41,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class FaturaService {
@@ -53,6 +55,7 @@ public class FaturaService {
 
     @Transactional(readOnly = true)
     public List<FaturaCartaoDTO> listar(UUID idCartao) {
+        log.info("Listando as faturas... - ID do Cartão: [{}]", idCartao);
         var cartoes = cartaoRepository.findByTipo(TipoCartao.CREDITO)
                 .stream()
                 .filter(cartao -> idCartao == null || cartao.getId().equals(idCartao))
@@ -67,22 +70,23 @@ public class FaturaService {
 
     @Transactional(readOnly = true)
     public DetalheFaturaDTO detalhar(String id) {
+        log.info("Detalhando a fatura... - ID: [{}]", id);
         var partes = FORMATO_DO_ID.matcher(id);
 
         if (!partes.matches()) {
-            throw faturaNaoEncontrada();
+            throw faturaNaoEncontrada(id);
         }
 
         var mes = YearMonth.parse(partes.group(2));
         var cartao = cartaoRepository.findById(UUID.fromString(partes.group(1)))
                 .filter(encontrado -> encontrado.getTipo() == TipoCartao.CREDITO)
-                .orElseThrow(FaturaService::faturaNaoEncontrada);
+                .orElseThrow(() -> faturaNaoEncontrada(id));
 
         var fatura = montarFaturas(List.of(cartao), LocalDate.now())
                 .stream()
                 .filter(montada -> montada.mes().equals(mes.toString()))
                 .findFirst()
-                .orElseThrow(FaturaService::faturaNaoEncontrada);
+                .orElseThrow(() -> faturaNaoEncontrada(id));
 
         return faturaMapper.toDetalheDTO(fatura, itens(cartao, mes));
     }
@@ -310,7 +314,8 @@ public class FaturaService {
         return cartao.getDiaFechamento() != null && cartao.getDiaVencimento() != null;
     }
 
-    private static FaturaNaoEncontradaException faturaNaoEncontrada() {
+    private static FaturaNaoEncontradaException faturaNaoEncontrada(String id) {
+        log.warn("Fatura não encontrada! - ID: [{}]", id);
         return new FaturaNaoEncontradaException("Fatura não encontrada!");
     }
 

@@ -22,6 +22,7 @@ import br.com.prismaapi.repository.categoria.CategoriaRepository;
 import br.com.prismaapi.repository.compraparcelada.CompraParceladaRepository;
 import br.com.prismaapi.service.fatura.FaturaService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +34,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CompraParceladaService {
@@ -45,6 +47,7 @@ public class CompraParceladaService {
 
     @Transactional(readOnly = true)
     public List<PlanoCompraParceladaDTO> listar(UUID idCartao) {
+        log.info("Listando as compras parceladas... - ID do Cartão: [{}]", idCartao);
         var hoje = LocalDate.now();
 
         return compraParceladaRepository.buscarComCartaoECategoria()
@@ -58,6 +61,7 @@ public class CompraParceladaService {
 
     @Transactional
     public CompraParceladaDTO salvar(SalvarCompraParceladaDTO salvarCompraParceladaDTO) {
+        log.info("Salvando a compra parcelada... - Descrição: {}", salvarCompraParceladaDTO.descricao());
         var compra = compraParceladaMapper.toEntity(salvarCompraParceladaDTO);
         preencher(compra, salvarCompraParceladaDTO);
 
@@ -66,6 +70,7 @@ public class CompraParceladaService {
 
     @Transactional
     public CompraParceladaDTO atualizar(UUID id, SalvarCompraParceladaDTO salvarCompraParceladaDTO) {
+        log.info("Atualizando a compra parcelada... - ID: [{}]", id);
         var compra = buscar(id);
 
         compraParceladaMapper.updateEntity(salvarCompraParceladaDTO, compra);
@@ -76,12 +81,16 @@ public class CompraParceladaService {
 
     @Transactional
     public void deletar(UUID id) {
+        log.info("Deletando a compra parcelada... - ID: [{}]", id);
         compraParceladaRepository.delete(buscar(id));
     }
 
     private CompraParcelada buscar(UUID id) {
         return compraParceladaRepository.findById(id)
-                .orElseThrow(() -> new CompraParceladaNaoEncontradaException("Compra parcelada não encontrada!"));
+                .orElseThrow(() -> {
+                    log.warn("Compra parcelada não encontrada! - ID: [{}]", id);
+                    return new CompraParceladaNaoEncontradaException("Compra parcelada não encontrada!");
+                });
     }
 
     private PlanoCompraParceladaDTO planejar(CompraParcelada compra, LocalDate hoje) {
@@ -114,6 +123,7 @@ public class CompraParceladaService {
 
     private void preencher(CompraParcelada compra, SalvarCompraParceladaDTO salvarCompraParceladaDTO) {
         if (salvarCompraParceladaDTO.primeiroMes().isBefore(YearMonth.from(salvarCompraParceladaDTO.dataCompra()))) {
+            log.error("A primeira parcela não pode cair antes do mês da compra!");
             throw new PrimeiroMesAnteriorACompraException("A primeira parcela não pode cair antes do mês da compra!");
         }
 
@@ -126,9 +136,13 @@ public class CompraParceladaService {
 
     private Cartao buscarCartaoDeCredito(UUID idCartao) {
         var cartao = cartaoRepository.findById(idCartao)
-                .orElseThrow(() -> new CartaoInexistenteException("O cartão informado não existe!"));
+                .orElseThrow(() -> {
+                    log.error("O cartão informado não existe!");
+                    return new CartaoInexistenteException("O cartão informado não existe!");
+                });
 
         if (cartao.getTipo() != TipoCartao.CREDITO) {
+            log.error("Só cartões de crédito aceitam compras parceladas!");
             throw new CartaoNaoAceitaParcelamentoException("Só cartões de crédito aceitam compras parceladas!");
         }
 
@@ -139,9 +153,13 @@ public class CompraParceladaService {
         if (idCategoria == null) return null;
 
         var categoria = categoriaRepository.findById(idCategoria)
-                .orElseThrow(() -> new CategoriaInexistenteException("A categoria informada não existe!"));
+                .orElseThrow(() -> {
+                    log.error("A categoria informada não existe!");
+                    return new CategoriaInexistenteException("A categoria informada não existe!");
+                });
 
         if (categoria.getTipo() != TipoCategoria.DESPESA) {
+            log.error("Escolha uma categoria de despesa!");
             throw new CategoriaDeReceitaException("Escolha uma categoria de despesa!");
         }
 

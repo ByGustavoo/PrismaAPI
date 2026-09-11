@@ -17,6 +17,7 @@ import br.com.prismaapi.repository.conta.ContaRepository;
 import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import br.com.prismaapi.repository.lancamento.LancamentoSpecification;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +27,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class LancamentoService {
@@ -40,6 +42,7 @@ public class LancamentoService {
 
     @Transactional(readOnly = true)
     public List<LancamentoDTO> listar(FiltroLancamentoDTO filtro) {
+        log.info("Listando os lançamentos... - Filtro: {}", filtro);
         validar(filtro);
 
         return lancamentoRepository.findAll(LancamentoSpecification.filtrar(filtro), MAIS_RECENTES_PRIMEIRO)
@@ -50,6 +53,7 @@ public class LancamentoService {
 
     @Transactional
     public LancamentoDTO salvar(SalvarLancamentoDTO salvarLancamentoDTO) {
+        log.info("Salvando o lançamento... - Descrição: {} - Tipo: {}", salvarLancamentoDTO.descricao(), salvarLancamentoDTO.tipo());
         var lancamento = lancamentoMapper.toEntity(salvarLancamentoDTO);
         preencher(lancamento, salvarLancamentoDTO);
 
@@ -58,6 +62,7 @@ public class LancamentoService {
 
     @Transactional
     public LancamentoDTO atualizar(UUID id, SalvarLancamentoDTO salvarLancamentoDTO) {
+        log.info("Atualizando o lançamento... - ID: [{}]", id);
         var lancamento = buscar(id);
 
         lancamentoMapper.updateEntity(salvarLancamentoDTO, lancamento);
@@ -68,12 +73,16 @@ public class LancamentoService {
 
     @Transactional
     public void deletar(UUID id) {
+        log.info("Deletando o lançamento... - ID: [{}]", id);
         lancamentoRepository.delete(buscar(id));
     }
 
     private Lancamento buscar(UUID id) {
         return lancamentoRepository.findById(id)
-                .orElseThrow(() -> new LancamentoNaoEncontradoException("Lançamento não encontrado!"));
+                .orElseThrow(() -> {
+                    log.warn("Lançamento não encontrado! - ID: [{}]", id);
+                    return new LancamentoNaoEncontradoException("Lançamento não encontrado!");
+                });
     }
 
     private void preencher(Lancamento lancamento, SalvarLancamentoDTO salvarLancamentoDTO) {
@@ -107,9 +116,13 @@ public class LancamentoService {
         }
 
         var cartao = cartaoRepository.findById(idOrigem)
-                .orElseThrow(() -> new OrigemInexistenteException("A conta informada não existe!"));
+                .orElseThrow(() -> {
+                    log.error("A conta informada não existe!");
+                    return new OrigemInexistenteException("A conta informada não existe!");
+                });
 
         if (cartao.getTipo() == TipoCartao.DEBITO) {
+            log.error("O cartão de débito não é origem de lançamento: escolha a conta que ele movimenta!");
             throw new OrigemCartaoDeDebitoException("O cartão de débito não é origem de lançamento: escolha a conta que ele movimenta!");
         }
 
@@ -119,13 +132,18 @@ public class LancamentoService {
     private void vincularContaDestino(Lancamento lancamento, UUID idContaDestino) {
         var contaDestino = Optional.ofNullable(idContaDestino)
                 .flatMap(contaRepository::findById)
-                .orElseThrow(() -> new ContaDestinoInexistenteException("A conta de destino informada não existe!"));
+                .orElseThrow(() -> {
+                    log.error("A conta de destino informada não existe!");
+                    return new ContaDestinoInexistenteException("A conta de destino informada não existe!");
+                });
 
         if (lancamento.getConta() == null) {
+            log.error("A transferência precisa sair de uma conta!");
             throw new OrigemTransferenciaInvalidaException("A transferência precisa sair de uma conta!");
         }
 
         if (contaDestino.getId().equals(lancamento.getConta().getId())) {
+            log.error("A conta de destino precisa ser diferente da origem!");
             throw new ContaDestinoIgualOrigemException("A conta de destino precisa ser diferente da origem!");
         }
 
@@ -135,13 +153,18 @@ public class LancamentoService {
     private void vincularCategoria(Lancamento lancamento, UUID idCategoria, TipoLancamento tipo) {
         var categoria = Optional.ofNullable(idCategoria)
                 .flatMap(categoriaRepository::findById)
-                .orElseThrow(() -> new CategoriaInexistenteException("A categoria informada não existe!"));
+                .orElseThrow(() -> {
+                    log.error("A categoria informada não existe!");
+                    return new CategoriaInexistenteException("A categoria informada não existe!");
+                });
 
         if (tipo == TipoLancamento.DESPESA && categoria.getTipo() != TipoCategoria.DESPESA) {
+            log.error("Escolha uma categoria de despesa!");
             throw new CategoriaDeReceitaException("Escolha uma categoria de despesa!");
         }
 
         if (tipo == TipoLancamento.RECEITA && categoria.getTipo() != TipoCategoria.RECEITA) {
+            log.error("Escolha uma categoria de receita!");
             throw new CategoriaDeDespesaException("Escolha uma categoria de receita!");
         }
 
@@ -152,22 +175,26 @@ public class LancamentoService {
         var noCartao = lancamento.getCartao() != null;
 
         if (noCartao && forma != FormaLancamento.CARTAO_CREDITO) {
+            log.error("Um lançamento no cartão precisa ter a forma de pagamento cartão!");
             throw new FormaIncompativelComOrigemException("Um lançamento no cartão precisa ter a forma de pagamento cartão!");
         }
 
         if (!noCartao && forma == FormaLancamento.CARTAO_CREDITO) {
+            log.error("Um lançamento na conta não pode ter a forma de pagamento cartão de crédito!");
             throw new FormaIncompativelComOrigemException("Um lançamento na conta não pode ter a forma de pagamento cartão de crédito!");
         }
     }
 
     private static void validarSituacao(SalvarLancamentoDTO salvarLancamentoDTO) {
         if (salvarLancamentoDTO.situacao() == SituacaoLancamento.PAGO && salvarLancamentoDTO.data().isAfter(LocalDate.now())) {
+            log.error("Um lançamento com data futura não pode estar concluído: marque como agendado ou pendente!");
             throw new LancamentoFuturoConcluidoException("Um lançamento com data futura não pode estar concluído: marque como agendado ou pendente!");
         }
     }
 
     private static void validar(FiltroLancamentoDTO filtro) {
         if (filtro.dataInicial() != null && filtro.dataFinal() != null && filtro.dataInicial().isAfter(filtro.dataFinal())) {
+            log.warn("O período informado é inválido!");
             throw new RequisicaoInvalidaException("O período informado é inválido!");
         }
     }

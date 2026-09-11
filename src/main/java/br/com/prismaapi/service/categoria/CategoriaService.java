@@ -5,6 +5,7 @@ import br.com.prismaapi.model.dto.categoria.CategoriaDTO;
 import br.com.prismaapi.model.mapper.categoria.CategoriaMapper;
 import br.com.prismaapi.repository.categoria.CategoriaRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,6 +14,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CategoriaService {
@@ -23,6 +25,7 @@ public class CategoriaService {
 
     @Transactional(readOnly = true)
     public List<CategoriaDTO> listar(TipoCategoria tipo) {
+        log.info("Listando as categorias... - Tipo: {}", tipo);
         var categorias = tipo == null ? categoriaRepository.findAll() : categoriaRepository.findByTipo(tipo);
 
         return categorias.stream()

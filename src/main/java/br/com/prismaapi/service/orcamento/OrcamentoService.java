@@ -20,6 +20,7 @@ import br.com.prismaapi.repository.categoria.CategoriaRepository;
 import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import br.com.prismaapi.repository.orcamento.OrcamentoRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +37,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class OrcamentoService {
@@ -51,6 +53,7 @@ public class OrcamentoService {
 
     @Transactional(readOnly = true)
     public VisaoGeralOrcamentoDTO visaoGeral(YearMonth mes) {
+        log.info("Buscando a visão geral do orçamento... - Mês: {}", mes);
         var hoje = LocalDate.now();
         var referencia = mes != null ? mes : YearMonth.from(hoje);
         var diasNoMes = referencia.lengthOfMonth();
@@ -86,6 +89,7 @@ public class OrcamentoService {
 
     @Transactional
     public OrcamentoDTO salvar(SalvarOrcamentoDTO salvarOrcamentoDTO) {
+        log.info("Salvando o orçamento... - ID da Categoria: [{}]", salvarOrcamentoDTO.idCategoria());
         var orcamento = orcamentoMapper.toEntity(salvarOrcamentoDTO);
         preencher(orcamento, salvarOrcamentoDTO);
 
@@ -94,6 +98,7 @@ public class OrcamentoService {
 
     @Transactional
     public OrcamentoDTO atualizar(UUID id, SalvarOrcamentoDTO salvarOrcamentoDTO) {
+        log.info("Atualizando o orçamento... - ID: [{}]", id);
         var orcamento = buscar(id);
 
         orcamentoMapper.updateEntity(salvarOrcamentoDTO, orcamento);
@@ -104,12 +109,16 @@ public class OrcamentoService {
 
     @Transactional
     public void deletar(UUID id) {
+        log.info("Deletando o orçamento... - ID: [{}]", id);
         orcamentoRepository.delete(buscar(id));
     }
 
     private Orcamento buscar(UUID id) {
         return orcamentoRepository.findById(id)
-                .orElseThrow(() -> new OrcamentoNaoEncontradoException("Orçamento não encontrado!"));
+                .orElseThrow(() -> {
+                    log.warn("Orçamento não encontrado! - ID: [{}]", id);
+                    return new OrcamentoNaoEncontradoException("Orçamento não encontrado!");
+                });
     }
 
     private void preencher(Orcamento orcamento, SalvarOrcamentoDTO salvarOrcamentoDTO) {
@@ -122,9 +131,13 @@ public class OrcamentoService {
 
     private Categoria buscarCategoriaDeDespesa(UUID idCategoria) {
         var categoria = categoriaRepository.findById(idCategoria)
-                .orElseThrow(() -> new CategoriaInexistenteException("Escolha a categoria do orçamento!"));
+                .orElseThrow(() -> {
+                    log.error("Escolha a categoria do orçamento!");
+                    return new CategoriaInexistenteException("Escolha a categoria do orçamento!");
+                });
 
         if (categoria.getTipo() != TipoCategoria.DESPESA) {
+            log.error("Só categorias de despesa aceitam orçamento!");
             throw new CategoriaDeReceitaException("Só categorias de despesa aceitam orçamento!");
         }
 
@@ -137,6 +150,7 @@ public class OrcamentoService {
                 : orcamentoRepository.existsByCategoriaIdAndIdNot(categoria.getId(), id);
 
         if (duplicado) {
+            log.error("Já existe um orçamento para {}. Edite o limite existente em vez de criar outro!", categoria.getNome());
             throw new OrcamentoDuplicadoException("Já existe um orçamento para %s. Edite o limite existente em vez de criar outro!".formatted(categoria.getNome()));
         }
     }

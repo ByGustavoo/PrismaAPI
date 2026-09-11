@@ -21,6 +21,7 @@ import br.com.prismaapi.repository.meta.MetaRepository;
 import br.com.prismaapi.repository.meta.MetaSpecification;
 import br.com.prismaapi.repository.metapreco.MetaPrecoRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +37,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MetaService {
@@ -50,6 +52,7 @@ public class MetaService {
 
     @Transactional(readOnly = true)
     public ResumoMetasDTO listar(SituacaoMeta situacao, String busca) {
+        log.info("Listando as metas... - Situação: {} - Busca: {}", situacao, busca);
         var metas = metaRepository.findAll(MetaSpecification.filtrar(situacao, busca));
 
         if (metas.isEmpty()) {
@@ -86,6 +89,7 @@ public class MetaService {
 
     @Transactional
     public MetaDTO salvar(SalvarMetaDTO salvarMetaDTO) {
+        log.info("Salvando a meta... - Nome: {}", salvarMetaDTO.nome());
         var meta = metaMapper.toEntity(salvarMetaDTO);
         preencher(meta, salvarMetaDTO.nome(), salvarMetaDTO.url(), salvarMetaDTO.urlImagem(), salvarMetaDTO.observacoes());
         metaRepository.save(meta);
@@ -97,6 +101,7 @@ public class MetaService {
 
     @Transactional
     public MetaDTO atualizar(UUID id, AtualizarMetaDTO atualizarMetaDTO) {
+        log.info("Atualizando a meta... - ID: [{}]", id);
         var meta = buscar(id);
 
         metaMapper.updateEntity(atualizarMetaDTO, meta);
@@ -107,14 +112,17 @@ public class MetaService {
 
     @Transactional
     public MetaDTO registrarPreco(UUID id, SalvarMetaPrecoDTO salvarMetaPrecoDTO) {
+        log.info("Registrando o preço da meta... - ID: [{}] - Data: {}", id, salvarMetaPrecoDTO.data());
         var meta = buscar(id);
         var historico = new ArrayList<>(metaPrecoRepository.findByMetaIdOrderByDataAscDataCriacaoAsc(id));
 
         if (salvarMetaPrecoDTO.data().isBefore(historico.getFirst().getData())) {
+            log.error("A data do registro não pode ser anterior ao primeiro preço!");
             throw new DataAnteriorAoPrimeiroPrecoException("A data do registro não pode ser anterior ao primeiro preço!");
         }
 
         if (metaPrecoRepository.existsByMetaIdAndDataAndPreco(id, salvarMetaPrecoDTO.data(), salvarMetaPrecoDTO.preco())) {
+            log.error("Já existe um registro com esse preço nesta data!");
             throw new PrecoDuplicadoException("Já existe um registro com esse preço nesta data!");
         }
 
@@ -126,12 +134,16 @@ public class MetaService {
 
     @Transactional
     public void deletar(UUID id) {
+        log.info("Deletando a meta... - ID: [{}]", id);
         metaRepository.delete(buscar(id));
     }
 
     private Meta buscar(UUID id) {
         return metaRepository.findById(id)
-                .orElseThrow(() -> new MetaNaoEncontradaException("Meta não encontrada!"));
+                .orElseThrow(() -> {
+                    log.warn("Meta não encontrada! - ID: [{}]", id);
+                    return new MetaNaoEncontradaException("Meta não encontrada!");
+                });
     }
 
     private MetaPreco novoPreco(Meta meta, SalvarMetaPrecoDTO salvarMetaPrecoDTO) {

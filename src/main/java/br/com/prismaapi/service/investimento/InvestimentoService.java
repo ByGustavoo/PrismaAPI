@@ -14,6 +14,7 @@ import br.com.prismaapi.model.entity.investimento.Investimento;
 import br.com.prismaapi.model.mapper.investimento.InvestimentoMapper;
 import br.com.prismaapi.repository.investimento.InvestimentoRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +32,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class InvestimentoService {
@@ -42,16 +44,8 @@ public class InvestimentoService {
     private static final Comparator<Investimento> MAIOR_VALOR_PRIMEIRO = Comparator.comparing(Investimento::getValorAtual, Comparator.reverseOrder()).thenComparing(Investimento::getNome, ORDEM_ALFABETICA);
 
     @Transactional(readOnly = true)
-    public List<InvestimentoDTO> listar() {
-        return investimentoRepository.findAll()
-                .stream()
-                .sorted(MAIOR_VALOR_PRIMEIRO)
-                .map(investimentoMapper::toDTO)
-                .toList();
-    }
-
-    @Transactional(readOnly = true)
     public CarteiraDTO resumirCarteira() {
+        log.info("Resumindo a carteira de investimentos...");
         var investimentos = investimentoRepository.findAll();
 
         var aportado = somar(investimentos, Investimento::getAportado);
@@ -84,6 +78,7 @@ public class InvestimentoService {
 
     @Transactional
     public InvestimentoDTO salvar(SalvarInvestimentoDTO salvarInvestimentoDTO) {
+        log.info("Salvando o investimento... - Nome: {}", salvarInvestimentoDTO.nome());
         var investimento = investimentoMapper.toEntity(salvarInvestimentoDTO);
         preencher(investimento, salvarInvestimentoDTO);
 
@@ -92,6 +87,7 @@ public class InvestimentoService {
 
     @Transactional
     public InvestimentoDTO atualizar(UUID id, SalvarInvestimentoDTO salvarInvestimentoDTO) {
+        log.info("Atualizando o investimento... - ID: [{}]", id);
         var investimento = buscar(id);
 
         investimentoMapper.updateEntity(salvarInvestimentoDTO, investimento);
@@ -102,12 +98,16 @@ public class InvestimentoService {
 
     @Transactional
     public void deletar(UUID id) {
+        log.info("Deletando o investimento... - ID: [{}]", id);
         investimentoRepository.delete(buscar(id));
     }
 
     private Investimento buscar(UUID id) {
         return investimentoRepository.findById(id)
-                .orElseThrow(() -> new InvestimentoNaoEncontradoException("Investimento não encontrado!"));
+                .orElseThrow(() -> {
+                    log.warn("Investimento não encontrado! - ID: [{}]", id);
+                    return new InvestimentoNaoEncontradoException("Investimento não encontrado!");
+                });
     }
 
     private static List<EvolucaoCarteiraDTO> historico(List<Investimento> investimentos, YearMonth mesAtual) {

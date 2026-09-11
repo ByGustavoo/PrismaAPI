@@ -12,6 +12,7 @@ import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import br.com.prismaapi.service.cartao.CartaoService;
 import br.com.prismaapi.service.fatura.FaturaService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +26,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AvisoService {
@@ -39,6 +41,7 @@ public class AvisoService {
 
     @Transactional(readOnly = true)
     public List<AvisoDTO> listar() {
+        log.info("Listando os avisos... - Data: {}", LocalDate.now());
         var hoje = LocalDate.now();
         var avisos = new ArrayList<AvisoDTO>();
 

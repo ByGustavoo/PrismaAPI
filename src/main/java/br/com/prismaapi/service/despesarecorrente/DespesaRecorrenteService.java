@@ -17,6 +17,7 @@ import br.com.prismaapi.repository.categoria.CategoriaRepository;
 import br.com.prismaapi.repository.conta.ContaRepository;
 import br.com.prismaapi.repository.despesarecorrente.DespesaRecorrenteRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +29,7 @@ import java.util.Comparator;
 import java.util.Locale;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DespesaRecorrenteService {
@@ -41,6 +43,7 @@ public class DespesaRecorrenteService {
 
     @Transactional(readOnly = true)
     public ResumoDespesasRecorrentesDTO resumir() {
+        log.info("Resumindo as despesas recorrentes...");
         var hoje = LocalDate.now();
 
         var despesas = despesaRecorrenteRepository.buscarComOrigemECategoria()
@@ -73,6 +76,7 @@ public class DespesaRecorrenteService {
 
     @Transactional
     public DespesaRecorrenteDTO salvar(SalvarDespesaRecorrenteDTO salvarDespesaRecorrenteDTO) {
+        log.info("Salvando a despesa recorrente... - Descrição: {}", salvarDespesaRecorrenteDTO.descricao());
         var despesa = despesaRecorrenteMapper.toEntity(salvarDespesaRecorrenteDTO);
         preencher(despesa, salvarDespesaRecorrenteDTO);
 
@@ -81,6 +85,7 @@ public class DespesaRecorrenteService {
 
     @Transactional
     public DespesaRecorrenteDTO atualizar(UUID id, SalvarDespesaRecorrenteDTO salvarDespesaRecorrenteDTO) {
+        log.info("Atualizando a despesa recorrente... - ID: [{}]", id);
         var despesa = buscar(id);
 
         despesaRecorrenteMapper.updateEntity(salvarDespesaRecorrenteDTO, despesa);
@@ -91,12 +96,16 @@ public class DespesaRecorrenteService {
 
     @Transactional
     public void deletar(UUID id) {
+        log.info("Deletando a despesa recorrente... - ID: [{}]", id);
         despesaRecorrenteRepository.delete(buscar(id));
     }
 
     private DespesaRecorrente buscar(UUID id) {
         return despesaRecorrenteRepository.findById(id)
-                .orElseThrow(() -> new DespesaRecorrenteNaoEncontradaException("Despesa recorrente não encontrada!"));
+                .orElseThrow(() -> {
+                    log.warn("Despesa recorrente não encontrada! - ID: [{}]", id);
+                    return new DespesaRecorrenteNaoEncontradaException("Despesa recorrente não encontrada!");
+                });
     }
 
     private DespesaRecorrenteDTO toDTO(DespesaRecorrente despesa, LocalDate hoje) {
@@ -141,16 +150,23 @@ public class DespesaRecorrenteService {
         }
 
         despesa.setCartao(cartaoRepository.findById(idOrigem)
-                .orElseThrow(() -> new OrigemInexistenteException("Escolha a conta ou o cartão que paga esta despesa!")));
+                .orElseThrow(() -> {
+                    log.error("Escolha a conta ou o cartão que paga esta despesa!");
+                    return new OrigemInexistenteException("Escolha a conta ou o cartão que paga esta despesa!");
+                }));
     }
 
     private Categoria buscarCategoriaDeDespesa(UUID idCategoria) {
         if (idCategoria == null) return null;
 
         var categoria = categoriaRepository.findById(idCategoria)
-                .orElseThrow(() -> new CategoriaInexistenteException("A categoria informada não existe!"));
+                .orElseThrow(() -> {
+                    log.error("A categoria informada não existe!");
+                    return new CategoriaInexistenteException("A categoria informada não existe!");
+                });
 
         if (categoria.getTipo() != TipoCategoria.DESPESA) {
+            log.error("Escolha uma categoria de despesa!");
             throw new CategoriaDeReceitaException("Escolha uma categoria de despesa!");
         }
 

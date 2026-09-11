@@ -10,7 +10,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -19,11 +18,6 @@ import java.util.UUID;
 public class InvestimentoController implements InvestimentoDocs {
 
     private final InvestimentoService investimentoService;
-
-    @Override
-    public ResponseEntity<List<InvestimentoDTO>> listarInvestimentos() {
-        return ResponseEntity.ok(investimentoService.listar());
-    }
 
     @Override
     public ResponseEntity<CarteiraDTO> buscarCarteira() {

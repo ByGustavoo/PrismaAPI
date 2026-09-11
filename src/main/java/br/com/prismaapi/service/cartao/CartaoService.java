@@ -18,6 +18,7 @@ import br.com.prismaapi.repository.despesarecorrente.DespesaRecorrenteRepository
 import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import br.com.prismaapi.service.fatura.FaturaService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +30,7 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CartaoService {
@@ -45,6 +47,7 @@ public class CartaoService {
 
     @Transactional(readOnly = true)
     public List<CartaoDTO> listar() {
+        log.info("Listando os cartões...");
         var cartoes = cartaoRepository.buscarComConta();
         var limitesComprometidos = faturaService.limitesComprometidos(cartoes, LocalDate.now());
 
@@ -59,6 +62,7 @@ public class CartaoService {
 
     @Transactional
     public CartaoDTO salvar(SalvarCartaoDTO salvarCartaoDTO) {
+        log.info("Salvando o cartão... - Nome: {} - Tipo: {}", salvarCartaoDTO.nome(), salvarCartaoDTO.tipo());
         var cartao = cartaoMapper.toEntity(salvarCartaoDTO);
         preencher(cartao, salvarCartaoDTO);
 
@@ -67,6 +71,7 @@ public class CartaoService {
 
     @Transactional
     public CartaoDTO atualizar(UUID id, SalvarCartaoDTO salvarCartaoDTO) {
+        log.info("Atualizando o cartão... - ID: [{}]", id);
         var cartao = buscar(id);
 
         cartaoMapper.updateEntity(salvarCartaoDTO, cartao);
@@ -77,6 +82,7 @@ public class CartaoService {
 
     @Transactional
     public void deletar(UUID id) {
+        log.info("Deletando o cartão... - ID: [{}]", id);
         var cartao = buscar(id);
 
         validarHistorico(id);
@@ -86,7 +92,10 @@ public class CartaoService {
 
     private Cartao buscar(UUID id) {
         return cartaoRepository.findById(id)
-                .orElseThrow(() -> new CartaoNaoEncontradoException("Cartão não encontrado!"));
+                .orElseThrow(() -> {
+                    log.warn("Cartão não encontrado! - ID: [{}]", id);
+                    return new CartaoNaoEncontradoException("Cartão não encontrado!");
+                });
     }
 
     private void validarHistorico(UUID id) {
@@ -94,6 +103,7 @@ public class CartaoService {
 
         if (quantidade > 0) {
             var registros = quantidade == 1 ? "registro" : "registros";
+            log.error("Este cartão tem {} {} no histórico. Marque-o como inativo para tirá-lo dos lançamentos sem apagar o passado!", quantidade, registros);
             throw new CartaoComHistoricoException("Este cartão tem %d %s no histórico. Marque-o como inativo para tirá-lo dos lançamentos sem apagar o passado!".formatted(quantidade, registros));
         }
     }
@@ -129,11 +139,15 @@ public class CartaoService {
     private Conta buscarContaVinculada(UUID idConta) {
         return Optional.ofNullable(idConta)
                 .flatMap(contaRepository::findById)
-                .orElseThrow(() -> new ContaVinculadaInexistenteException("Escolha a conta vinculada ao cartão de débito!"));
+                .orElseThrow(() -> {
+                    log.error("Escolha a conta vinculada ao cartão de débito!");
+                    return new ContaVinculadaInexistenteException("Escolha a conta vinculada ao cartão de débito!");
+                });
     }
 
     private static <T> T exigir(T valor, String mensagem) {
         if (valor == null) {
+            log.warn(mensagem);
             throw new RequisicaoInvalidaException(mensagem);
         }
 

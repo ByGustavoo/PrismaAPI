@@ -17,6 +17,7 @@ import br.com.prismaapi.repository.conta.ContaRepository;
 import br.com.prismaapi.repository.despesarecorrente.DespesaRecorrenteRepository;
 import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +28,7 @@ import java.util.Locale;
 import java.util.UUID;
 import java.util.stream.Stream;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ContaService {
@@ -41,6 +43,7 @@ public class ContaService {
 
     @Transactional(readOnly = true)
     public List<ContaDTO> listar() {
+        log.info("Listando as contas...");
         return contaRepository.findAll()
                 .stream()
                 .map(contaMapper::toDTO)
@@ -52,6 +55,7 @@ public class ContaService {
 
     @Transactional(readOnly = true)
     public List<OrigemDTO> listarOrigens() {
+        log.info("Listando as origens...");
         var contas = contaRepository.findBySituacao(Situacao.ATIVO)
                 .stream()
                 .map(contaMapper::toOrigemDTO)
@@ -67,6 +71,7 @@ public class ContaService {
 
     @Transactional
     public ContaDTO salvar(SalvarContaDTO salvarContaDTO) {
+        log.info("Salvando a conta... - Nome: {} - Instituição: {}", salvarContaDTO.nome(), salvarContaDTO.instituicao());
         validarDuplicidade(salvarContaDTO, null);
 
         var conta = contaMapper.toEntity(salvarContaDTO);
@@ -77,6 +82,7 @@ public class ContaService {
 
     @Transactional
     public ContaDTO atualizar(UUID id, SalvarContaDTO salvarContaDTO) {
+        log.info("Atualizando a conta... - ID: [{}]", id);
         var conta = buscar(id);
 
         validarDuplicidade(salvarContaDTO, id);
@@ -89,6 +95,7 @@ public class ContaService {
 
     @Transactional
     public void deletar(UUID id) {
+        log.info("Deletando a conta... - ID: [{}]", id);
         var conta = buscar(id);
 
         validarHistorico(id);
@@ -99,7 +106,10 @@ public class ContaService {
 
     private Conta buscar(UUID id) {
         return contaRepository.findById(id)
-                .orElseThrow(() -> new ContaNaoEncontradaException("Conta não encontrada!"));
+                .orElseThrow(() -> {
+                    log.warn("Conta não encontrada! - ID: [{}]", id);
+                    return new ContaNaoEncontradaException("Conta não encontrada!");
+                });
     }
 
     private void validarDuplicidade(SalvarContaDTO salvarContaDTO, UUID id) {
@@ -111,6 +121,7 @@ public class ContaService {
                 : contaRepository.existsByNomeIgnoreCaseAndInstituicaoIgnoreCaseAndIdNot(nome, instituicao, id);
 
         if (duplicada) {
+            log.error("Já existe uma conta com esse nome nessa instituição!");
             throw new ContaDuplicadaException("Já existe uma conta com esse nome nessa instituição!");
         }
     }
@@ -120,6 +131,7 @@ public class ContaService {
 
         if (quantidade > 0) {
             var registros = quantidade == 1 ? "registro" : "registros";
+            log.error("Esta conta tem {} {} no histórico. Marque-a como inativa para tirá-la do saldo sem apagar o passado!", quantidade, registros);
             throw new ContaComHistoricoException("Esta conta tem %d %s no histórico. Marque-a como inativa para tirá-la do saldo sem apagar o passado!".formatted(quantidade, registros));
         }
     }
@@ -128,10 +140,12 @@ public class ContaService {
         var quantidade = cartaoRepository.countByContaId(id);
 
         if (quantidade == 1) {
+            log.error("Esta conta está vinculada a um cartão de débito. Troque a conta desse cartão ou exclua-o antes de excluir a conta!");
             throw new ContaComCartaoVinculadoException("Esta conta está vinculada a um cartão de débito. Troque a conta desse cartão ou exclua-o antes de excluir a conta!");
         }
 
         if (quantidade > 1) {
+            log.error("Esta conta está vinculada a {} cartões de débito. Troque a conta desses cartões ou exclua-os antes de excluir a conta!", quantidade);
             throw new ContaComCartaoVinculadoException("Esta conta está vinculada a %d cartões de débito. Troque a conta desses cartões ou exclua-os antes de excluir a conta!".formatted(quantidade));
         }
     }

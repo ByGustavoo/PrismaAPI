@@ -22,6 +22,7 @@ import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import br.com.prismaapi.service.fatura.FaturaService;
 import br.com.prismaapi.service.saldo.SaldoService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +35,7 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DashboardService {
@@ -50,6 +52,7 @@ public class DashboardService {
 
     @Transactional(readOnly = true)
     public DashboardDTO resumir(YearMonth dataInicial, YearMonth dataFinal) {
+        log.info("Resumindo o dashboard... - Data Inicial: {} - Data Final: {}", dataInicial, dataFinal);
         validar(dataInicial, dataFinal);
 
         var periodo = PeriodoDashboard.resolver(dataInicial, dataFinal, LocalDate.now());
@@ -87,10 +90,12 @@ public class DashboardService {
 
     private static void validar(YearMonth dataInicial, YearMonth dataFinal) {
         if ((dataInicial == null) != (dataFinal == null)) {
+            log.warn(PERIODO_INVALIDO);
             throw new RequisicaoInvalidaException(PERIODO_INVALIDO);
         }
 
         if (dataInicial != null && dataInicial.isAfter(dataFinal)) {
+            log.warn(PERIODO_INVALIDO);
             throw new RequisicaoInvalidaException(PERIODO_INVALIDO);
         }
     }
