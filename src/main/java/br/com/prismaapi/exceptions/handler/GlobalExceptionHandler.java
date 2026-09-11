@@ -5,10 +5,12 @@ import br.com.prismaapi.exceptions.dto.ErrorResponseDTO;
 import br.com.prismaapi.exceptions.dto.MethodArgumentNotValidResponseDTO;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -16,13 +18,24 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+import java.util.LinkedHashMap;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+@Log4j2
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Set<String> CAMPO_AUSENTE = Set.of("NotNull", "NotBlank");
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponseDTO> handleMethodArgumentNotValidException(MethodArgumentNotValidException ex, HttpServletRequest pHttpServletRequest) {
 
         var errors = ex.getFieldErrors()
+                .stream()
+                .collect(Collectors.toMap(FieldError::getField, Function.identity(), GlobalExceptionHandler::maisRelevante, LinkedHashMap::new))
+                .values()
                 .stream()
                 .map(fieldError -> new MethodArgumentNotValidResponseDTO(
                         fieldError.getField(),
@@ -49,8 +62,7 @@ public class GlobalExceptionHandler {
                 "Requisição Inválida!",
                 pHttpServletRequest.getRequestURI(),
                 "/PrismaAPI/problems/unreadable-message",
-                "O corpo da requisição está malformado ou tem um valor em formato inválido!",
-                ex.getMessage());
+                "O corpo da requisição está malformado ou tem um valor em formato inválido!");
 
         return ResponseEntity.badRequest().body(response);
     }
@@ -63,8 +75,7 @@ public class GlobalExceptionHandler {
                 "Parâmetros Inválidos!",
                 pHttpServletRequest.getRequestURI(),
                 "/PrismaAPI/problems/invalid-parameters",
-                "O parâmetro '" + ex.getName() + "' foi informado num formato inválido!",
-                ex.getMessage());
+                "O parâmetro '" + ex.getName() + "' foi informado num formato inválido!");
 
         return ResponseEntity.badRequest().body(response);
     }
@@ -85,13 +96,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponseDTO> handleIllegalArgumentException(IllegalArgumentException ex, HttpServletRequest pHttpServletRequest) {
 
+        log.warn("Argumento inválido em {}", pHttpServletRequest.getRequestURI(), ex);
+
         var response = new ErrorResponseDTO(
                 HttpStatus.BAD_REQUEST.value(),
                 "Requisição Inválida!",
                 pHttpServletRequest.getRequestURI(),
                 "/PrismaAPI/problems/illegal-argument",
-                "A requisição contém dados inválidos!",
-                ex.getMessage());
+                "A requisição contém dados inválidos!");
 
         return ResponseEntity.badRequest().body(response);
     }
@@ -221,8 +233,7 @@ public class GlobalExceptionHandler {
                 "Registro não encontrado!",
                 pHttpServletRequest.getRequestURI(),
                 "/PrismaAPI/problems/entity-not-found",
-                "Não foi possível localizar um registro com o ID informado!",
-                ex.getMessage());
+                "Não foi possível localizar um registro com o ID informado!");
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
@@ -235,8 +246,7 @@ public class GlobalExceptionHandler {
                 "Recurso não encontrado!",
                 pHttpServletRequest.getRequestURI(),
                 "/PrismaAPI/problems/resource-not-found",
-                "O endpoint informado não existe!",
-                ex.getMessage());
+                "O endpoint informado não existe!");
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
@@ -249,8 +259,7 @@ public class GlobalExceptionHandler {
                 "Método Não Permitido!",
                 pHttpServletRequest.getRequestURI(),
                 "/PrismaAPI/problems/method-not-allowed",
-                "O método '" + ex.getMethod() + "' não é aceito neste endpoint!",
-                ex.getMessage());
+                "O método '" + ex.getMethod() + "' não é aceito neste endpoint!");
 
         return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(response);
     }
@@ -336,13 +345,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponseDTO> handleDataIntegrityViolationException(DataIntegrityViolationException ex, HttpServletRequest pHttpServletRequest) {
 
+        log.warn("Conflito de integridade em {}", pHttpServletRequest.getRequestURI(), ex);
+
         var response = new ErrorResponseDTO(
                 HttpStatus.CONFLICT.value(),
                 "Conflito de Dados!",
                 pHttpServletRequest.getRequestURI(),
                 "/PrismaAPI/problems/data-integrity-violation",
-                "A operação conflita com dados já gravados!",
-                ex.getMessage());
+                "A operação conflita com dados já gravados!");
 
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
@@ -355,6 +365,45 @@ public class GlobalExceptionHandler {
                 "Origem Inexistente!",
                 pHttpServletRequest.getRequestURI(),
                 "/PrismaAPI/problems/origem-inexistente",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(response);
+    }
+
+    @ExceptionHandler(OrigemCartaoDeDebitoException.class)
+    public ResponseEntity<ErrorResponseDTO> handleOrigemCartaoDeDebitoException(OrigemCartaoDeDebitoException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.UNPROCESSABLE_CONTENT.value(),
+                "Cartão de Débito como Origem!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/origem-cartao-de-debito",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(response);
+    }
+
+    @ExceptionHandler(FormaIncompativelComOrigemException.class)
+    public ResponseEntity<ErrorResponseDTO> handleFormaIncompativelComOrigemException(FormaIncompativelComOrigemException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.UNPROCESSABLE_CONTENT.value(),
+                "Forma de Pagamento Incompatível!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/forma-incompativel-com-origem",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(response);
+    }
+
+    @ExceptionHandler(LancamentoFuturoConcluidoException.class)
+    public ResponseEntity<ErrorResponseDTO> handleLancamentoFuturoConcluidoException(LancamentoFuturoConcluidoException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.UNPROCESSABLE_CONTENT.value(),
+                "Lançamento Futuro Concluído!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/lancamento-futuro-concluido",
                 ex.getMessage());
 
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(response);
@@ -451,6 +500,19 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(response);
     }
 
+    @ExceptionHandler(PrimeiroMesAnteriorACompraException.class)
+    public ResponseEntity<ErrorResponseDTO> handlePrimeiroMesAnteriorACompraException(PrimeiroMesAnteriorACompraException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.UNPROCESSABLE_CONTENT.value(),
+                "Primeira Parcela Antes da Compra!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/primeiro-mes-anterior-a-compra",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(response);
+    }
+
     @ExceptionHandler(CategoriaDeReceitaException.class)
     public ResponseEntity<ErrorResponseDTO> handleCategoriaDeReceitaException(CategoriaDeReceitaException ex, HttpServletRequest pHttpServletRequest) {
 
@@ -459,6 +521,19 @@ public class GlobalExceptionHandler {
                 "Categoria de Receita!",
                 pHttpServletRequest.getRequestURI(),
                 "/PrismaAPI/problems/categoria-de-receita",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(response);
+    }
+
+    @ExceptionHandler(CategoriaDeDespesaException.class)
+    public ResponseEntity<ErrorResponseDTO> handleCategoriaDeDespesaException(CategoriaDeDespesaException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.UNPROCESSABLE_CONTENT.value(),
+                "Categoria de Despesa!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/categoria-de-despesa",
                 ex.getMessage());
 
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(response);
@@ -480,14 +555,19 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDTO> handleInternalServerErrorException(Exception ex, HttpServletRequest pHttpServletRequest) {
 
+        log.error("Erro inesperado em {}", pHttpServletRequest.getRequestURI(), ex);
+
         var response = new ErrorResponseDTO(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "Erro Interno no Servidor!",
                 pHttpServletRequest.getRequestURI(),
                 "/PrismaAPI/problems/internal-server-error",
-                "Ocorreu um erro inesperado no servidor!",
-                ex.getMessage());
+                "Ocorreu um erro inesperado no servidor!");
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+    }
+
+    private static FieldError maisRelevante(FieldError atual, FieldError outro) {
+        return CAMPO_AUSENTE.contains(outro.getCode()) ? outro : atual;
     }
 }

@@ -2,10 +2,13 @@ package br.com.prismaapi.service.compraparcelada;
 
 import br.com.prismaapi.enums.SituacaoParcela;
 import br.com.prismaapi.enums.TipoCartao;
+import br.com.prismaapi.enums.TipoCategoria;
 import br.com.prismaapi.exceptions.CartaoInexistenteException;
 import br.com.prismaapi.exceptions.CartaoNaoAceitaParcelamentoException;
+import br.com.prismaapi.exceptions.CategoriaDeReceitaException;
 import br.com.prismaapi.exceptions.CategoriaInexistenteException;
 import br.com.prismaapi.exceptions.CompraParceladaNaoEncontradaException;
+import br.com.prismaapi.exceptions.PrimeiroMesAnteriorACompraException;
 import br.com.prismaapi.model.dto.compraparcelada.CompraParceladaDTO;
 import br.com.prismaapi.model.dto.compraparcelada.ParcelaDTO;
 import br.com.prismaapi.model.dto.compraparcelada.PlanoCompraParceladaDTO;
@@ -25,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
@@ -109,11 +113,15 @@ public class CompraParceladaService {
     }
 
     private void preencher(CompraParcelada compra, SalvarCompraParceladaDTO salvarCompraParceladaDTO) {
+        if (salvarCompraParceladaDTO.primeiroMes().isBefore(YearMonth.from(salvarCompraParceladaDTO.dataCompra()))) {
+            throw new PrimeiroMesAnteriorACompraException("A primeira parcela não pode cair antes do mês da compra!");
+        }
+
         compra.setDescricao(salvarCompraParceladaDTO.descricao().strip());
         compra.setPrimeiroMes(salvarCompraParceladaDTO.primeiroMes().atDay(1));
         compra.setObservacoes(textoOuNulo(salvarCompraParceladaDTO.observacoes()));
         compra.setCartao(buscarCartaoDeCredito(salvarCompraParceladaDTO.idCartao()));
-        compra.setCategoria(buscarCategoria(salvarCompraParceladaDTO.idCategoria()));
+        compra.setCategoria(buscarCategoriaDeDespesa(salvarCompraParceladaDTO.idCategoria()));
     }
 
     private Cartao buscarCartaoDeCredito(UUID idCartao) {
@@ -127,11 +135,17 @@ public class CompraParceladaService {
         return cartao;
     }
 
-    private Categoria buscarCategoria(UUID idCategoria) {
+    private Categoria buscarCategoriaDeDespesa(UUID idCategoria) {
         if (idCategoria == null) return null;
 
-        return categoriaRepository.findById(idCategoria)
+        var categoria = categoriaRepository.findById(idCategoria)
                 .orElseThrow(() -> new CategoriaInexistenteException("A categoria informada não existe!"));
+
+        if (categoria.getTipo() != TipoCategoria.DESPESA) {
+            throw new CategoriaDeReceitaException("Escolha uma categoria de despesa!");
+        }
+
+        return categoria;
     }
 
     private static String textoOuNulo(String texto) {

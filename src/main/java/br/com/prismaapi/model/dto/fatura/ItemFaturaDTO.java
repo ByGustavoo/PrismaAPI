@@ -21,6 +21,7 @@ public record ItemFaturaDTO(
 
         BigDecimal valor,
 
+        @JsonInclude(JsonInclude.Include.ALWAYS)
         CategoriaDTO categoria,
 
         ParcelaItemFaturaDTO parcela

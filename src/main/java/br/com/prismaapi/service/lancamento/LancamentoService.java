@@ -1,5 +1,9 @@
 package br.com.prismaapi.service.lancamento;
 
+import br.com.prismaapi.enums.FormaLancamento;
+import br.com.prismaapi.enums.SituacaoLancamento;
+import br.com.prismaapi.enums.TipoCartao;
+import br.com.prismaapi.enums.TipoCategoria;
 import br.com.prismaapi.enums.TipoLancamento;
 import br.com.prismaapi.exceptions.*;
 import br.com.prismaapi.model.dto.lancamento.FiltroLancamentoDTO;
@@ -17,6 +21,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -72,6 +77,8 @@ public class LancamentoService {
     }
 
     private void preencher(Lancamento lancamento, SalvarLancamentoDTO salvarLancamentoDTO) {
+        validarSituacao(salvarLancamentoDTO);
+
         lancamento.setDescricao(salvarLancamentoDTO.descricao().strip());
         lancamento.setObservacoes(textoOuNulo(salvarLancamentoDTO.observacoes()));
 
@@ -85,8 +92,10 @@ public class LancamentoService {
         if (salvarLancamentoDTO.tipo() == TipoLancamento.TRANSFERENCIA) {
             vincularContaDestino(lancamento, salvarLancamentoDTO.idContaDestino());
         } else {
-            vincularCategoria(lancamento, salvarLancamentoDTO.idCategoria());
+            vincularCategoria(lancamento, salvarLancamentoDTO.idCategoria(), salvarLancamentoDTO.tipo());
         }
+
+        validarForma(lancamento, salvarLancamentoDTO.forma());
     }
 
     private void vincularOrigem(Lancamento lancamento, UUID idOrigem) {
@@ -97,8 +106,14 @@ public class LancamentoService {
             return;
         }
 
-        lancamento.setCartao(cartaoRepository.findById(idOrigem)
-                .orElseThrow(() -> new OrigemInexistenteException("A conta informada não existe!")));
+        var cartao = cartaoRepository.findById(idOrigem)
+                .orElseThrow(() -> new OrigemInexistenteException("A conta informada não existe!"));
+
+        if (cartao.getTipo() == TipoCartao.DEBITO) {
+            throw new OrigemCartaoDeDebitoException("O cartão de débito não é origem de lançamento: escolha a conta que ele movimenta!");
+        }
+
+        lancamento.setCartao(cartao);
     }
 
     private void vincularContaDestino(Lancamento lancamento, UUID idContaDestino) {
@@ -117,10 +132,38 @@ public class LancamentoService {
         lancamento.setContaDestino(contaDestino);
     }
 
-    private void vincularCategoria(Lancamento lancamento, UUID idCategoria) {
-        lancamento.setCategoria(Optional.ofNullable(idCategoria)
+    private void vincularCategoria(Lancamento lancamento, UUID idCategoria, TipoLancamento tipo) {
+        var categoria = Optional.ofNullable(idCategoria)
                 .flatMap(categoriaRepository::findById)
-                .orElseThrow(() -> new CategoriaInexistenteException("A categoria informada não existe!")));
+                .orElseThrow(() -> new CategoriaInexistenteException("A categoria informada não existe!"));
+
+        if (tipo == TipoLancamento.DESPESA && categoria.getTipo() != TipoCategoria.DESPESA) {
+            throw new CategoriaDeReceitaException("Escolha uma categoria de despesa!");
+        }
+
+        if (tipo == TipoLancamento.RECEITA && categoria.getTipo() != TipoCategoria.RECEITA) {
+            throw new CategoriaDeDespesaException("Escolha uma categoria de receita!");
+        }
+
+        lancamento.setCategoria(categoria);
+    }
+
+    private static void validarForma(Lancamento lancamento, FormaLancamento forma) {
+        var noCartao = lancamento.getCartao() != null;
+
+        if (noCartao && forma != FormaLancamento.CARTAO_CREDITO) {
+            throw new FormaIncompativelComOrigemException("Um lançamento no cartão precisa ter a forma de pagamento cartão!");
+        }
+
+        if (!noCartao && forma == FormaLancamento.CARTAO_CREDITO) {
+            throw new FormaIncompativelComOrigemException("Um lançamento na conta não pode ter a forma de pagamento cartão de crédito!");
+        }
+    }
+
+    private static void validarSituacao(SalvarLancamentoDTO salvarLancamentoDTO) {
+        if (salvarLancamentoDTO.situacao() == SituacaoLancamento.PAGO && salvarLancamentoDTO.data().isAfter(LocalDate.now())) {
+            throw new LancamentoFuturoConcluidoException("Um lançamento com data futura não pode estar concluído: marque como agendado ou pendente!");
+        }
     }
 
     private static void validar(FiltroLancamentoDTO filtro) {

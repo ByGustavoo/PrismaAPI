@@ -98,7 +98,7 @@ public class FaturaService {
                 .filter(fatura -> fatura.total().signum() > 0)
                 .max(Comparator.comparing((FaturaDTO fatura) -> fatura.situacao() == SituacaoFatura.ABERTA)
                         .thenComparing(FaturaDTO::total))
-                .orElseGet(() -> semCartaoMovimentado(mes, hoje));
+                .orElse(null);
     }
 
     @Transactional(readOnly = true)
@@ -308,16 +308,6 @@ public class FaturaService {
 
     private static boolean temCicloDefinido(Cartao cartao) {
         return cartao.getDiaFechamento() != null && cartao.getDiaVencimento() != null;
-    }
-
-    private static FaturaDTO semCartaoMovimentado(YearMonth mes, LocalDate hoje) {
-        var situacao = mes.isBefore(YearMonth.from(hoje)) ? SituacaoFatura.PAGA : SituacaoFatura.ABERTA;
-
-        return new FaturaDTO(
-                BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP),
-                "Nenhum cartão",
-                mes.plusMonths(1).atEndOfMonth().toString(),
-                situacao);
     }
 
     private static FaturaNaoEncontradaException faturaNaoEncontrada() {

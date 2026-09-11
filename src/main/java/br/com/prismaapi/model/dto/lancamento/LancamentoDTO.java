@@ -31,6 +31,7 @@ public record LancamentoDTO(
         @JsonFormat(pattern = "yyyy-MM-dd")
         LocalDate data,
 
+        @JsonInclude(JsonInclude.Include.ALWAYS)
         CategoriaDTO categoria,
 
         UUID idOrigem,

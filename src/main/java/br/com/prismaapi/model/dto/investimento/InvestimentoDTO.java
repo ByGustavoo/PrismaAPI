@@ -2,6 +2,7 @@ package br.com.prismaapi.model.dto.investimento;
 
 import br.com.prismaapi.enums.ClasseAtivo;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
@@ -26,6 +27,7 @@ public record InvestimentoDTO(
         @JsonFormat(pattern = "yyyy-MM-dd")
         LocalDate dataInicio,
 
+        @JsonInclude(JsonInclude.Include.NON_NULL)
         String observacoes
 
 ) {}

@@ -4,6 +4,7 @@ import br.com.prismaapi.enums.Frequencia;
 import br.com.prismaapi.enums.SituacaoDespesaRecorrente;
 import br.com.prismaapi.model.dto.categoria.CategoriaDTO;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
@@ -32,6 +33,7 @@ public record DespesaRecorrenteDTO(
 
         SituacaoDespesaRecorrente situacao,
 
+        @JsonInclude(JsonInclude.Include.NON_NULL)
         String observacoes
 
 ) {}

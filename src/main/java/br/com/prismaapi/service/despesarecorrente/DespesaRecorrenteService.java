@@ -45,13 +45,14 @@ public class DespesaRecorrenteService {
 
         var despesas = despesaRecorrenteRepository.buscarComOrigemECategoria()
                 .stream()
-                .sorted(Comparator.comparing((DespesaRecorrente despesa) -> despesa.getSituacao() != SituacaoDespesaRecorrente.ATIVO)
-                        .thenComparing(DespesaRecorrente::getProximoVencimento)
-                        .thenComparing(DespesaRecorrente::getDescricao, ORDEM_ALFABETICA))
+                .map(despesa -> toDTO(despesa, hoje))
+                .sorted(Comparator.comparing((DespesaRecorrenteDTO despesa) -> despesa.situacao() != SituacaoDespesaRecorrente.ATIVO)
+                        .thenComparing(DespesaRecorrenteDTO::proximoVencimento)
+                        .thenComparing(DespesaRecorrenteDTO::descricao, ORDEM_ALFABETICA))
                 .toList();
 
         var ativas = despesas.stream()
-                .filter(despesa -> despesa.getSituacao() == SituacaoDespesaRecorrente.ATIVO)
+                .filter(despesa -> despesa.situacao() == SituacaoDespesaRecorrente.ATIVO)
                 .toList();
 
         var custoMensal = ativas.stream()
@@ -60,13 +61,11 @@ public class DespesaRecorrenteService {
                 .setScale(2, RoundingMode.HALF_UP);
 
         var vencendoEmBreve = ativas.stream()
-                .filter(despesa -> !despesa.getProximoVencimento().isBefore(hoje))
-                .filter(despesa -> !despesa.getProximoVencimento().isAfter(hoje.plusDays(7)))
-                .map(despesaRecorrenteMapper::toDTO)
+                .filter(despesa -> !despesa.proximoVencimento().isAfter(hoje.plusDays(7)))
                 .toList();
 
         return new ResumoDespesasRecorrentesDTO(
-                despesas.stream().map(despesaRecorrenteMapper::toDTO).toList(),
+                despesas,
                 custoMensal,
                 custoMensal.multiply(BigDecimal.valueOf(12)),
                 vencendoEmBreve);
@@ -77,7 +76,7 @@ public class DespesaRecorrenteService {
         var despesa = despesaRecorrenteMapper.toEntity(salvarDespesaRecorrenteDTO);
         preencher(despesa, salvarDespesaRecorrenteDTO);
 
-        return despesaRecorrenteMapper.toDTO(despesaRecorrenteRepository.save(despesa));
+        return toDTO(despesaRecorrenteRepository.save(despesa), LocalDate.now());
     }
 
     @Transactional
@@ -87,7 +86,7 @@ public class DespesaRecorrenteService {
         despesaRecorrenteMapper.updateEntity(salvarDespesaRecorrenteDTO, despesa);
         preencher(despesa, salvarDespesaRecorrenteDTO);
 
-        return despesaRecorrenteMapper.toDTO(despesa);
+        return toDTO(despesa, LocalDate.now());
     }
 
     @Transactional
@@ -98,6 +97,28 @@ public class DespesaRecorrenteService {
     private DespesaRecorrente buscar(UUID id) {
         return despesaRecorrenteRepository.findById(id)
                 .orElseThrow(() -> new DespesaRecorrenteNaoEncontradaException("Despesa recorrente não encontrada!"));
+    }
+
+    private DespesaRecorrenteDTO toDTO(DespesaRecorrente despesa, LocalDate hoje) {
+        var vencimento = despesa.getProximoVencimento();
+
+        while (vencimento.isBefore(hoje)) {
+            vencimento = despesa.getFrequencia().proximaOcorrencia(vencimento);
+        }
+
+        var dto = despesaRecorrenteMapper.toDTO(despesa);
+
+        return new DespesaRecorrenteDTO(
+                dto.id(),
+                dto.descricao(),
+                dto.valor(),
+                dto.categoria(),
+                dto.frequencia(),
+                vencimento,
+                dto.idOrigem(),
+                dto.nomeOrigem(),
+                dto.situacao(),
+                dto.observacoes());
     }
 
     private void preencher(DespesaRecorrente despesa, SalvarDespesaRecorrenteDTO salvarDespesaRecorrenteDTO) {
@@ -136,10 +157,10 @@ public class DespesaRecorrenteService {
         return categoria;
     }
 
-    private static BigDecimal custoMensal(DespesaRecorrente despesa) {
-        var valor = despesa.getValor();
+    private static BigDecimal custoMensal(DespesaRecorrenteDTO despesa) {
+        var valor = despesa.valor();
 
-        return switch (despesa.getFrequencia()) {
+        return switch (despesa.frequencia()) {
             case SEMANAL -> valor.multiply(new BigDecimal("4.3452"));
             case QUINZENAL -> valor.multiply(new BigDecimal("2.1726"));
             case MENSAL -> valor;

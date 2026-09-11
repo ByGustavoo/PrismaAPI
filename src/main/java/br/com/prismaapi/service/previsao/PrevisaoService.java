@@ -1,6 +1,5 @@
 package br.com.prismaapi.service.previsao;
 
-import br.com.prismaapi.enums.Frequencia;
 import br.com.prismaapi.enums.MesDoAno;
 import br.com.prismaapi.enums.SituacaoDespesaRecorrente;
 import br.com.prismaapi.enums.TipoLancamento;
@@ -112,29 +111,17 @@ public class PrevisaoService {
         var vencimento = despesa.getProximoVencimento();
 
         while (vencimento.isBefore(mes.atDay(1))) {
-            vencimento = proximaOcorrencia(vencimento, despesa.getFrequencia());
+            vencimento = despesa.getFrequencia().proximaOcorrencia(vencimento);
         }
 
         var ocorrencias = 0L;
 
         while (!vencimento.isAfter(mes.atEndOfMonth())) {
             ocorrencias++;
-            vencimento = proximaOcorrencia(vencimento, despesa.getFrequencia());
+            vencimento = despesa.getFrequencia().proximaOcorrencia(vencimento);
         }
 
         return ocorrencias;
-    }
-
-    private static LocalDate proximaOcorrencia(LocalDate data, Frequencia frequencia) {
-        return switch (frequencia) {
-            case SEMANAL -> data.plusWeeks(1);
-            case QUINZENAL -> data.plusWeeks(2);
-            case MENSAL -> data.plusMonths(1);
-            case BIMESTRAL -> data.plusMonths(2);
-            case TRIMESTRAL -> data.plusMonths(3);
-            case SEMESTRAL -> data.plusMonths(6);
-            case ANUAL -> data.plusYears(1);
-        };
     }
 
     private static BigDecimal media(BigDecimal total) {

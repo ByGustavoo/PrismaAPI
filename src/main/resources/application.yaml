@@ -5,6 +5,10 @@ server:
   servlet:
     context-path: /PrismaAPI
 
+prismaapi:
+  cors:
+    origens-permitidas: "http://localhost:5173"
+
 spring:
   application:
     name: prismaapi
@@ -46,6 +50,10 @@ logging:
 
 server:
   port: 9017
+
+prismaapi:
+  cors:
+    origens-permitidas: "http://localhost:[*],http://127.0.0.1:[*]"
 
 ---
 

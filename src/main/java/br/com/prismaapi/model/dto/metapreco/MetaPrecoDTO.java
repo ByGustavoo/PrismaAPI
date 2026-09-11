@@ -1,6 +1,7 @@
 package br.com.prismaapi.model.dto.metapreco;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
@@ -17,6 +18,7 @@ public record MetaPrecoDTO(
 
         BigDecimal preco,
 
+        @JsonInclude(JsonInclude.Include.NON_NULL)
         String observacao
 
 ) {}
