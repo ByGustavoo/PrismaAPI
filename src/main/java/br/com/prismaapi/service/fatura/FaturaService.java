@@ -1,6 +1,5 @@
 package br.com.prismaapi.service.fatura;
 
-import br.com.prismaapi.enums.Situacao;
 import br.com.prismaapi.enums.SituacaoFatura;
 import br.com.prismaapi.enums.SituacaoParcela;
 import br.com.prismaapi.enums.TipoCartao;
@@ -90,7 +89,7 @@ public class FaturaService {
 
     @Transactional(readOnly = true)
     public FaturaDTO faturaEmDestaque(YearMonth mes, LocalDate hoje) {
-        var cartoes = cartaoRepository.findByTipoAndSituacao(TipoCartao.CREDITO, Situacao.ATIVO);
+        var cartoes = cartaoRepository.findByTipo(TipoCartao.CREDITO);
         var parcelas = compraParceladaRepository.buscarParcelasAte(mes.atDay(1));
 
         return cartoes.stream()

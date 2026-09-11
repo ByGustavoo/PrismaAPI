@@ -18,13 +18,6 @@ public interface CompraParceladaMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "cartao", ignore = true)
     @Mapping(target = "categoria", ignore = true)
-    @Mapping(target = "dataCriacao", ignore = true)
-    @Mapping(target = "dataAtualizacao", ignore = true)
-    CompraParcelada toEntity(CompraParceladaDTO dto);
-
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "cartao", ignore = true)
-    @Mapping(target = "categoria", ignore = true)
     @Mapping(target = "primeiroMes", ignore = true)
     @Mapping(target = "dataCriacao", ignore = true)
     @Mapping(target = "dataAtualizacao", ignore = true)

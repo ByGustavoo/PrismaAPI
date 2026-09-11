@@ -56,8 +56,9 @@ public class AvisoService {
     private List<AvisoDTO> faturasVencendo(LocalDate hoje) {
         return faturaService.listar(null)
                 .stream()
-                .filter(fatura -> fatura.situacao() == SituacaoFatura.ABERTA || fatura.situacao() == SituacaoFatura.FECHADA)
+                .filter(fatura -> fatura.situacao() != SituacaoFatura.PAGA && fatura.situacao() != SituacaoFatura.FUTURA)
                 .filter(fatura -> !fatura.dataVencimento().isAfter(hoje.plusDays(DIAS_DE_ANTECEDENCIA)))
+                .filter(fatura -> !fatura.dataVencimento().isBefore(hoje.minusDays(DIAS_DE_ANTECEDENCIA)))
                 .map(fatura -> new AvisoDTO(
                         "aviso-fatura-" + fatura.id(),
                         TipoAviso.FATURA_VENCENDO,

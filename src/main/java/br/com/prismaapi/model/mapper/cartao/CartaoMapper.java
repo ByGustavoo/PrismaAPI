@@ -25,12 +25,6 @@ public interface CartaoMapper {
     @Mapping(target = "conta", ignore = true)
     @Mapping(target = "dataCriacao", ignore = true)
     @Mapping(target = "dataAtualizacao", ignore = true)
-    Cartao toEntity(CartaoDTO dto);
-
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "conta", ignore = true)
-    @Mapping(target = "dataCriacao", ignore = true)
-    @Mapping(target = "dataAtualizacao", ignore = true)
     Cartao toEntity(SalvarCartaoDTO salvarCartaoDTO);
 
     @Mapping(target = "id", ignore = true)

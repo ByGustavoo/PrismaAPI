@@ -14,10 +14,5 @@ public interface MetaPrecoMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "meta", ignore = true)
     @Mapping(target = "dataCriacao", ignore = true)
-    MetaPreco toEntity(MetaPrecoDTO dto);
-
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "meta", ignore = true)
-    @Mapping(target = "dataCriacao", ignore = true)
     MetaPreco toEntity(SalvarMetaPrecoDTO salvarMetaPrecoDTO);
 }

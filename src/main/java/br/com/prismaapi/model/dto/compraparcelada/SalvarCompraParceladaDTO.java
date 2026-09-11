@@ -45,6 +45,7 @@ public record SalvarCompraParceladaDTO(
 
         UUID idCategoria,
 
+        @Size(max = 500, message = "O campo 'observacoes' deve ter no máximo 500 caracteres!")
         String observacoes
 
 ) {}

@@ -7,18 +7,15 @@ import br.com.prismaapi.model.dto.dashboard.gasto.diario.GastoDiarioDTO;
 import br.com.prismaapi.model.dto.lancamento.LancamentoDTO;
 import br.com.prismaapi.model.dto.dashboard.saldo.SaldoDTO;
 import br.com.prismaapi.model.dto.dashboard.variacao.VariacaoDTO;
-import com.fasterxml.jackson.annotation.JsonFormat;
 
 import java.math.BigDecimal;
 import java.util.List;
 
 public record DashboardDTO(
 
-        @JsonFormat(pattern = "yyyy-MM")
-        String de,
+        String dataInicial,
 
-        @JsonFormat(pattern = "yyyy-MM")
-        String ate,
+        String dataFinal,
 
         BigDecimal saldoAtual,
 

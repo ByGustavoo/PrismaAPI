@@ -15,11 +15,6 @@ public interface InvestimentoMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "dataCriacao", ignore = true)
     @Mapping(target = "dataAtualizacao", ignore = true)
-    Investimento toEntity(InvestimentoDTO dto);
-
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "dataCriacao", ignore = true)
-    @Mapping(target = "dataAtualizacao", ignore = true)
     Investimento toEntity(SalvarInvestimentoDTO salvarInvestimentoDTO);
 
     @Mapping(target = "id", ignore = true)

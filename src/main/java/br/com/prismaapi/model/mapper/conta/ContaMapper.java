@@ -19,11 +19,6 @@ public interface ContaMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "dataCriacao", ignore = true)
     @Mapping(target = "dataAtualizacao", ignore = true)
-    Conta toEntity(ContaDTO dto);
-
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "dataCriacao", ignore = true)
-    @Mapping(target = "dataAtualizacao", ignore = true)
     Conta toEntity(SalvarContaDTO salvarContaDTO);
 
     @Mapping(target = "id", ignore = true)

@@ -8,7 +8,6 @@ import br.com.prismaapi.model.dto.dashboard.projection.TotalMensalProjecao;
 import br.com.prismaapi.model.dto.dashboard.projection.ValorPorDataProjecao;
 import br.com.prismaapi.model.dto.relatorio.projection.GastoOrigemProjecao;
 import br.com.prismaapi.model.entity.lancamento.Lancamento;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
@@ -30,19 +29,11 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, UUID>, J
     @EntityGraph(attributePaths = {"categoria", "conta", "cartao", "contaDestino"})
     List<Lancamento> findAll(Specification<Lancamento> specification, Sort sort);
 
-    boolean existsByCategoriaId(UUID categoriaId);
-
     long countByContaIdOrContaDestinoId(UUID contaId, UUID contaDestinoId);
 
     long countByCartaoId(UUID cartaoId);
 
     long countByTipoNotAndDataBetween(TipoLancamento tipo, LocalDate inicio, LocalDate fim);
-
-    Page<Lancamento> findByDataBetween(LocalDate inicio, LocalDate fim, Pageable pageable);
-
-    Page<Lancamento> findByTipoAndDataBetween(TipoLancamento tipo, LocalDate inicio, LocalDate fim, Pageable pageable);
-
-    Page<Lancamento> findByCategoriaIdAndDataBetween(UUID categoriaId, LocalDate inicio, LocalDate fim, Pageable pageable);
 
     @Query("""
             SELECT SUM(lancamento.valor)

@@ -37,15 +37,6 @@ public interface LancamentoMapper {
     @Mapping(target = "dataAtualizacao", ignore = true)
     void updateEntity(SalvarLancamentoDTO salvarLancamentoDTO, @MappingTarget Lancamento lancamento);
 
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "categoria", ignore = true)
-    @Mapping(target = "conta", ignore = true)
-    @Mapping(target = "cartao", ignore = true)
-    @Mapping(target = "contaDestino", ignore = true)
-    @Mapping(target = "dataCriacao", ignore = true)
-    @Mapping(target = "dataAtualizacao", ignore = true)
-    Lancamento toEntity(LancamentoDTO dto);
-
     default UUID idOrigem(Lancamento lancamento) {
         if (lancamento.getConta() != null) return lancamento.getConta().getId();
         return lancamento.getCartao() != null ? lancamento.getCartao().getId() : null;

@@ -2,8 +2,6 @@ package br.com.prismaapi.repository.compraparcelada;
 
 import br.com.prismaapi.model.dto.dashboard.projection.ParcelaProjecao;
 import br.com.prismaapi.model.entity.compraparcelada.CompraParcelada;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -17,12 +15,6 @@ import java.util.UUID;
 public interface CompraParceladaRepository extends JpaRepository<CompraParcelada, UUID> {
 
     long countByCartaoId(UUID cartaoId);
-
-    boolean existsByCategoriaId(UUID categoriaId);
-
-    Page<CompraParcelada> findByCartaoId(UUID cartaoId, Pageable pageable);
-
-    Page<CompraParcelada> findByCartaoIdAndPrimeiroMes(UUID cartaoId, LocalDate primeiroMes, Pageable pageable);
 
     @Query("""
             SELECT new br.com.prismaapi.model.dto.dashboard.projection.ParcelaProjecao(

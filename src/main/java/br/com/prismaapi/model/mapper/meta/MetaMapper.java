@@ -24,11 +24,6 @@ public interface MetaMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "dataCriacao", ignore = true)
     @Mapping(target = "dataAtualizacao", ignore = true)
-    Meta toEntity(MetaDTO dto);
-
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "dataCriacao", ignore = true)
-    @Mapping(target = "dataAtualizacao", ignore = true)
     Meta toEntity(SalvarMetaDTO salvarMetaDTO);
 
     @Mapping(target = "id", ignore = true)

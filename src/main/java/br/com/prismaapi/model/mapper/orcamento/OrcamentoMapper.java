@@ -17,12 +17,6 @@ public interface OrcamentoMapper {
     @Mapping(target = "categoria", ignore = true)
     @Mapping(target = "dataCriacao", ignore = true)
     @Mapping(target = "dataAtualizacao", ignore = true)
-    Orcamento toEntity(OrcamentoDTO dto);
-
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "categoria", ignore = true)
-    @Mapping(target = "dataCriacao", ignore = true)
-    @Mapping(target = "dataAtualizacao", ignore = true)
     Orcamento toEntity(SalvarOrcamentoDTO salvarOrcamentoDTO);
 
     @Mapping(target = "id", ignore = true)

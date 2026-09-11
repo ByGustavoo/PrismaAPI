@@ -47,6 +47,7 @@ public record SalvarLancamentoDTO(
 
         UUID idContaDestino,
 
+        @Size(max = 500, message = "O campo 'observacoes' deve ter no máximo 500 caracteres!")
         String observacoes
 
 ) {}

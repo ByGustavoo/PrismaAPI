@@ -2,8 +2,6 @@ package br.com.prismaapi.repository.conta;
 
 import br.com.prismaapi.enums.Situacao;
 import br.com.prismaapi.model.entity.conta.Conta;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -19,11 +17,7 @@ public interface ContaRepository extends JpaRepository<Conta, UUID> {
 
     boolean existsByNomeIgnoreCaseAndInstituicaoIgnoreCaseAndIdNot(String nome, String instituicao, UUID id);
 
-    Page<Conta> findBySituacao(Situacao situacao, Pageable pageable);
-
     List<Conta> findBySituacao(Situacao situacao);
-
-    List<Conta> findBySituacaoAndIncluirNoTotal(Situacao situacao, Boolean incluirNoTotal);
 
     @Query("""
             SELECT SUM(conta.saldo)

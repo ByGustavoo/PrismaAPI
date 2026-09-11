@@ -23,14 +23,6 @@ public interface DespesaRecorrenteMapper {
     @Mapping(target = "categoria", ignore = true)
     @Mapping(target = "dataCriacao", ignore = true)
     @Mapping(target = "dataAtualizacao", ignore = true)
-    DespesaRecorrente toEntity(DespesaRecorrenteDTO dto);
-
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "conta", ignore = true)
-    @Mapping(target = "cartao", ignore = true)
-    @Mapping(target = "categoria", ignore = true)
-    @Mapping(target = "dataCriacao", ignore = true)
-    @Mapping(target = "dataAtualizacao", ignore = true)
     DespesaRecorrente toEntity(SalvarDespesaRecorrenteDTO salvarDespesaRecorrenteDTO);
 
     @Mapping(target = "id", ignore = true)

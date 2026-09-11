@@ -6,7 +6,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -15,8 +14,6 @@ public interface OrcamentoRepository extends JpaRepository<Orcamento, UUID> {
     boolean existsByCategoriaId(UUID categoriaId);
 
     boolean existsByCategoriaIdAndIdNot(UUID categoriaId, UUID id);
-
-    Optional<Orcamento> findByCategoriaId(UUID categoriaId);
 
     @Query("""
             SELECT orcamento
