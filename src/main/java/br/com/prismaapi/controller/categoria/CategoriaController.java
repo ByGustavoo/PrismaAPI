@@ -12,13 +12,13 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/v1/categories")
+@RequestMapping("/v1/categorias")
 public class CategoriaController implements CategoriaDocs {
 
     private final CategoriaService categoriaService;
 
     @Override
-    public ResponseEntity<List<CategoriaDTO>> getCategorias(TipoCategoria tipo) {
+    public ResponseEntity<List<CategoriaDTO>> listarCategorias(TipoCategoria tipo) {
         return ResponseEntity.ok(categoriaService.listar(tipo));
     }
 }

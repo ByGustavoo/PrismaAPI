@@ -72,6 +72,11 @@ relatório HTML em `build/reports/jacoco`.
 - `spring.jpa.open-in-view: false` — carregue o que a resposta precisa dentro da
   transação; não conte com lazy loading no controller
 - `include-stacktrace: never` — erros não vazam stacktrace na resposta
+- Rotas em português, em kebab-case sem acento (`/v1/contas/origens`,
+  `/v1/despesas-recorrentes`, `/v1/metas/{id}/precos`). Rota é contrato com o PrismaWeb: mudou
+  aqui, muda no `src/api/rotasApi.ts` e no `API_CONTRACT.md` de lá no mesmo trabalho
+- Métodos de controller e de `*Docs` levam o nome da ação, não do verbo HTTP: `listarCartoes`,
+  `buscarFatura`, `salvarCartao`, `atualizarCartao`, `deletarCartao`
 - Mapeamento entidade ↔ DTO com MapStruct, não manualmente
 - Arquitetura limpa: use a skill `java-clean-architecture` ao criar controllers,
   use cases, entidades ou repositórios

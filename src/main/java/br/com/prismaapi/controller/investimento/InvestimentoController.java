@@ -15,33 +15,33 @@ import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/v1/investments")
+@RequestMapping("/v1/investimentos")
 public class InvestimentoController implements InvestimentoDocs {
 
     private final InvestimentoService investimentoService;
 
     @Override
-    public ResponseEntity<List<InvestimentoDTO>> getInvestimentos() {
+    public ResponseEntity<List<InvestimentoDTO>> listarInvestimentos() {
         return ResponseEntity.ok(investimentoService.listar());
     }
 
     @Override
-    public ResponseEntity<CarteiraDTO> getCarteira() {
+    public ResponseEntity<CarteiraDTO> buscarCarteira() {
         return ResponseEntity.ok(investimentoService.resumirCarteira());
     }
 
     @Override
-    public ResponseEntity<InvestimentoDTO> postInvestimento(SalvarInvestimentoDTO salvarInvestimentoDTO) {
+    public ResponseEntity<InvestimentoDTO> salvarInvestimento(SalvarInvestimentoDTO salvarInvestimentoDTO) {
         return ResponseEntity.status(HttpStatus.CREATED).body(investimentoService.salvar(salvarInvestimentoDTO));
     }
 
     @Override
-    public ResponseEntity<InvestimentoDTO> putInvestimento(UUID id, SalvarInvestimentoDTO salvarInvestimentoDTO) {
+    public ResponseEntity<InvestimentoDTO> atualizarInvestimento(UUID id, SalvarInvestimentoDTO salvarInvestimentoDTO) {
         return ResponseEntity.ok(investimentoService.atualizar(id, salvarInvestimentoDTO));
     }
 
     @Override
-    public ResponseEntity<Void> deleteInvestimento(UUID id) {
+    public ResponseEntity<Void> deletarInvestimento(UUID id) {
         investimentoService.deletar(id);
         return ResponseEntity.noContent().build();
     }

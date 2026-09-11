@@ -49,7 +49,7 @@ public class GlobalExceptionHandler {
                 "Requisição Inválida!",
                 pHttpServletRequest.getRequestURI(),
                 "/PrismaAPI/problems/unreadable-message",
-                ex.getMostSpecificCause().getMessage(),
+                "O corpo da requisição está malformado ou tem um valor em formato inválido!",
                 ex.getMessage());
 
         return ResponseEntity.badRequest().body(response);
@@ -334,13 +334,14 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
-    public ResponseEntity<ErrorResponseDTO> handleDuplicateResourceException(DataIntegrityViolationException ex, HttpServletRequest pHttpServletRequest) {
+    public ResponseEntity<ErrorResponseDTO> handleDataIntegrityViolationException(DataIntegrityViolationException ex, HttpServletRequest pHttpServletRequest) {
 
         var response = new ErrorResponseDTO(
                 HttpStatus.CONFLICT.value(),
                 "Conflito de Dados!",
                 pHttpServletRequest.getRequestURI(),
                 "/PrismaAPI/problems/data-integrity-violation",
+                "A operação conflita com dados já gravados!",
                 ex.getMessage());
 
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
@@ -484,6 +485,7 @@ public class GlobalExceptionHandler {
                 "Erro Interno no Servidor!",
                 pHttpServletRequest.getRequestURI(),
                 "/PrismaAPI/problems/internal-server-error",
+                "Ocorreu um erro inesperado no servidor!",
                 ex.getMessage());
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);

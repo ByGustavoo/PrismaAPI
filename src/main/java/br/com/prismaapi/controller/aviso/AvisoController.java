@@ -11,13 +11,13 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/v1/alerts")
+@RequestMapping("/v1/avisos")
 public class AvisoController implements AvisoDocs {
 
     private final AvisoService avisoService;
 
     @Override
-    public ResponseEntity<List<AvisoDTO>> getAvisos() {
+    public ResponseEntity<List<AvisoDTO>> listarAvisos() {
         return ResponseEntity.ok(avisoService.listar());
     }
 }

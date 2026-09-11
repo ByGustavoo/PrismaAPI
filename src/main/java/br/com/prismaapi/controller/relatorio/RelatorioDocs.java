@@ -44,8 +44,8 @@ public interface RelatorioDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @GetMapping("/summary")
-    ResponseEntity<RelatorioDTO> getResumo(
+    @GetMapping("/resumo")
+    ResponseEntity<RelatorioDTO> buscarResumo(
             @Parameter(description = "Início do recorte, inclusivo", example = "2026-09-01")
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate dataInicial,
 

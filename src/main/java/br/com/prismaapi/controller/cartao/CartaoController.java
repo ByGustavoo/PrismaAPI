@@ -14,28 +14,28 @@ import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/v1/cards")
+@RequestMapping("/v1/cartoes")
 public class CartaoController implements CartaoDocs {
 
     private final CartaoService cartaoService;
 
     @Override
-    public ResponseEntity<List<CartaoDTO>> getCartoes() {
+    public ResponseEntity<List<CartaoDTO>> listarCartoes() {
         return ResponseEntity.ok(cartaoService.listar());
     }
 
     @Override
-    public ResponseEntity<CartaoDTO> postCartao(SalvarCartaoDTO salvarCartaoDTO) {
+    public ResponseEntity<CartaoDTO> salvarCartao(SalvarCartaoDTO salvarCartaoDTO) {
         return ResponseEntity.status(HttpStatus.CREATED).body(cartaoService.salvar(salvarCartaoDTO));
     }
 
     @Override
-    public ResponseEntity<CartaoDTO> putCartao(UUID id, SalvarCartaoDTO salvarCartaoDTO) {
+    public ResponseEntity<CartaoDTO> atualizarCartao(UUID id, SalvarCartaoDTO salvarCartaoDTO) {
         return ResponseEntity.ok(cartaoService.atualizar(id, salvarCartaoDTO));
     }
 
     @Override
-    public ResponseEntity<Void> deleteCartao(UUID id) {
+    public ResponseEntity<Void> deletarCartao(UUID id) {
         cartaoService.deletar(id);
         return ResponseEntity.noContent().build();
     }

@@ -45,7 +45,7 @@ public interface FaturaDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @GetMapping
-    ResponseEntity<List<FaturaCartaoDTO>> getFaturas(
+    ResponseEntity<List<FaturaCartaoDTO>> listarFaturas(
             @Parameter(description = "Id do cartão de crédito; sem ele, retorna as faturas de todos")
             @RequestParam(required = false) UUID idCartao);
 
@@ -72,7 +72,7 @@ public interface FaturaDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @GetMapping("/{id}")
-    ResponseEntity<DetalheFaturaDTO> getFatura(
+    ResponseEntity<DetalheFaturaDTO> buscarFatura(
             @Parameter(description = "Id da fatura: o id do cartão seguido do mês, como em 3f1c...-2026-09")
             @PathVariable String id);
 }

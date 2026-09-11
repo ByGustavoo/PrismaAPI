@@ -39,7 +39,7 @@ public interface ContaDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @GetMapping
-    ResponseEntity<List<ContaDTO>> getContas();
+    ResponseEntity<List<ContaDTO>> listarContas();
 
     @Operation(
             summary = "Lista as origens de dinheiro",
@@ -58,8 +58,8 @@ public interface ContaDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @GetMapping("/sources")
-    ResponseEntity<List<OrigemDTO>> getOrigens();
+    @GetMapping("/origens")
+    ResponseEntity<List<OrigemDTO>> listarOrigens();
 
     @Operation(
             summary = "Cadastra uma conta",
@@ -88,7 +88,7 @@ public interface ContaDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @PostMapping
-    ResponseEntity<ContaDTO> postConta(@RequestBody @Valid SalvarContaDTO salvarContaDTO);
+    ResponseEntity<ContaDTO> salvarConta(@RequestBody @Valid SalvarContaDTO salvarContaDTO);
 
     @Operation(
             summary = "Atualiza uma conta",
@@ -119,7 +119,7 @@ public interface ContaDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @PutMapping("/{id}")
-    ResponseEntity<ContaDTO> putConta(
+    ResponseEntity<ContaDTO> atualizarConta(
             @Parameter(description = "Id da conta")
             @PathVariable UUID id,
 
@@ -159,7 +159,7 @@ public interface ContaDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @DeleteMapping("/{id}")
-    ResponseEntity<Void> deleteConta(
+    ResponseEntity<Void> deletarConta(
             @Parameter(description = "Id da conta")
             @PathVariable UUID id);
 }

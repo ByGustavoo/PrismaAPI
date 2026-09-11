@@ -15,28 +15,28 @@ import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/v1/installments")
+@RequestMapping("/v1/compras-parceladas")
 public class CompraParceladaController implements CompraParceladaDocs {
 
     private final CompraParceladaService compraParceladaService;
 
     @Override
-    public ResponseEntity<List<PlanoCompraParceladaDTO>> getComprasParceladas(UUID idCartao) {
+    public ResponseEntity<List<PlanoCompraParceladaDTO>> listarComprasParceladas(UUID idCartao) {
         return ResponseEntity.ok(compraParceladaService.listar(idCartao));
     }
 
     @Override
-    public ResponseEntity<CompraParceladaDTO> postCompraParcelada(SalvarCompraParceladaDTO salvarCompraParceladaDTO) {
+    public ResponseEntity<CompraParceladaDTO> salvarCompraParcelada(SalvarCompraParceladaDTO salvarCompraParceladaDTO) {
         return ResponseEntity.status(HttpStatus.CREATED).body(compraParceladaService.salvar(salvarCompraParceladaDTO));
     }
 
     @Override
-    public ResponseEntity<CompraParceladaDTO> putCompraParcelada(UUID id, SalvarCompraParceladaDTO salvarCompraParceladaDTO) {
+    public ResponseEntity<CompraParceladaDTO> atualizarCompraParcelada(UUID id, SalvarCompraParceladaDTO salvarCompraParceladaDTO) {
         return ResponseEntity.ok(compraParceladaService.atualizar(id, salvarCompraParceladaDTO));
     }
 
     @Override
-    public ResponseEntity<Void> deleteCompraParcelada(UUID id) {
+    public ResponseEntity<Void> deletarCompraParcelada(UUID id) {
         compraParceladaService.deletar(id);
         return ResponseEntity.noContent().build();
     }

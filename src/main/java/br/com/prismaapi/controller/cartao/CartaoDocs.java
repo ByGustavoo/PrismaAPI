@@ -41,7 +41,7 @@ public interface CartaoDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @GetMapping
-    ResponseEntity<List<CartaoDTO>> getCartoes();
+    ResponseEntity<List<CartaoDTO>> listarCartoes();
 
     @Operation(
             summary = "Cadastra um cartão",
@@ -71,7 +71,7 @@ public interface CartaoDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @PostMapping
-    ResponseEntity<CartaoDTO> postCartao(@RequestBody @Valid SalvarCartaoDTO salvarCartaoDTO);
+    ResponseEntity<CartaoDTO> salvarCartao(@RequestBody @Valid SalvarCartaoDTO salvarCartaoDTO);
 
     @Operation(
             summary = "Atualiza um cartão",
@@ -103,7 +103,7 @@ public interface CartaoDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @PutMapping("/{id}")
-    ResponseEntity<CartaoDTO> putCartao(
+    ResponseEntity<CartaoDTO> atualizarCartao(
             @Parameter(description = "Id do cartão")
             @PathVariable UUID id,
 
@@ -140,7 +140,7 @@ public interface CartaoDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @DeleteMapping("/{id}")
-    ResponseEntity<Void> deleteCartao(
+    ResponseEntity<Void> deletarCartao(
             @Parameter(description = "Id do cartão")
             @PathVariable UUID id);
 }

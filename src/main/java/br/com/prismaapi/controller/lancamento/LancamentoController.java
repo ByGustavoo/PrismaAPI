@@ -18,29 +18,29 @@ import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/v1/transactions")
+@RequestMapping("/v1/lancamentos")
 public class LancamentoController implements LancamentoDocs {
 
     private final LancamentoService lancamentoService;
 
     @Override
-    public ResponseEntity<List<LancamentoDTO>> getLancamentos(TipoLancamento tipo, String busca, LocalDate dataInicial, LocalDate dataFinal, UUID idCategoria, UUID idOrigem, SituacaoLancamento situacao) {
+    public ResponseEntity<List<LancamentoDTO>> listarLancamentos(TipoLancamento tipo, String busca, LocalDate dataInicial, LocalDate dataFinal, UUID idCategoria, UUID idOrigem, SituacaoLancamento situacao) {
         var filtro = new FiltroLancamentoDTO(tipo, busca, dataInicial, dataFinal, idCategoria, idOrigem, situacao);
         return ResponseEntity.ok(lancamentoService.listar(filtro));
     }
 
     @Override
-    public ResponseEntity<LancamentoDTO> postLancamento(SalvarLancamentoDTO salvarLancamentoDTO) {
+    public ResponseEntity<LancamentoDTO> salvarLancamento(SalvarLancamentoDTO salvarLancamentoDTO) {
         return ResponseEntity.status(HttpStatus.CREATED).body(lancamentoService.salvar(salvarLancamentoDTO));
     }
 
     @Override
-    public ResponseEntity<LancamentoDTO> putLancamento(UUID id, SalvarLancamentoDTO salvarLancamentoDTO) {
+    public ResponseEntity<LancamentoDTO> atualizarLancamento(UUID id, SalvarLancamentoDTO salvarLancamentoDTO) {
         return ResponseEntity.ok(lancamentoService.atualizar(id, salvarLancamentoDTO));
     }
 
     @Override
-    public ResponseEntity<Void> deleteLancamento(UUID id) {
+    public ResponseEntity<Void> deletarLancamento(UUID id) {
         lancamentoService.deletar(id);
         return ResponseEntity.noContent().build();
     }

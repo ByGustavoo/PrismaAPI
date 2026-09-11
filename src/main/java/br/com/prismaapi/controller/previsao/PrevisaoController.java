@@ -9,13 +9,13 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/v1/forecast")
+@RequestMapping("/v1/previsao")
 public class PrevisaoController implements PrevisaoDocs {
 
     private final PrevisaoService previsaoService;
 
     @Override
-    public ResponseEntity<PrevisaoDTO> getPrevisao(Integer meses) {
+    public ResponseEntity<PrevisaoDTO> buscarPrevisao(Integer meses) {
         return ResponseEntity.ok(previsaoService.prever(meses));
     }
 }

@@ -11,13 +11,13 @@ import java.time.LocalDate;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/v1/reports")
+@RequestMapping("/v1/relatorios")
 public class RelatorioController implements RelatorioDocs {
 
     private final RelatorioService relatorioService;
 
     @Override
-    public ResponseEntity<RelatorioDTO> getResumo(LocalDate dataInicial, LocalDate dataFinal) {
+    public ResponseEntity<RelatorioDTO> buscarResumo(LocalDate dataInicial, LocalDate dataFinal) {
         return ResponseEntity.ok(relatorioService.resumir(dataInicial, dataFinal));
     }
 }

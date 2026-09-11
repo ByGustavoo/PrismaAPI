@@ -17,33 +17,33 @@ import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/v1/goals")
+@RequestMapping("/v1/metas")
 public class MetaController implements MetaDocs {
 
     private final MetaService metaService;
 
     @Override
-    public ResponseEntity<ResumoMetasDTO> getMetas(SituacaoMeta situacao, String busca) {
+    public ResponseEntity<ResumoMetasDTO> listarMetas(SituacaoMeta situacao, String busca) {
         return ResponseEntity.ok(metaService.listar(situacao, busca));
     }
 
     @Override
-    public ResponseEntity<MetaDTO> postMeta(SalvarMetaDTO salvarMetaDTO) {
+    public ResponseEntity<MetaDTO> salvarMeta(SalvarMetaDTO salvarMetaDTO) {
         return ResponseEntity.status(HttpStatus.CREATED).body(metaService.salvar(salvarMetaDTO));
     }
 
     @Override
-    public ResponseEntity<MetaDTO> putMeta(UUID id, AtualizarMetaDTO atualizarMetaDTO) {
+    public ResponseEntity<MetaDTO> atualizarMeta(UUID id, AtualizarMetaDTO atualizarMetaDTO) {
         return ResponseEntity.ok(metaService.atualizar(id, atualizarMetaDTO));
     }
 
     @Override
-    public ResponseEntity<MetaDTO> postPreco(UUID id, SalvarMetaPrecoDTO salvarMetaPrecoDTO) {
+    public ResponseEntity<MetaDTO> registrarPreco(UUID id, SalvarMetaPrecoDTO salvarMetaPrecoDTO) {
         return ResponseEntity.status(HttpStatus.CREATED).body(metaService.registrarPreco(id, salvarMetaPrecoDTO));
     }
 
     @Override
-    public ResponseEntity<Void> deleteMeta(UUID id) {
+    public ResponseEntity<Void> deletarMeta(UUID id) {
         metaService.deletar(id);
         return ResponseEntity.noContent().build();
     }

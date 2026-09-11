@@ -43,7 +43,7 @@ public interface DashboardDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @GetMapping("/resumo")
-    ResponseEntity<DashboardDTO> getResumo(
+    ResponseEntity<DashboardDTO> buscarResumo(
             @Parameter(description = "Primeiro mês do recorte", example = "2026-09")
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM") YearMonth dataInicial,
 

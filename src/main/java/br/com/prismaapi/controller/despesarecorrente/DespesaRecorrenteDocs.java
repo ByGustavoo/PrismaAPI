@@ -41,7 +41,7 @@ public interface DespesaRecorrenteDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @GetMapping
-    ResponseEntity<ResumoDespesasRecorrentesDTO> getDespesasRecorrentes();
+    ResponseEntity<ResumoDespesasRecorrentesDTO> listarDespesasRecorrentes();
 
     @Operation(
             summary = "Cadastra uma despesa recorrente",
@@ -69,7 +69,7 @@ public interface DespesaRecorrenteDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @PostMapping
-    ResponseEntity<DespesaRecorrenteDTO> postDespesaRecorrente(@RequestBody @Valid SalvarDespesaRecorrenteDTO salvarDespesaRecorrenteDTO);
+    ResponseEntity<DespesaRecorrenteDTO> salvarDespesaRecorrente(@RequestBody @Valid SalvarDespesaRecorrenteDTO salvarDespesaRecorrenteDTO);
 
     @Operation(
             summary = "Atualiza uma despesa recorrente",
@@ -101,7 +101,7 @@ public interface DespesaRecorrenteDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @PutMapping("/{id}")
-    ResponseEntity<DespesaRecorrenteDTO> putDespesaRecorrente(
+    ResponseEntity<DespesaRecorrenteDTO> atualizarDespesaRecorrente(
             @Parameter(description = "Id da despesa recorrente")
             @PathVariable UUID id,
 
@@ -132,7 +132,7 @@ public interface DespesaRecorrenteDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @DeleteMapping("/{id}")
-    ResponseEntity<Void> deleteDespesaRecorrente(
+    ResponseEntity<Void> deletarDespesaRecorrente(
             @Parameter(description = "Id da despesa recorrente")
             @PathVariable UUID id);
 }

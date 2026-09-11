@@ -14,28 +14,28 @@ import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/v1/recurring-expenses")
+@RequestMapping("/v1/despesas-recorrentes")
 public class DespesaRecorrenteController implements DespesaRecorrenteDocs {
 
     private final DespesaRecorrenteService despesaRecorrenteService;
 
     @Override
-    public ResponseEntity<ResumoDespesasRecorrentesDTO> getDespesasRecorrentes() {
+    public ResponseEntity<ResumoDespesasRecorrentesDTO> listarDespesasRecorrentes() {
         return ResponseEntity.ok(despesaRecorrenteService.resumir());
     }
 
     @Override
-    public ResponseEntity<DespesaRecorrenteDTO> postDespesaRecorrente(SalvarDespesaRecorrenteDTO salvarDespesaRecorrenteDTO) {
+    public ResponseEntity<DespesaRecorrenteDTO> salvarDespesaRecorrente(SalvarDespesaRecorrenteDTO salvarDespesaRecorrenteDTO) {
         return ResponseEntity.status(HttpStatus.CREATED).body(despesaRecorrenteService.salvar(salvarDespesaRecorrenteDTO));
     }
 
     @Override
-    public ResponseEntity<DespesaRecorrenteDTO> putDespesaRecorrente(UUID id, SalvarDespesaRecorrenteDTO salvarDespesaRecorrenteDTO) {
+    public ResponseEntity<DespesaRecorrenteDTO> atualizarDespesaRecorrente(UUID id, SalvarDespesaRecorrenteDTO salvarDespesaRecorrenteDTO) {
         return ResponseEntity.ok(despesaRecorrenteService.atualizar(id, salvarDespesaRecorrenteDTO));
     }
 
     @Override
-    public ResponseEntity<Void> deleteDespesaRecorrente(UUID id) {
+    public ResponseEntity<Void> deletarDespesaRecorrente(UUID id) {
         despesaRecorrenteService.deletar(id);
         return ResponseEntity.noContent().build();
     }

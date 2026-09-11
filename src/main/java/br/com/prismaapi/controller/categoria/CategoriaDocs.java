@@ -40,7 +40,7 @@ public interface CategoriaDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @GetMapping
-    ResponseEntity<List<CategoriaDTO>> getCategorias(
+    ResponseEntity<List<CategoriaDTO>> listarCategorias(
             @Parameter(description = "Tipo da categoria", example = "DESPESA")
             @RequestParam(required = false) TipoCategoria tipo);
 }

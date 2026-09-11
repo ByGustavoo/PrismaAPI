@@ -50,7 +50,7 @@ public interface MetaDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @GetMapping
-    ResponseEntity<ResumoMetasDTO> getMetas(
+    ResponseEntity<ResumoMetasDTO> listarMetas(
             @Parameter(description = "Situação da meta", example = "ACOMPANHANDO")
             @RequestParam(required = false) SituacaoMeta situacao,
 
@@ -80,7 +80,7 @@ public interface MetaDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @PostMapping
-    ResponseEntity<MetaDTO> postMeta(@RequestBody @Valid SalvarMetaDTO salvarMetaDTO);
+    ResponseEntity<MetaDTO> salvarMeta(@RequestBody @Valid SalvarMetaDTO salvarMetaDTO);
 
     @Operation(
             summary = "Atualiza uma meta",
@@ -108,7 +108,7 @@ public interface MetaDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @PutMapping("/{id}")
-    ResponseEntity<MetaDTO> putMeta(
+    ResponseEntity<MetaDTO> atualizarMeta(
             @Parameter(description = "Id da meta")
             @PathVariable UUID id,
 
@@ -148,8 +148,8 @@ public interface MetaDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @PostMapping("/{id}/prices")
-    ResponseEntity<MetaDTO> postPreco(
+    @PostMapping("/{id}/precos")
+    ResponseEntity<MetaDTO> registrarPreco(
             @Parameter(description = "Id da meta")
             @PathVariable UUID id,
 
@@ -178,7 +178,7 @@ public interface MetaDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @DeleteMapping("/{id}")
-    ResponseEntity<Void> deleteMeta(
+    ResponseEntity<Void> deletarMeta(
             @Parameter(description = "Id da meta")
             @PathVariable UUID id);
 }

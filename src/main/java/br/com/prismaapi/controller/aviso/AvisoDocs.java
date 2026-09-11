@@ -38,5 +38,5 @@ public interface AvisoDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @GetMapping
-    ResponseEntity<List<AvisoDTO>> getAvisos();
+    ResponseEntity<List<AvisoDTO>> listarAvisos();
 }

@@ -47,8 +47,8 @@ public interface OrcamentoDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @GetMapping("/overview")
-    ResponseEntity<VisaoGeralOrcamentoDTO> getVisaoGeral(
+    @GetMapping("/visao-geral")
+    ResponseEntity<VisaoGeralOrcamentoDTO> buscarVisaoGeral(
             @Parameter(description = "Mês consultado; sem ele, o mês corrente", example = "2026-09")
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM") YearMonth mes);
 
@@ -82,7 +82,7 @@ public interface OrcamentoDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @PostMapping
-    ResponseEntity<OrcamentoDTO> postOrcamento(@RequestBody @Valid SalvarOrcamentoDTO salvarOrcamentoDTO);
+    ResponseEntity<OrcamentoDTO> salvarOrcamento(@RequestBody @Valid SalvarOrcamentoDTO salvarOrcamentoDTO);
 
     @Operation(
             summary = "Atualiza um orçamento",
@@ -118,7 +118,7 @@ public interface OrcamentoDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @PutMapping("/{id}")
-    ResponseEntity<OrcamentoDTO> putOrcamento(
+    ResponseEntity<OrcamentoDTO> atualizarOrcamento(
             @Parameter(description = "Id do orçamento")
             @PathVariable UUID id,
 
@@ -149,7 +149,7 @@ public interface OrcamentoDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @DeleteMapping("/{id}")
-    ResponseEntity<Void> deleteOrcamento(
+    ResponseEntity<Void> deletarOrcamento(
             @Parameter(description = "Id do orçamento")
             @PathVariable UUID id);
 }

@@ -17,7 +17,7 @@ public class DashboardController implements DashboardDocs {
     private final DashboardService dashboardService;
 
     @Override
-    public ResponseEntity<DashboardDTO> getResumo(YearMonth dataInicial, YearMonth dataFinal) {
+    public ResponseEntity<DashboardDTO> buscarResumo(YearMonth dataInicial, YearMonth dataFinal) {
         return ResponseEntity.ok(dashboardService.resumir(dataInicial, dataFinal));
     }
 }

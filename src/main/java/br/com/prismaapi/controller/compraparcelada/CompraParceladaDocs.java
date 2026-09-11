@@ -45,7 +45,7 @@ public interface CompraParceladaDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @GetMapping
-    ResponseEntity<List<PlanoCompraParceladaDTO>> getComprasParceladas(
+    ResponseEntity<List<PlanoCompraParceladaDTO>> listarComprasParceladas(
             @Parameter(description = "Id do cartão; sem ele, retorna as compras de todos os cartões")
             @RequestParam(required = false) UUID idCartao);
 
@@ -76,7 +76,7 @@ public interface CompraParceladaDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @PostMapping
-    ResponseEntity<CompraParceladaDTO> postCompraParcelada(@RequestBody @Valid SalvarCompraParceladaDTO salvarCompraParceladaDTO);
+    ResponseEntity<CompraParceladaDTO> salvarCompraParcelada(@RequestBody @Valid SalvarCompraParceladaDTO salvarCompraParceladaDTO);
 
     @Operation(
             summary = "Atualiza uma compra parcelada",
@@ -109,7 +109,7 @@ public interface CompraParceladaDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @PutMapping("/{id}")
-    ResponseEntity<CompraParceladaDTO> putCompraParcelada(
+    ResponseEntity<CompraParceladaDTO> atualizarCompraParcelada(
             @Parameter(description = "Id da compra parcelada")
             @PathVariable UUID id,
 
@@ -140,7 +140,7 @@ public interface CompraParceladaDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @DeleteMapping("/{id}")
-    ResponseEntity<Void> deleteCompraParcelada(
+    ResponseEntity<Void> deletarCompraParcelada(
             @Parameter(description = "Id da compra parcelada")
             @PathVariable UUID id);
 }

@@ -47,7 +47,7 @@ public interface LancamentoDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @GetMapping
-    ResponseEntity<List<LancamentoDTO>> getLancamentos(
+    ResponseEntity<List<LancamentoDTO>> listarLancamentos(
             @Parameter(description = "Tipo do lançamento", example = "DESPESA")
             @RequestParam(required = false) TipoLancamento tipo,
 
@@ -95,7 +95,7 @@ public interface LancamentoDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @PostMapping
-    ResponseEntity<LancamentoDTO> postLancamento(@RequestBody @Valid SalvarLancamentoDTO salvarLancamentoDTO);
+    ResponseEntity<LancamentoDTO> salvarLancamento(@RequestBody @Valid SalvarLancamentoDTO salvarLancamentoDTO);
 
     @Operation(
             summary = "Atualiza um lançamento",
@@ -126,7 +126,7 @@ public interface LancamentoDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @PutMapping("/{id}")
-    ResponseEntity<LancamentoDTO> putLancamento(
+    ResponseEntity<LancamentoDTO> atualizarLancamento(
             @Parameter(description = "Id do lançamento")
             @PathVariable UUID id,
 
@@ -153,7 +153,7 @@ public interface LancamentoDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @DeleteMapping("/{id}")
-    ResponseEntity<Void> deleteLancamento(
+    ResponseEntity<Void> deletarLancamento(
             @Parameter(description = "Id do lançamento")
             @PathVariable UUID id);
 }

@@ -15,33 +15,33 @@ import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/v1/accounts")
+@RequestMapping("/v1/contas")
 public class ContaController implements ContaDocs {
 
     private final ContaService contaService;
 
     @Override
-    public ResponseEntity<List<ContaDTO>> getContas() {
+    public ResponseEntity<List<ContaDTO>> listarContas() {
         return ResponseEntity.ok(contaService.listar());
     }
 
     @Override
-    public ResponseEntity<List<OrigemDTO>> getOrigens() {
+    public ResponseEntity<List<OrigemDTO>> listarOrigens() {
         return ResponseEntity.ok(contaService.listarOrigens());
     }
 
     @Override
-    public ResponseEntity<ContaDTO> postConta(SalvarContaDTO salvarContaDTO) {
+    public ResponseEntity<ContaDTO> salvarConta(SalvarContaDTO salvarContaDTO) {
         return ResponseEntity.status(HttpStatus.CREATED).body(contaService.salvar(salvarContaDTO));
     }
 
     @Override
-    public ResponseEntity<ContaDTO> putConta(UUID id, SalvarContaDTO salvarContaDTO) {
+    public ResponseEntity<ContaDTO> atualizarConta(UUID id, SalvarContaDTO salvarContaDTO) {
         return ResponseEntity.ok(contaService.atualizar(id, salvarContaDTO));
     }
 
     @Override
-    public ResponseEntity<Void> deleteConta(UUID id) {
+    public ResponseEntity<Void> deletarConta(UUID id) {
         contaService.deletar(id);
         return ResponseEntity.noContent().build();
     }

@@ -41,7 +41,7 @@ public interface PrevisaoDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @GetMapping
-    ResponseEntity<PrevisaoDTO> getPrevisao(
+    ResponseEntity<PrevisaoDTO> buscarPrevisao(
             @Parameter(description = "Quantidade de meses projetados, de 1 a 24; sem ele, 6", example = "6")
             @RequestParam(required = false) Integer meses);
 }

@@ -39,7 +39,7 @@ public interface InvestimentoDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @GetMapping
-    ResponseEntity<List<InvestimentoDTO>> getInvestimentos();
+    ResponseEntity<List<InvestimentoDTO>> listarInvestimentos();
 
     @Operation(
             summary = "Resumo consolidado da carteira",
@@ -63,8 +63,8 @@ public interface InvestimentoDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @GetMapping("/portfolio")
-    ResponseEntity<CarteiraDTO> getCarteira();
+    @GetMapping("/carteira")
+    ResponseEntity<CarteiraDTO> buscarCarteira();
 
     @Operation(
             summary = "Cadastra um investimento",
@@ -89,7 +89,7 @@ public interface InvestimentoDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @PostMapping
-    ResponseEntity<InvestimentoDTO> postInvestimento(@RequestBody @Valid SalvarInvestimentoDTO salvarInvestimentoDTO);
+    ResponseEntity<InvestimentoDTO> salvarInvestimento(@RequestBody @Valid SalvarInvestimentoDTO salvarInvestimentoDTO);
 
     @Operation(
             summary = "Atualiza um investimento",
@@ -116,7 +116,7 @@ public interface InvestimentoDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @PutMapping("/{id}")
-    ResponseEntity<InvestimentoDTO> putInvestimento(
+    ResponseEntity<InvestimentoDTO> atualizarInvestimento(
             @Parameter(description = "Id do investimento")
             @PathVariable UUID id,
 
@@ -147,7 +147,7 @@ public interface InvestimentoDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @DeleteMapping("/{id}")
-    ResponseEntity<Void> deleteInvestimento(
+    ResponseEntity<Void> deletarInvestimento(
             @Parameter(description = "Id do investimento")
             @PathVariable UUID id);
 }
