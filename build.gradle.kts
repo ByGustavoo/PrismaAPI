@@ -10,7 +10,7 @@ group = "br.com.prismaapi"
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(25)
     }
 }
 
@@ -85,6 +85,9 @@ tasks.named<JacocoReport>("jacocoTestReport") {
                 fileTree(it) {
                     exclude(
                         "**/config/**",
+                        "**/enums/**",
+                        "**/model/**",
+                        "**/exceptions/**",
                         "**/PrismaAPIApplication.class"
                     )
                 }

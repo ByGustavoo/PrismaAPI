@@ -1,0 +1,36 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do Código
+        uses: actions/checkout@v4
+
+      - name: Extrair Versão do Projeto no build.gradle.kts
+        id: version
+        run: |
+          VERSION=$(grep '^version' build.gradle.kts | sed 's/version = "\(.*\)"/\1/')
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Login no Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build da Imagem
+        run: docker build -t ${{ secrets.DOCKER_IMAGE }}:${{ env.VERSION }} .
+
+      - name: Push da Imagem
+        run: docker push ${{ secrets.DOCKER_IMAGE }}:${{ env.VERSION }}
+
+      - name: Push da Tag Latest
+        run: |
+          docker tag ${{ secrets.DOCKER_IMAGE }}:${{ env.VERSION }} ${{ secrets.DOCKER_IMAGE }}:latest
+          docker push ${{ secrets.DOCKER_IMAGE }}:latest
