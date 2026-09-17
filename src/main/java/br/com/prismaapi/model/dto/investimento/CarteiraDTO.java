@@ -21,7 +21,7 @@ public record CarteiraDTO(
 
         List<AlocacaoDTO> alocacao,
 
-        List<EvolucaoCarteiraDTO> historico,
+        List<PontoEvolucaoDTO> historico,
 
         List<PosicaoDTO> posicoes
 

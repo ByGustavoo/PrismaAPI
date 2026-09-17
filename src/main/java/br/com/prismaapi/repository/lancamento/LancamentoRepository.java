@@ -143,10 +143,27 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, UUID>, J
               AND conta.incluirNoTotal = TRUE
               AND lancamento.data > :inicio
               AND lancamento.data <= :fim
+              AND (lancamento.situacao = br.com.prismaapi.enums.SituacaoLancamento.PAGO OR lancamento.data > :hoje)
             GROUP BY lancamento.data, lancamento.tipo
             """)
     List<MovimentoDiarioProjecao> agruparMovimentoDoTotalPorDia(@Param("inicio") LocalDate inicio,
-                                                                @Param("fim") LocalDate fim);
+                                                                @Param("fim") LocalDate fim,
+                                                                @Param("hoje") LocalDate hoje);
+
+    @Query("""
+            SELECT new br.com.prismaapi.model.dto.dashboard.projection.ValorPorDataProjecao(
+                       lancamento.data,
+                       SUM(lancamento.valor))
+            FROM Lancamento lancamento
+            JOIN lancamento.cartao cartao
+            WHERE lancamento.tipo = br.com.prismaapi.enums.TipoLancamento.DESPESA
+              AND cartao.tipo = br.com.prismaapi.enums.TipoCartao.CREDITO
+              AND lancamento.data > :inicio
+              AND lancamento.data <= :fim
+            GROUP BY lancamento.data
+            """)
+    List<ValorPorDataProjecao> agruparDespesasNoCreditoPorDia(@Param("inicio") LocalDate inicio,
+                                                              @Param("fim") LocalDate fim);
 
     @Query("""
             SELECT new br.com.prismaapi.model.dto.dashboard.projection.ValorPorDataProjecao(
@@ -161,10 +178,12 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, UUID>, J
               AND (destino.situacao <> br.com.prismaapi.enums.Situacao.ATIVO OR destino.incluirNoTotal = FALSE)
               AND lancamento.data > :inicio
               AND lancamento.data <= :fim
+              AND (lancamento.situacao = br.com.prismaapi.enums.SituacaoLancamento.PAGO OR lancamento.data > :hoje)
             GROUP BY lancamento.data
             """)
     List<ValorPorDataProjecao> agruparTransferenciasQueSaemDoTotal(@Param("inicio") LocalDate inicio,
-                                                                   @Param("fim") LocalDate fim);
+                                                                   @Param("fim") LocalDate fim,
+                                                                   @Param("hoje") LocalDate hoje);
 
     @Query("""
             SELECT new br.com.prismaapi.model.dto.dashboard.projection.ValorPorDataProjecao(
@@ -179,10 +198,12 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, UUID>, J
               AND (origem.situacao <> br.com.prismaapi.enums.Situacao.ATIVO OR origem.incluirNoTotal = FALSE)
               AND lancamento.data > :inicio
               AND lancamento.data <= :fim
+              AND (lancamento.situacao = br.com.prismaapi.enums.SituacaoLancamento.PAGO OR lancamento.data > :hoje)
             GROUP BY lancamento.data
             """)
     List<ValorPorDataProjecao> agruparTransferenciasQueEntramNoTotal(@Param("inicio") LocalDate inicio,
-                                                                     @Param("fim") LocalDate fim);
+                                                                     @Param("fim") LocalDate fim,
+                                                                     @Param("hoje") LocalDate hoje);
 
     @Query("""
             SELECT SUM(lancamento.valor)
@@ -239,8 +260,37 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, UUID>, J
             SELECT lancamento
             FROM Lancamento lancamento
             LEFT JOIN FETCH lancamento.categoria
+            LEFT JOIN FETCH lancamento.conta
+            LEFT JOIN FETCH lancamento.cartao
+            LEFT JOIN FETCH lancamento.contaDestino
             WHERE lancamento.situacao <> br.com.prismaapi.enums.SituacaoLancamento.PAGO
               AND lancamento.data <= :limite
             """)
     List<Lancamento> buscarNaoPagosAte(@Param("limite") LocalDate limite);
+
+    @Query("""
+            SELECT lancamento
+            FROM Lancamento lancamento
+            LEFT JOIN FETCH lancamento.categoria
+            LEFT JOIN FETCH lancamento.conta
+            LEFT JOIN FETCH lancamento.cartao
+            LEFT JOIN FETCH lancamento.contaDestino
+            WHERE lancamento.data BETWEEN :inicio AND :fim
+            """)
+    List<Lancamento> buscarComOrigemEntre(@Param("inicio") LocalDate inicio,
+                                          @Param("fim") LocalDate fim);
+
+    @Query("""
+            SELECT lancamento
+            FROM Lancamento lancamento
+            LEFT JOIN FETCH lancamento.categoria
+            LEFT JOIN FETCH lancamento.conta origem
+            LEFT JOIN FETCH lancamento.contaDestino destino
+            WHERE lancamento.situacao = br.com.prismaapi.enums.SituacaoLancamento.PAGO
+              AND (origem.id IN :idsContas OR destino.id IN :idsContas)
+              AND lancamento.data BETWEEN :inicio AND :fim
+            """)
+    List<Lancamento> buscarPagosDasContas(@Param("idsContas") List<UUID> idsContas,
+                                          @Param("inicio") LocalDate inicio,
+                                          @Param("fim") LocalDate fim);
 }

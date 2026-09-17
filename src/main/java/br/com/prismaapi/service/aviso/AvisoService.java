@@ -1,13 +1,18 @@
 package br.com.prismaapi.service.aviso;
 
 import br.com.prismaapi.enums.SeveridadeAviso;
+import br.com.prismaapi.enums.SituacaoDespesaRecorrente;
 import br.com.prismaapi.enums.SituacaoFatura;
 import br.com.prismaapi.enums.SituacaoLancamento;
 import br.com.prismaapi.enums.TipoAviso;
 import br.com.prismaapi.enums.TipoCartao;
+import br.com.prismaapi.enums.TipoLancamento;
 import br.com.prismaapi.model.dto.aviso.AvisoDTO;
 import br.com.prismaapi.model.dto.cartao.CartaoDTO;
+import br.com.prismaapi.model.dto.fatura.FaturaCartaoDTO;
+import br.com.prismaapi.model.entity.despesarecorrente.DespesaRecorrente;
 import br.com.prismaapi.model.entity.lancamento.Lancamento;
+import br.com.prismaapi.repository.despesarecorrente.DespesaRecorrenteRepository;
 import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import br.com.prismaapi.service.cartao.CartaoService;
 import br.com.prismaapi.service.fatura.FaturaService;
@@ -19,12 +24,16 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.Collator;
+import java.text.NumberFormat;
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -35,9 +44,11 @@ public class AvisoService {
     private final FaturaService faturaService;
     private static final int DIAS_DE_ANTECEDENCIA = 15;
     private final LancamentoRepository lancamentoRepository;
+    private static final Locale PT_BR = Locale.forLanguageTag("pt-BR");
+    private final DespesaRecorrenteRepository despesaRecorrenteRepository;
     private static final BigDecimal LIMITE_CRITICO = new BigDecimal("0.9");
     private static final BigDecimal LIMITE_EM_ATENCAO = new BigDecimal("0.7");
-    private static final Collator ORDEM_ALFABETICA = Collator.getInstance(Locale.forLanguageTag("pt-BR"));
+    private static final Collator ORDEM_ALFABETICA = Collator.getInstance(PT_BR);
 
     @Transactional(readOnly = true)
     public List<AvisoDTO> listar() {
@@ -47,6 +58,7 @@ public class AvisoService {
 
         avisos.addAll(faturasVencendo(hoje));
         avisos.addAll(lancamentosEmAberto(hoje));
+        avisos.addAll(recorrentesVencendo(hoje));
         avisos.addAll(cartoesPertoDoLimite(hoje));
 
         return avisos.stream()
@@ -60,14 +72,15 @@ public class AvisoService {
         return faturaService.listar(null)
                 .stream()
                 .filter(fatura -> fatura.situacao() != SituacaoFatura.PAGA && fatura.situacao() != SituacaoFatura.FUTURA)
+                .filter(fatura -> fatura.total().signum() > 0)
                 .filter(fatura -> !fatura.dataVencimento().isAfter(hoje.plusDays(DIAS_DE_ANTECEDENCIA)))
                 .filter(fatura -> !fatura.dataVencimento().isBefore(hoje.minusDays(DIAS_DE_ANTECEDENCIA)))
                 .map(fatura -> new AvisoDTO(
                         "aviso-fatura-" + fatura.id(),
                         TipoAviso.FATURA_VENCENDO,
                         severidadePorPrazo(hoje, fatura.dataVencimento()),
-                        "Fatura " + fatura.nomeCartao(),
-                        "Fatura " + prazo(hoje, fatura.dataVencimento()),
+                        "Fatura do " + fatura.nomeCartao(),
+                        descricaoDaFatura(fatura, hoje),
                         fatura.dataVencimento(),
                         fatura.total(),
                         "/faturas"))
@@ -78,6 +91,18 @@ public class AvisoService {
         return lancamentoRepository.buscarNaoPagosAte(hoje.plusDays(DIAS_DE_ANTECEDENCIA))
                 .stream()
                 .map(lancamento -> avisoDoLancamento(lancamento, hoje))
+                .toList();
+    }
+
+    private List<AvisoDTO> recorrentesVencendo(LocalDate hoje) {
+        var limite = hoje.plusDays(7);
+        var lancamentos = lancamentoRepository.buscarComOrigemEntre(YearMonth.from(hoje).atDay(1), YearMonth.from(limite).atEndOfMonth());
+
+        return despesaRecorrenteRepository.findBySituacao(SituacaoDespesaRecorrente.ATIVO)
+                .stream()
+                .map(despesa -> avisoDaRecorrente(despesa, proximoVencimento(despesa, hoje), lancamentos, hoje))
+                .flatMap(Optional::stream)
+                .filter(aviso -> !aviso.data().isAfter(limite))
                 .toList();
     }
 
@@ -92,27 +117,90 @@ public class AvisoService {
                         TipoAviso.LIMITE_CARTAO,
                         cartao.limiteComprometido().compareTo(cartao.limiteCredito().multiply(LIMITE_CRITICO)) >= 0 ? SeveridadeAviso.CRITICO : SeveridadeAviso.ATENCAO,
                         cartao.nome() + " perto do limite",
-                        percentualUtilizado(cartao) + "% do limite utilizado",
+                        descricaoDoLimite(cartao),
                         hoje,
-                        cartao.limiteCredito().subtract(cartao.limiteComprometido()),
+                        null,
                         "/cartoes"))
                 .toList();
     }
 
+    private static Optional<AvisoDTO> avisoDaRecorrente(DespesaRecorrente despesa, LocalDate vencimento, List<Lancamento> lancamentos, LocalDate hoje) {
+        var descricao = normalizar(despesa.getDescricao());
+        var jaLancada = lancamentos.stream()
+                .filter(lancamento -> lancamento.getTipo() == TipoLancamento.DESPESA)
+                .filter(lancamento -> YearMonth.from(lancamento.getData()).equals(YearMonth.from(vencimento)))
+                .anyMatch(lancamento -> normalizar(lancamento.getDescricao()).equals(descricao));
+
+        if (jaLancada) return Optional.empty();
+
+        return Optional.of(new AvisoDTO(
+                "aviso-recorrente-" + despesa.getId(),
+                TipoAviso.RECORRENTE_VENCENDO,
+                severidadePorPrazo(hoje, vencimento),
+                despesa.getDescricao(),
+                "Despesa recorrente · " + vencimentoEm(hoje, vencimento),
+                vencimento,
+                despesa.getValor(),
+                "/planejamento/recorrentes"));
+    }
+
     private static AvisoDTO avisoDoLancamento(Lancamento lancamento, LocalDate hoje) {
-        var pendente = lancamento.getSituacao() == SituacaoLancamento.PENDENTE;
-        var prazo = prazo(hoje, lancamento.getData());
-        var classificacao = lancamento.getCategoria() != null ? lancamento.getCategoria().getNome() : "Transferência";
+        var data = lancamento.getData();
+        var categoria = lancamento.getCategoria() != null ? lancamento.getCategoria().getNome() : null;
+
+        var tipo = switch (lancamento.getTipo()) {
+            case RECEITA -> TipoAviso.RECEITA_PREVISTA;
+            case TRANSFERENCIA -> TipoAviso.LANCAMENTO_AGENDADO;
+            case DESPESA -> lancamento.getSituacao() == SituacaoLancamento.PENDENTE ? TipoAviso.CONTA_VENCENDO : TipoAviso.LANCAMENTO_AGENDADO;
+        };
+
+        var descricao = switch (lancamento.getTipo()) {
+            case RECEITA -> categoria + " · a receber " + prazo(hoje, data);
+            case TRANSFERENCIA -> "Transferência para " + lancamento.getContaDestino().getNome() + " · " + prazo(hoje, data);
+            case DESPESA -> tipo == TipoAviso.CONTA_VENCENDO
+                    ? categoria + " · " + vencimentoEm(hoje, data)
+                    : categoria + " · débito agendado " + prazo(hoje, data);
+        };
 
         return new AvisoDTO(
                 "aviso-lancamento-" + lancamento.getId(),
-                pendente ? TipoAviso.CONTA_VENCENDO : TipoAviso.LANCAMENTO_AGENDADO,
-                pendente ? severidadePorPrazo(hoje, lancamento.getData()) : SeveridadeAviso.INFO,
+                tipo,
+                tipo == TipoAviso.CONTA_VENCENDO ? severidadePorPrazo(hoje, data) : SeveridadeAviso.INFO,
                 lancamento.getDescricao(),
-                pendente ? classificacao + " · " + prazo : "Agendado · " + prazo,
-                lancamento.getData(),
+                descricao,
+                data,
                 lancamento.getValor(),
                 "/lancamentos");
+    }
+
+    private static String descricaoDaFatura(FaturaCartaoDTO fatura, LocalDate hoje) {
+        return switch (fatura.situacao()) {
+            case ABERTA -> "Aberta até " + fatura.dataFechamento().format(DateTimeFormatter.ofPattern("dd/MM")) + " · " + vencimentoEm(hoje, fatura.dataVencimento());
+            case VENCIDA -> "Sem pagamento registrado · " + vencimentoEm(hoje, fatura.dataVencimento());
+            default -> "Fechada · " + vencimentoEm(hoje, fatura.dataVencimento());
+        };
+    }
+
+    private static String descricaoDoLimite(CartaoDTO cartao) {
+        var livre = cartao.limiteCredito().subtract(cartao.limiteComprometido());
+        var reais = NumberFormat.getIntegerInstance(PT_BR);
+        reais.setRoundingMode(RoundingMode.HALF_UP);
+
+        var folga = livre.signum() >= 0
+                ? "R$ " + reais.format(livre) + " livres"
+                : "R$ " + reais.format(livre.negate()) + " acima do limite";
+
+        return percentualUtilizado(cartao) + "% do limite em uso, com as parcelas futuras · " + folga;
+    }
+
+    private static LocalDate proximoVencimento(DespesaRecorrente despesa, LocalDate hoje) {
+        var vencimento = despesa.getProximoVencimento();
+
+        while (vencimento.isBefore(hoje)) {
+            vencimento = despesa.getFrequencia().proximaOcorrencia(vencimento);
+        }
+
+        return vencimento;
     }
 
     private static BigDecimal percentualUtilizado(CartaoDTO cartao) {
@@ -132,10 +220,18 @@ public class AvisoService {
     private static String prazo(LocalDate hoje, LocalDate data) {
         var dias = ChronoUnit.DAYS.between(hoje, data);
 
-        if (dias < 0) return "venceu há %d %s".formatted(-dias, dias == -1 ? "dia" : "dias");
-        if (dias == 0) return "vence hoje";
-        if (dias == 1) return "vence amanhã";
+        if (dias < 0) return "há %d %s".formatted(-dias, dias == -1 ? "dia" : "dias");
+        if (dias == 0) return "hoje";
+        if (dias == 1) return "amanhã";
 
-        return "vence em %d dias".formatted(dias);
+        return "em %d dias".formatted(dias);
+    }
+
+    private static String vencimentoEm(LocalDate hoje, LocalDate data) {
+        return data.isBefore(hoje) ? "venceu " + prazo(hoje, data) : "vence " + prazo(hoje, data);
+    }
+
+    private static String normalizar(String descricao) {
+        return descricao.strip().toLowerCase(Locale.ROOT);
     }
 }

@@ -1,8 +1,6 @@
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
 CREATE EXTENSION IF NOT EXISTS unaccent SCHEMA public;
 
-CREATE TABLE IF NOT EXISTS categorias (
+CREATE TABLE IF NOT EXISTS prisma.categorias (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     nome VARCHAR(60) NOT NULL,
     tipo VARCHAR(10) NOT NULL,
@@ -11,13 +9,13 @@ CREATE TABLE IF NOT EXISTS categorias (
     data_atualizacao TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT categorias_nome_tamanho_minimo CHECK (char_length(trim(nome)) >= 2),
     CONSTRAINT categorias_tipo_check CHECK (tipo IN ('RECEITA', 'DESPESA')),
-    CONSTRAINT categorias_token_cor_check CHECK (token_cor BETWEEN 1 AND 6),
+    CONSTRAINT categorias_token_cor_check CHECK (token_cor BETWEEN 1 AND 16),
     CONSTRAINT categorias_nome_tipo_unico UNIQUE (nome, tipo)
 );
 
-CREATE INDEX IF NOT EXISTS categorias_tipo_idx ON categorias (tipo);
+CREATE INDEX IF NOT EXISTS categorias_tipo_idx ON prisma.categorias (tipo);
 
-CREATE TABLE IF NOT EXISTS contas (
+CREATE TABLE IF NOT EXISTS prisma.contas (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     nome VARCHAR(80) NOT NULL,
     instituicao VARCHAR(80) NOT NULL,
@@ -29,14 +27,14 @@ CREATE TABLE IF NOT EXISTS contas (
     data_atualizacao TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT contas_nome_tamanho_minimo CHECK (char_length(trim(nome)) >= 2),
     CONSTRAINT contas_instituicao_tamanho_minimo CHECK (char_length(trim(instituicao)) >= 2),
-    CONSTRAINT contas_tipo_check CHECK (tipo IN ('CORRENTE', 'SALARIO', 'EMERGENCIA', 'OUTRA')),
+    CONSTRAINT contas_tipo_check CHECK (tipo IN ('CORRENTE', 'SALARIO', 'EMERGENCIA', 'POUPANCA', 'PREVIDENCIA', 'OUTRA')),
     CONSTRAINT contas_situacao_check CHECK (situacao IN ('ATIVO', 'INATIVO')),
     CONSTRAINT contas_nome_instituicao_unico UNIQUE (nome, instituicao)
 );
 
-CREATE INDEX IF NOT EXISTS contas_total_idx ON contas (situacao, incluir_no_total);
+CREATE INDEX IF NOT EXISTS contas_total_idx ON prisma.contas (situacao, incluir_no_total);
 
-CREATE TABLE IF NOT EXISTS cartoes (
+CREATE TABLE IF NOT EXISTS prisma.cartoes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     nome VARCHAR(80) NOT NULL,
     instituicao VARCHAR(80) NOT NULL,
@@ -51,7 +49,7 @@ CREATE TABLE IF NOT EXISTS cartoes (
     saldo NUMERIC(14,2),
     data_criacao TIMESTAMPTZ NOT NULL DEFAULT now(),
     data_atualizacao TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT cartoes_conta_fk FOREIGN KEY (id_conta) REFERENCES contas(id) ON DELETE RESTRICT,
+    CONSTRAINT cartoes_conta_fk FOREIGN KEY (id_conta) REFERENCES prisma.contas(id) ON DELETE RESTRICT,
     CONSTRAINT cartoes_nome_tamanho_minimo CHECK (char_length(trim(nome)) >= 2),
     CONSTRAINT cartoes_instituicao_tamanho_minimo CHECK (char_length(trim(instituicao)) >= 2),
     CONSTRAINT cartoes_tipo_check CHECK (tipo IN ('CREDITO', 'DEBITO', 'VALE_ALIMENTACAO', 'VALE_REFEICAO')),
@@ -77,11 +75,11 @@ CREATE TABLE IF NOT EXISTS cartoes (
     )
 );
 
-CREATE INDEX IF NOT EXISTS cartoes_tipo_situacao_idx ON cartoes (tipo, situacao);
+CREATE INDEX IF NOT EXISTS cartoes_tipo_situacao_idx ON prisma.cartoes (tipo, situacao);
 
-CREATE INDEX IF NOT EXISTS cartoes_conta_idx ON cartoes (id_conta);
+CREATE INDEX IF NOT EXISTS cartoes_conta_idx ON prisma.cartoes (id_conta);
 
-CREATE TABLE IF NOT EXISTS lancamentos (
+CREATE TABLE IF NOT EXISTS prisma.lancamentos (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     descricao VARCHAR(160) NOT NULL,
     valor NUMERIC(14,2) NOT NULL,
@@ -96,10 +94,10 @@ CREATE TABLE IF NOT EXISTS lancamentos (
     observacoes TEXT,
     data_criacao TIMESTAMPTZ NOT NULL DEFAULT now(),
     data_atualizacao TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT lancamentos_categoria_fk FOREIGN KEY (id_categoria) REFERENCES categorias(id) ON DELETE RESTRICT,
-    CONSTRAINT lancamentos_conta_fk FOREIGN KEY (id_conta) REFERENCES contas(id) ON DELETE RESTRICT,
-    CONSTRAINT lancamentos_cartao_fk FOREIGN KEY (id_cartao) REFERENCES cartoes(id) ON DELETE RESTRICT,
-    CONSTRAINT lancamentos_conta_destino_fk FOREIGN KEY (id_conta_destino) REFERENCES contas(id) ON DELETE RESTRICT,
+    CONSTRAINT lancamentos_categoria_fk FOREIGN KEY (id_categoria) REFERENCES prisma.categorias(id) ON DELETE RESTRICT,
+    CONSTRAINT lancamentos_conta_fk FOREIGN KEY (id_conta) REFERENCES prisma.contas(id) ON DELETE RESTRICT,
+    CONSTRAINT lancamentos_cartao_fk FOREIGN KEY (id_cartao) REFERENCES prisma.cartoes(id) ON DELETE RESTRICT,
+    CONSTRAINT lancamentos_conta_destino_fk FOREIGN KEY (id_conta_destino) REFERENCES prisma.contas(id) ON DELETE RESTRICT,
     CONSTRAINT lancamentos_descricao_tamanho_minimo CHECK (char_length(trim(descricao)) >= 2),
     CONSTRAINT lancamentos_valor_positivo CHECK (valor > 0),
     CONSTRAINT lancamentos_tipo_check CHECK (tipo IN ('RECEITA', 'DESPESA', 'TRANSFERENCIA')),
@@ -120,23 +118,23 @@ CREATE TABLE IF NOT EXISTS lancamentos (
     )
 );
 
-CREATE INDEX IF NOT EXISTS lancamentos_data_idx ON lancamentos (data DESC);
+CREATE INDEX IF NOT EXISTS lancamentos_data_idx ON prisma.lancamentos (data DESC);
 
-CREATE INDEX IF NOT EXISTS lancamentos_tipo_data_idx ON lancamentos (tipo, data DESC);
+CREATE INDEX IF NOT EXISTS lancamentos_tipo_data_idx ON prisma.lancamentos (tipo, data DESC);
 
 CREATE INDEX IF NOT EXISTS lancamentos_categoria_data_idx
-    ON lancamentos (id_categoria, data DESC) WHERE id_categoria IS NOT NULL;
+    ON prisma.lancamentos (id_categoria, data DESC) WHERE id_categoria IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS lancamentos_conta_data_idx
-    ON lancamentos (id_conta, data DESC) WHERE id_conta IS NOT NULL;
+    ON prisma.lancamentos (id_conta, data DESC) WHERE id_conta IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS lancamentos_cartao_data_idx
-    ON lancamentos (id_cartao, data DESC) WHERE id_cartao IS NOT NULL;
+    ON prisma.lancamentos (id_cartao, data DESC) WHERE id_cartao IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS lancamentos_conta_destino_data_idx
-    ON lancamentos (id_conta_destino, data DESC) WHERE id_conta_destino IS NOT NULL;
+    ON prisma.lancamentos (id_conta_destino, data DESC) WHERE id_conta_destino IS NOT NULL;
 
-CREATE TABLE IF NOT EXISTS compras_parceladas (
+CREATE TABLE IF NOT EXISTS prisma.compras_parceladas (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     descricao VARCHAR(160) NOT NULL,
     valor_total NUMERIC(14,2) NOT NULL,
@@ -148,19 +146,19 @@ CREATE TABLE IF NOT EXISTS compras_parceladas (
     observacoes TEXT,
     data_criacao TIMESTAMPTZ NOT NULL DEFAULT now(),
     data_atualizacao TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT compras_parceladas_cartao_fk FOREIGN KEY (id_cartao) REFERENCES cartoes(id) ON DELETE RESTRICT,
-    CONSTRAINT compras_parceladas_categoria_fk FOREIGN KEY (id_categoria) REFERENCES categorias(id) ON DELETE RESTRICT,
+    CONSTRAINT compras_parceladas_cartao_fk FOREIGN KEY (id_cartao) REFERENCES prisma.cartoes(id) ON DELETE RESTRICT,
+    CONSTRAINT compras_parceladas_categoria_fk FOREIGN KEY (id_categoria) REFERENCES prisma.categorias(id) ON DELETE RESTRICT,
     CONSTRAINT compras_parceladas_descricao_tamanho_minimo CHECK (char_length(trim(descricao)) >= 2),
     CONSTRAINT compras_parceladas_valor_total_positivo CHECK (valor_total > 0),
-    CONSTRAINT compras_parceladas_parcelas_check CHECK (parcelas BETWEEN 2 AND 48),
+    CONSTRAINT compras_parceladas_parcelas_check CHECK (parcelas BETWEEN 1 AND 48),
     CONSTRAINT compras_parceladas_primeiro_mes_check CHECK (date_trunc('month', primeiro_mes) = primeiro_mes)
 );
 
-CREATE INDEX IF NOT EXISTS compras_parceladas_cartao_mes_idx ON compras_parceladas (id_cartao, primeiro_mes);
+CREATE INDEX IF NOT EXISTS compras_parceladas_cartao_mes_idx ON prisma.compras_parceladas (id_cartao, primeiro_mes);
 
-CREATE INDEX IF NOT EXISTS compras_parceladas_categoria_idx ON compras_parceladas (id_categoria);
+CREATE INDEX IF NOT EXISTS compras_parceladas_categoria_idx ON prisma.compras_parceladas (id_categoria);
 
-CREATE TABLE IF NOT EXISTS investimentos (
+CREATE TABLE IF NOT EXISTS prisma.investimentos (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     nome VARCHAR(120) NOT NULL,
     classe_ativo VARCHAR(16) NOT NULL,
@@ -168,35 +166,59 @@ CREATE TABLE IF NOT EXISTS investimentos (
     aportado NUMERIC(14,2) NOT NULL,
     valor_atual NUMERIC(14,2) NOT NULL,
     data_inicio DATE NOT NULL,
+    data_ultima_movimentacao DATE NOT NULL,
     observacoes TEXT,
     data_criacao TIMESTAMPTZ NOT NULL DEFAULT now(),
     data_atualizacao TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT investimentos_nome_tamanho_minimo CHECK (char_length(trim(nome)) >= 2),
     CONSTRAINT investimentos_instituicao_tamanho_minimo CHECK (char_length(trim(instituicao)) >= 2),
     CONSTRAINT investimentos_classe_ativo_check CHECK (classe_ativo IN (
-        'RENDA_FIXA', 'CDB', 'TESOURO', 'ACOES', 'ETF', 'FUNDOS', 'CRIPTO', 'OUTROS'
+        'RENDA_FIXA', 'CDB', 'RDB', 'TESOURO', 'PREVIDENCIA', 'ACOES', 'ETF', 'FUNDOS', 'CRIPTO', 'OUTROS'
     )),
     CONSTRAINT investimentos_aportado_positivo CHECK (aportado > 0),
     CONSTRAINT investimentos_valor_atual_check CHECK (valor_atual >= 0),
     CONSTRAINT investimentos_data_inicio_nao_futura CHECK (data_inicio <= CURRENT_DATE)
 );
 
-CREATE INDEX IF NOT EXISTS investimentos_classe_ativo_idx ON investimentos (classe_ativo);
+CREATE INDEX IF NOT EXISTS investimentos_classe_ativo_idx ON prisma.investimentos (classe_ativo);
 
-CREATE INDEX IF NOT EXISTS investimentos_data_inicio_idx ON investimentos (data_inicio);
+CREATE INDEX IF NOT EXISTS investimentos_data_inicio_idx ON prisma.investimentos (data_inicio);
 
-CREATE TABLE IF NOT EXISTS orcamentos (
+CREATE TABLE IF NOT EXISTS prisma.movimentacoes_investimento (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_investimento UUID NOT NULL,
+    tipo VARCHAR(10) NOT NULL,
+    data DATE NOT NULL,
+    valor NUMERIC(14,2),
+    saldo_informado NUMERIC(14,2),
+    descricao VARCHAR(160),
+    data_criacao TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT movimentacoes_investimento_investimento_fk FOREIGN KEY (id_investimento) REFERENCES prisma.investimentos(id) ON DELETE CASCADE,
+    CONSTRAINT movimentacoes_investimento_tipo_check CHECK (tipo IN ('APORTE', 'RENDIMENTO')),
+    CONSTRAINT movimentacoes_investimento_data_nao_futura CHECK (data <= CURRENT_DATE),
+    CONSTRAINT movimentacoes_investimento_valores_por_tipo_check CHECK (
+        CASE tipo
+            WHEN 'APORTE' THEN valor IS NOT NULL AND valor > 0 AND saldo_informado IS NULL
+            ELSE saldo_informado IS NOT NULL AND saldo_informado >= 0 AND valor IS NULL
+        END
+    )
+);
+
+CREATE INDEX IF NOT EXISTS movimentacoes_investimento_ordem_idx
+    ON prisma.movimentacoes_investimento (id_investimento, data, data_criacao);
+
+CREATE TABLE IF NOT EXISTS prisma.orcamentos (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     id_categoria UUID NOT NULL,
     limite_mensal NUMERIC(14,2) NOT NULL,
     data_criacao TIMESTAMPTZ NOT NULL DEFAULT now(),
     data_atualizacao TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT orcamentos_categoria_fk FOREIGN KEY (id_categoria) REFERENCES categorias(id) ON DELETE RESTRICT,
+    CONSTRAINT orcamentos_categoria_fk FOREIGN KEY (id_categoria) REFERENCES prisma.categorias(id) ON DELETE RESTRICT,
     CONSTRAINT orcamentos_limite_mensal_positivo CHECK (limite_mensal > 0),
     CONSTRAINT orcamentos_categoria_unico UNIQUE (id_categoria)
 );
 
-CREATE TABLE IF NOT EXISTS despesas_recorrentes (
+CREATE TABLE IF NOT EXISTS prisma.despesas_recorrentes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     descricao VARCHAR(160) NOT NULL,
     valor NUMERIC(14,2) NOT NULL,
@@ -209,9 +231,9 @@ CREATE TABLE IF NOT EXISTS despesas_recorrentes (
     observacoes TEXT,
     data_criacao TIMESTAMPTZ NOT NULL DEFAULT now(),
     data_atualizacao TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT despesas_recorrentes_categoria_fk FOREIGN KEY (id_categoria) REFERENCES categorias(id) ON DELETE RESTRICT,
-    CONSTRAINT despesas_recorrentes_conta_fk FOREIGN KEY (id_conta) REFERENCES contas(id) ON DELETE RESTRICT,
-    CONSTRAINT despesas_recorrentes_cartao_fk FOREIGN KEY (id_cartao) REFERENCES cartoes(id) ON DELETE RESTRICT,
+    CONSTRAINT despesas_recorrentes_categoria_fk FOREIGN KEY (id_categoria) REFERENCES prisma.categorias(id) ON DELETE RESTRICT,
+    CONSTRAINT despesas_recorrentes_conta_fk FOREIGN KEY (id_conta) REFERENCES prisma.contas(id) ON DELETE RESTRICT,
+    CONSTRAINT despesas_recorrentes_cartao_fk FOREIGN KEY (id_cartao) REFERENCES prisma.cartoes(id) ON DELETE RESTRICT,
     CONSTRAINT despesas_recorrentes_descricao_tamanho_minimo CHECK (char_length(trim(descricao)) >= 2),
     CONSTRAINT despesas_recorrentes_valor_positivo CHECK (valor > 0),
     CONSTRAINT despesas_recorrentes_frequencia_check CHECK (frequencia IN (
@@ -222,15 +244,15 @@ CREATE TABLE IF NOT EXISTS despesas_recorrentes (
 );
 
 CREATE INDEX IF NOT EXISTS despesas_recorrentes_situacao_vencimento_idx
-    ON despesas_recorrentes (situacao, proximo_vencimento);
+    ON prisma.despesas_recorrentes (situacao, proximo_vencimento);
 
-CREATE INDEX IF NOT EXISTS despesas_recorrentes_categoria_idx ON despesas_recorrentes (id_categoria);
+CREATE INDEX IF NOT EXISTS despesas_recorrentes_categoria_idx ON prisma.despesas_recorrentes (id_categoria);
 
-CREATE INDEX IF NOT EXISTS despesas_recorrentes_conta_idx ON despesas_recorrentes (id_conta);
+CREATE INDEX IF NOT EXISTS despesas_recorrentes_conta_idx ON prisma.despesas_recorrentes (id_conta);
 
-CREATE INDEX IF NOT EXISTS despesas_recorrentes_cartao_idx ON despesas_recorrentes (id_cartao);
+CREATE INDEX IF NOT EXISTS despesas_recorrentes_cartao_idx ON prisma.despesas_recorrentes (id_cartao);
 
-CREATE TABLE IF NOT EXISTS metas (
+CREATE TABLE IF NOT EXISTS prisma.metas (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     nome VARCHAR(120) NOT NULL,
     url VARCHAR(2048),
@@ -245,19 +267,19 @@ CREATE TABLE IF NOT EXISTS metas (
     CONSTRAINT metas_url_imagem_check CHECK (url_imagem IS NULL OR url_imagem ~* '^https?://')
 );
 
-CREATE INDEX IF NOT EXISTS metas_situacao_idx ON metas (situacao);
+CREATE INDEX IF NOT EXISTS metas_situacao_idx ON prisma.metas (situacao);
 
-CREATE TABLE IF NOT EXISTS metas_precos (
+CREATE TABLE IF NOT EXISTS prisma.metas_precos (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     id_meta UUID NOT NULL,
     data DATE NOT NULL,
     preco NUMERIC(14,2) NOT NULL,
     observacao TEXT,
     data_criacao TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT metas_precos_meta_fk FOREIGN KEY (id_meta) REFERENCES metas(id) ON DELETE CASCADE,
+    CONSTRAINT metas_precos_meta_fk FOREIGN KEY (id_meta) REFERENCES prisma.metas(id) ON DELETE CASCADE,
     CONSTRAINT metas_precos_preco_positivo CHECK (preco > 0),
     CONSTRAINT metas_precos_data_nao_futura CHECK (data <= CURRENT_DATE),
     CONSTRAINT metas_precos_sem_duplicata UNIQUE (id_meta, data, preco)
 );
 
-CREATE INDEX IF NOT EXISTS metas_precos_meta_data_idx ON metas_precos (id_meta, data);
+CREATE INDEX IF NOT EXISTS metas_precos_meta_data_idx ON prisma.metas_precos (id_meta, data);

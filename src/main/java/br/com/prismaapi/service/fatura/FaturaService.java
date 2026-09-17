@@ -35,6 +35,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.NavigableMap;
 import java.util.TreeMap;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -139,12 +140,16 @@ public class FaturaService {
         return cronograma;
     }
 
-    public BigDecimal parcelasNoMes(List<ParcelaProjecao> parcelas, YearMonth mes) {
-        return parcelas.stream()
-                .filter(parcela -> !mes.isBefore(YearMonth.from(parcela.primeiroMes())))
-                .filter(parcela -> alcancaOMes(parcela.primeiroMes(), parcela.parcelas(), mes))
-                .map(parcela -> valorDaParcela(parcela.valorTotal(), parcela.parcelas(), YearMonth.from(parcela.primeiroMes()).until(mes, ChronoUnit.MONTHS)))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    @Transactional(readOnly = true)
+    public NavigableMap<LocalDate, BigDecimal> parcelasPorVencimento(LocalDate hoje) {
+        var parcelas = new TreeMap<LocalDate, BigDecimal>();
+
+        compraParceladaRepository.buscarComCartao()
+                .stream()
+                .flatMap(compra -> cronograma(compra, hoje).stream())
+                .forEach(parcela -> parcelas.merge(parcela.dataVencimento(), parcela.valor(), BigDecimal::add));
+
+        return parcelas;
     }
 
     private List<FaturaCartaoDTO> montarFaturas(List<Cartao> cartoes, LocalDate hoje) {

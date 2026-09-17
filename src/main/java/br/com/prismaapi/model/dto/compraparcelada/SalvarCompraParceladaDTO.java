@@ -28,8 +28,8 @@ public record SalvarCompraParceladaDTO(
         BigDecimal valorTotal,
 
         @NotNull(message = "O campo 'parcelas' é obrigatório!")
-        @Min(value = 2, message = "O campo 'parcelas' deve estar entre 2 e 48!")
-        @Max(value = 48, message = "O campo 'parcelas' deve estar entre 2 e 48!")
+        @Min(value = 1, message = "O campo 'parcelas' deve estar entre 1 e 48!")
+        @Max(value = 48, message = "O campo 'parcelas' deve estar entre 1 e 48!")
         Short parcelas,
 
         @NotNull(message = "O campo 'dataCompra' é obrigatório!")

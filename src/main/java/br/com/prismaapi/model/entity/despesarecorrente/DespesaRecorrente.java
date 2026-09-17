@@ -19,7 +19,7 @@ import java.util.UUID;
 @Getter
 @Setter
 @Entity
-@Table(name = "despesas_recorrentes", schema = "prismaapi")
+@Table(name = "despesas_recorrentes", schema = "prisma")
 public class DespesaRecorrente {
 
     @Id

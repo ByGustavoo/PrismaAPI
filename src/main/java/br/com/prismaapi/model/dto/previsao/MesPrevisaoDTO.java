@@ -22,7 +22,11 @@ public record MesPrevisaoDTO(
 
         BigDecimal variavel,
 
+        BigDecimal agendados,
+
         BigDecimal despesa,
+
+        BigDecimal aportes,
 
         BigDecimal resultado,
 

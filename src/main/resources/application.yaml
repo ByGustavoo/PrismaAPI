@@ -71,3 +71,6 @@ spring:
   config:
     activate:
       on-profile: test
+
+  flyway:
+    locations: classpath:db/migration,classpath:db/test

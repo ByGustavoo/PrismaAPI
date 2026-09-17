@@ -1,9 +1,11 @@
 package br.com.prismaapi.controller.conta;
 
 import br.com.prismaapi.model.dto.conta.ContaDTO;
+import br.com.prismaapi.model.dto.conta.EvolucaoContaDTO;
 import br.com.prismaapi.model.dto.conta.OrigemDTO;
 import br.com.prismaapi.model.dto.conta.SalvarContaDTO;
 import br.com.prismaapi.service.conta.ContaService;
+import br.com.prismaapi.service.conta.EvolucaoContaService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +21,7 @@ import java.util.UUID;
 public class ContaController implements ContaDocs {
 
     private final ContaService contaService;
+    private final EvolucaoContaService evolucaoContaService;
 
     @Override
     public ResponseEntity<List<ContaDTO>> listarContas() {
@@ -28,6 +31,16 @@ public class ContaController implements ContaDocs {
     @Override
     public ResponseEntity<List<OrigemDTO>> listarOrigens() {
         return ResponseEntity.ok(contaService.listarOrigens());
+    }
+
+    @Override
+    public ResponseEntity<List<EvolucaoContaDTO>> listarReservas() {
+        return ResponseEntity.ok(evolucaoContaService.listarReservas());
+    }
+
+    @Override
+    public ResponseEntity<EvolucaoContaDTO> buscarEvolucao(UUID id) {
+        return ResponseEntity.ok(evolucaoContaService.buscarEvolucao(id));
     }
 
     @Override

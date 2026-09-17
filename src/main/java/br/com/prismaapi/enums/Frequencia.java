@@ -30,4 +30,16 @@ public enum Frequencia {
             case ANUAL -> data.plusYears(1);
         };
     }
+
+    public LocalDate ocorrenciaAnterior(LocalDate data) {
+        return switch (this) {
+            case SEMANAL -> data.minusWeeks(1);
+            case QUINZENAL -> data.minusWeeks(2);
+            case MENSAL -> data.minusMonths(1);
+            case BIMESTRAL -> data.minusMonths(2);
+            case TRIMESTRAL -> data.minusMonths(3);
+            case SEMESTRAL -> data.minusMonths(6);
+            case ANUAL -> data.minusYears(1);
+        };
+    }
 }
