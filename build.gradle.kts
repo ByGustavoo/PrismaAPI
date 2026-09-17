@@ -19,7 +19,7 @@ springBoot {
     buildInfo {
         properties {
             time.set(instanteDoBuild.toString())
-            additional.put("data", DateTimeFormatter.ofPattern("dd/MM/uuuu - HH:mm:ss").withZone(ZoneId.systemDefault()).format(instanteDoBuild))
+            additional.put("data", DateTimeFormatter.ofPattern("dd/MM/uuuu - HH:mm:ss").withZone(ZoneId.of("America/Sao_Paulo")).format(instanteDoBuild))
         }
     }
 }

@@ -153,10 +153,12 @@ mudar um sem os outros quebra rotas, migrations ou logs:
 - `faturaAtual` do dashboard vem `null` quando nenhum cartão teve movimento no mês.
 - `GET /v1/sistema/versao` lê o `BuildProperties` gerado pelo `buildInfo()` do `build.gradle.kts`, que
   grava `build.time` já truncado em segundos e um `build.data` extra, a mesma data em
-  `dd/MM/uuuu - HH:mm:ss`. O `banner.txt` mostra essas duas linhas no start porque o
-  `spring.config.import` carrega o `build-info.properties` no Environment antes do banner — é a única
-  forma de o banner enxergar valores do build. Rodar a aplicação fora do Gradle, sem esse arquivo,
-  impede o contexto de subir e deixa os `${build.*}` do banner sem resolver.
+  `dd/MM/uuuu - HH:mm:ss` e sempre no fuso `America/Sao_Paulo` — não em `ZoneId.systemDefault()`,
+  porque o estágio `builder` do `Dockerfile` roda em UTC e a data saía três horas adiantada. O
+  `banner.txt` mostra essas duas linhas no start porque o `spring.config.import` carrega o
+  `build-info.properties` no Environment antes do banner — é a única forma de o banner enxergar
+  valores do build. Rodar a aplicação fora do Gradle, sem esse arquivo, impede o contexto de subir
+  e deixa os `${build.*}` do banner sem resolver.
 - O banner sai pelo `System.out`, que no Windows usa a página de código do console e corrompe os
   acentos — as linhas de log escapam disso porque o Log4j2 grava UTF-8 direto. Por isso o `bootRun`
   leva `-Dstdout.encoding=UTF-8` e `-Dstderr.encoding=UTF-8` nos `jvmArgs`, e o `ENTRYPOINT` do
