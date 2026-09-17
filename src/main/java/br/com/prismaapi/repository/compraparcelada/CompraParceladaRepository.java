@@ -55,4 +55,11 @@ public interface CompraParceladaRepository extends JpaRepository<CompraParcelada
             LEFT JOIN FETCH compra.categoria
             """)
     List<CompraParcelada> buscarComCartaoECategoria();
+
+    @Query("""
+            SELECT compra
+            FROM CompraParcelada compra
+            JOIN FETCH compra.cartao
+            """)
+    List<CompraParcelada> buscarComCartao();
 }

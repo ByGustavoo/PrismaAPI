@@ -27,6 +27,9 @@ public record InvestimentoDTO(
         @JsonFormat(pattern = "yyyy-MM-dd")
         LocalDate dataInicio,
 
+        @JsonFormat(pattern = "yyyy-MM-dd")
+        LocalDate dataAtualizacao,
+
         @JsonInclude(JsonInclude.Include.NON_NULL)
         String observacoes
 

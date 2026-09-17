@@ -552,6 +552,19 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(response);
     }
 
+    @ExceptionHandler(DataAnteriorAUltimaAtualizacaoException.class)
+    public ResponseEntity<ErrorResponseDTO> handleDataAnteriorAUltimaAtualizacaoException(DataAnteriorAUltimaAtualizacaoException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.UNPROCESSABLE_CONTENT.value(),
+                "Data Anterior à Última Atualização!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/data-anterior-a-ultima-atualizacao",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(response);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDTO> handleInternalServerErrorException(Exception ex, HttpServletRequest pHttpServletRequest) {
 

@@ -14,7 +14,7 @@ import java.util.UUID;
 @Getter
 @Setter
 @Entity
-@Table(name = "orcamentos", schema = "prismaapi")
+@Table(name = "orcamentos", schema = "prisma")
 public class Orcamento {
 
     @Id

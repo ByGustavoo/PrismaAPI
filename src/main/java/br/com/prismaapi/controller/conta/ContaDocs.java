@@ -2,6 +2,7 @@ package br.com.prismaapi.controller.conta;
 
 import br.com.prismaapi.exceptions.dto.ErrorResponseDTO;
 import br.com.prismaapi.model.dto.conta.ContaDTO;
+import br.com.prismaapi.model.dto.conta.EvolucaoContaDTO;
 import br.com.prismaapi.model.dto.conta.OrigemDTO;
 import br.com.prismaapi.model.dto.conta.SalvarContaDTO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -60,6 +61,62 @@ public interface ContaDocs {
     })
     @GetMapping("/origens")
     ResponseEntity<List<OrigemDTO>> listarOrigens();
+
+    @Operation(
+            summary = "Lista a evolução das contas de reserva",
+            description = """
+                    Retorna a evolução de cada conta de finalidade RESERVA (reserva de emergência, \
+                    poupança e previdência), ativas e inativas, na mesma ordem da listagem de contas.
+
+                    Cada item tem o mesmo formato da evolução de uma conta.""")
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Reservas retornadas com sucesso!"),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Erro interno do servidor!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
+    })
+    @GetMapping("/reservas")
+    ResponseEntity<List<EvolucaoContaDTO>> listarReservas();
+
+    @Operation(
+            summary = "Evolução de uma conta",
+            description = """
+                    Retorna a evolução da conta nos últimos doze meses. Não há cadastro próprio: ela sai \
+                    dos lançamentos pagos com data até hoje. Transferência recebida e receita viram \
+                    APORTE, receita na categoria Rendimentos vira RENDIMENTO, e transferência enviada ou \
+                    despesa paga pela conta vira RESGATE.
+
+                    O saldo inicial é o saldo de hoje menos o efeito dos lançamentos da janela, então a \
+                    conta sempre fecha: saldoInicial + aportes − resgates + rendimentos = saldoAtual. A \
+                    rentabilidade é a fração rendimentos ÷ (saldoInicial + aportes − resgates). A \
+                    evolução tem doze pontos, do mais antigo ao atual: valor é o saldo no fim do mês \
+                    (hoje, no corrente) e aportado é esse saldo sem os rendimentos. As movimentações vêm \
+                    da mais recente para a mais antiga, com valor sempre positivo e o saldo logo depois \
+                    de cada uma.""")
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Evolução retornada com sucesso!"),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Id inválido!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Conta não encontrada!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Erro interno do servidor!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
+    })
+    @GetMapping("/{id}/evolucao")
+    ResponseEntity<EvolucaoContaDTO> buscarEvolucao(
+            @Parameter(description = "Id da conta")
+            @PathVariable UUID id);
 
     @Operation(
             summary = "Cadastra uma conta",

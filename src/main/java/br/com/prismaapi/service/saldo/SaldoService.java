@@ -5,6 +5,7 @@ import br.com.prismaapi.model.dto.dashboard.LinhaDoSaldo;
 import br.com.prismaapi.model.dto.dashboard.projection.MovimentoDiarioProjecao;
 import br.com.prismaapi.repository.conta.ContaRepository;
 import br.com.prismaapi.repository.lancamento.LancamentoRepository;
+import br.com.prismaapi.service.fatura.FaturaService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +21,7 @@ import java.util.stream.Stream;
 @RequiredArgsConstructor
 public class SaldoService {
 
+    private final FaturaService faturaService;
     private final ContaRepository contaRepository;
     private final LancamentoRepository lancamentoRepository;
 
@@ -30,14 +32,21 @@ public class SaldoService {
 
         var movimentos = new TreeMap<LocalDate, BigDecimal>();
 
-        lancamentoRepository.agruparMovimentoDoTotalPorDia(inicio, fim)
+        lancamentoRepository.agruparMovimentoDoTotalPorDia(inicio, fim, hoje)
                 .forEach(movimento -> movimentos.merge(movimento.data(), comSinal(movimento), BigDecimal::add));
 
-        lancamentoRepository.agruparTransferenciasQueSaemDoTotal(inicio, fim)
+        lancamentoRepository.agruparDespesasNoCreditoPorDia(inicio, fim)
+                .forEach(despesa -> movimentos.merge(despesa.data(), despesa.valor().negate(), BigDecimal::add));
+
+        lancamentoRepository.agruparTransferenciasQueSaemDoTotal(inicio, fim, hoje)
                 .forEach(saida -> movimentos.merge(saida.data(), saida.valor().negate(), BigDecimal::add));
 
-        lancamentoRepository.agruparTransferenciasQueEntramNoTotal(inicio, fim)
+        lancamentoRepository.agruparTransferenciasQueEntramNoTotal(inicio, fim, hoje)
                 .forEach(entrada -> movimentos.merge(entrada.data(), entrada.valor(), BigDecimal::add));
+
+        faturaService.parcelasPorVencimento(hoje)
+                .subMap(inicio, false, fim, true)
+                .forEach((vencimento, valor) -> movimentos.merge(vencimento, valor.negate(), BigDecimal::add));
 
         var saldoDeHoje = contaRepository.somarSaldoDoTotal();
 

@@ -54,7 +54,9 @@ public interface CompraParceladaDocs {
             description = """
                     Cadastra a compra e devolve o registro salvo, sem o cronograma calculado. As parcelas \
                     não viram lançamentos: elas entram nas faturas, no limite comprometido do cartão e \
-                    no cronograma pelo cálculo, a partir do primeiro mês informado.
+                    no cronograma pelo cálculo, a partir do primeiro mês informado. Uma compra à vista \
+                    é uma compra de uma parcela: o cronograma tem uma linha e a compra entra inteira na \
+                    fatura do primeiro mês.
 
                     Só cartões de crédito aceitam compras parceladas. A categoria é opcional, mas, se \
                     vier, precisa existir. Descrição e observações são gravadas sem os espaços das pontas.""")

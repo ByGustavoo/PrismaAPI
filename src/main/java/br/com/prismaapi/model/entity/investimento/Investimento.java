@@ -15,7 +15,7 @@ import java.util.UUID;
 @Getter
 @Setter
 @Entity
-@Table(name = "investimentos", schema = "prismaapi")
+@Table(name = "investimentos", schema = "prisma")
 public class Investimento {
 
     @Id
@@ -40,6 +40,9 @@ public class Investimento {
 
     @Column(name = "data_inicio", nullable = false)
     private LocalDate dataInicio;
+
+    @Column(name = "data_ultima_movimentacao", nullable = false)
+    private LocalDate dataUltimaMovimentacao;
 
     @Column(columnDefinition = "TEXT")
     private String observacoes;

@@ -13,7 +13,7 @@ import java.util.UUID;
 @Getter
 @Setter
 @Entity
-@Table(name = "metas", schema = "prismaapi")
+@Table(name = "metas", schema = "prisma")
 public class Meta {
 
     @Id

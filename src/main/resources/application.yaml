@@ -23,9 +23,9 @@ spring:
 
   flyway:
     enabled: true
-    schema: prismaapi
+    schemas: prisma
+    default-schema: prisma
     baseline-on-migrate: true
-    default-schema: prismaapi
 
   web:
     error:
@@ -71,3 +71,6 @@ spring:
   config:
     activate:
       on-profile: test
+
+  flyway:
+    locations: classpath:db/migration,classpath:db/test

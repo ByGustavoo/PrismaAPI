@@ -14,7 +14,7 @@ import java.util.UUID;
 @Getter
 @Setter
 @Entity
-@Table(name = "metas_precos", schema = "prismaapi")
+@Table(name = "metas_precos", schema = "prisma")
 public class MetaPreco {
 
     @Id

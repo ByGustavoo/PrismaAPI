@@ -13,7 +13,7 @@ Backend / API — release: branch + Pull Request (`origin`: `ByGustavoo/PrismaAP
 
 ## Stack
 
-- Java 21 (toolchain declarada em `build.gradle.kts`)
+- Java 25 (toolchain declarada em `build.gradle.kts`)
 - Spring Boot 4.1.1, Gradle com Kotlin DSL
 - PostgreSQL + Flyway (`spring-boot-starter-flyway`, `flyway-database-postgresql`)
 - Spring Data JPA, Spring Validation, Spring Web MVC, Jackson 3 (`tools.jackson`)
@@ -42,6 +42,11 @@ src/main/resources/
   log4j2.xml       console em dev, arquivo rotativo em /app/logs em prod
   db/migration/    V1.0__CreateTables.sql (esquema) e V1.1__InsertCategorias.sql (catálogo de categorias)
 .run/              run configurations do IntelliJ (ignoradas pelo Git)
+src/test/java/br/com/prismaapi/
+  config/          AbstractTest, AbstractControllerTest e TestDataBaseConfig (datasource dos testes)
+  repository/      um pacote por repositório, espelhando o main: <Recurso>RepositoryTest
+src/test/resources/
+  db/test/         V1.2__PopularBanco.sql, dados de exemplo aplicados só no perfil test
 ```
 
 ## Comandos
@@ -67,8 +72,10 @@ relatório HTML em `build/reports/jacoco`.
   CORS aceita qualquer porta de `http://localhost` e `http://127.0.0.1`
 - `prod` — porta 9027, log em arquivo rotativo com retenção de 30 dias; CORS só na origem de
   `prismaapi.cors.origens-permitidas`
-- `test` — sem datasource; `DataBaseConfig` é `@Profile({"dev","prod"})`, então testes
-  não sobem o banco por essa via
+- `test` — só para `./gradlew test`. O datasource vem do `TestDataBaseConfig` (as mesmas variáveis
+  `DATABASE_*`, com padrão `localhost:5432/prisma`), e o Flyway lê `classpath:db/migration` e
+  `classpath:db/test`: a `V1.2__PopularBanco.sql` popula o banco com um ano de dados relativos à data em
+  que roda. Aponte as variáveis para um banco próprio, nunca para o de dev, que não conhece a `V1.2`
 - Variáveis obrigatórias em `dev` e `prod`: `DATABASE_IP`, `DATABASE_PORT`,
   `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD`. Sem elas a aplicação não sobe.
   As run configurations do IntelliJ já as definem apontando para um Postgres local.
@@ -109,15 +116,34 @@ mudar um sem os outros quebra rotas, migrations ou logs:
 - `settings.gradle.kts`: `rootProject.name = "PrismaAPI"`
 - `application.yaml`: `context-path: /PrismaAPI` (toda rota vive sob esse prefixo, ex.:
   Swagger UI em `http://localhost:9017/PrismaAPI/swagger-ui.html`),
-  `spring.application.name: prismaapi`, Flyway `schema` e `default-schema: prismaapi`
+  `spring.application.name: prismaapi`, Flyway `schemas` e `default-schema: prisma`
+- Entidades JPA: `@Table(..., schema = "prisma")`, o mesmo schema do Flyway
 - `log4j2.xml`: em `prod`, log rotativo em `/app/logs/PrismaAPI.log`
 - `build.gradle.kts`: o JaCoCo exclui `**/PrismaAPIApplication.class` e `**/config/**`
 
 ## Estado atual
 
 - Todos os endpoints do `API_CONTRACT.md` estão implementados, com o esquema em `V1.0` e o catálogo
-  fixo de categorias em `V1.1`. A migração de categorias usa `ON CONFLICT (nome, tipo) DO NOTHING`
-  para rodar sobre bancos que já tinham as categorias inseridas à mão.
+  fixo de 17 categorias em `V1.1` (`token_cor` de 1 a 16, sem cor repetida dentro do mesmo tipo). A
+  migração de categorias usa `ON CONFLICT (nome, tipo) DO UPDATE SET token_cor` para rodar sobre bancos
+  que já tinham as categorias inseridas à mão.
+- Só lançamento `PAGO` mexe em `contas.saldo`, na mesma transação: `POST` aplica o efeito, `PUT` desfaz
+  o antigo e aplica o novo, `DELETE` desfaz — cada passo só se o lançamento em questão é `PAGO`.
+  `PENDENTE` e `AGENDADO` não mexem, qualquer que seja a data, e lançamento em cartão não mexe em conta.
+  Como `PAGO` não aceita data futura, não há tarefa agendada.
+- A linha do saldo (`SaldoService`, usada por dashboard e relatórios) reconstrói o passado só com os
+  `PAGO` e projeta o futuro com os agendados; desconta despesa em cartão de crédito na data da compra e
+  cada parcela na data de vencimento da fatura em que cai.
+- O resto do mês da previsão soma os lançamentos não pagos até o fim do mês, inclusive os vencidos.
+- `TipoConta` define a `FinalidadeConta`: `EMERGENCIA`, `POUPANCA` e `PREVIDENCIA` são `RESERVA`. A
+  evolução de conta (`EvolucaoContaService`) não tem tabela: sai dos lançamentos `PAGO` da janela de doze
+  meses, e o saldo inicial é o saldo de hoje menos o efeito deles.
+- Investimento tem série em `movimentacoes_investimento` (`APORTE` soma valor, `RENDIMENTO` guarda o
+  saldo informado). `aportado`, `valor_atual`, `data_inicio` e `data_ultima_movimentacao` de
+  `investimentos` são o resumo dessa série, regravado a cada movimentação; o `PUT` não mexe em valores.
+- `PrevisaoService` projeta o resto do mês corrente e os meses cheios a partir das médias dos três meses
+  fechados, contando recorrentes para trás e para frente de `proximoVencimento`
+  (`Frequencia.ocorrenciaAnterior`).
 - Regras de lançamento no `LancamentoService`: categoria do lado do lançamento, forma de pagamento
   compatível com a origem (cartão exige `CARTAO_CREDITO`, conta recusa), cartão de débito não é
   origem e `PAGO` não pode ter data futura. Compra parcelada recusa categoria de receita e primeira
@@ -125,6 +151,6 @@ mudar um sem os outros quebra rotas, migrations ou logs:
 - `DespesaRecorrenteService` devolve `proximoVencimento` avançado pela frequência até hoje
   (`Frequencia.proximaOcorrencia`, a mesma conta da previsão); o banco guarda a data informada.
 - `faturaAtual` do dashboard vem `null` quando nenhum cartão teve movimento no mês.
-- Não há testes. Um teste de contexto só passa se houver DataSource — `DataBaseConfig` é
-  `@Profile({"dev","prod"})`, então o perfil `test` precisará de um datasource próprio
-  (Testcontainers ou H2).
+- Os testes cobrem só os repositórios: um teste por método próprio, com `assertDoesNotThrow`, rodando
+  sobre o banco populado pela `V1.2`. Eles pegaram a falta da extensão `unaccent`, usada pelas buscas
+  de lançamentos e metas e criada no topo da `V1.0`.

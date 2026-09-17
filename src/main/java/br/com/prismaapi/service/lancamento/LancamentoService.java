@@ -9,6 +9,7 @@ import br.com.prismaapi.exceptions.*;
 import br.com.prismaapi.model.dto.lancamento.FiltroLancamentoDTO;
 import br.com.prismaapi.model.dto.lancamento.LancamentoDTO;
 import br.com.prismaapi.model.dto.lancamento.SalvarLancamentoDTO;
+import br.com.prismaapi.model.entity.conta.Conta;
 import br.com.prismaapi.model.entity.lancamento.Lancamento;
 import br.com.prismaapi.model.mapper.lancamento.LancamentoMapper;
 import br.com.prismaapi.repository.cartao.CartaoRepository;
@@ -22,6 +23,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -56,6 +58,7 @@ public class LancamentoService {
         log.info("Salvando o lançamento... - Descrição: {} - Tipo: {}", salvarLancamentoDTO.descricao(), salvarLancamentoDTO.tipo());
         var lancamento = lancamentoMapper.toEntity(salvarLancamentoDTO);
         preencher(lancamento, salvarLancamentoDTO);
+        movimentarSaldos(lancamento, BigDecimal.ONE);
 
         return lancamentoMapper.toDTO(lancamentoRepository.save(lancamento));
     }
@@ -64,9 +67,11 @@ public class LancamentoService {
     public LancamentoDTO atualizar(UUID id, SalvarLancamentoDTO salvarLancamentoDTO) {
         log.info("Atualizando o lançamento... - ID: [{}]", id);
         var lancamento = buscar(id);
+        movimentarSaldos(lancamento, BigDecimal.ONE.negate());
 
         lancamentoMapper.updateEntity(salvarLancamentoDTO, lancamento);
         preencher(lancamento, salvarLancamentoDTO);
+        movimentarSaldos(lancamento, BigDecimal.ONE);
 
         return lancamentoMapper.toDTO(lancamento);
     }
@@ -74,7 +79,10 @@ public class LancamentoService {
     @Transactional
     public void deletar(UUID id) {
         log.info("Deletando o lançamento... - ID: [{}]", id);
-        lancamentoRepository.delete(buscar(id));
+        var lancamento = buscar(id);
+
+        movimentarSaldos(lancamento, BigDecimal.ONE.negate());
+        lancamentoRepository.delete(lancamento);
     }
 
     private Lancamento buscar(UUID id) {
@@ -169,6 +177,27 @@ public class LancamentoService {
         }
 
         lancamento.setCategoria(categoria);
+    }
+
+    private static void movimentarSaldos(Lancamento lancamento, BigDecimal sentido) {
+        if (lancamento.getSituacao() != SituacaoLancamento.PAGO) return;
+
+        var valor = lancamento.getValor().multiply(sentido);
+
+        switch (lancamento.getTipo()) {
+            case RECEITA -> movimentar(lancamento.getConta(), valor);
+            case DESPESA -> movimentar(lancamento.getConta(), valor.negate());
+            case TRANSFERENCIA -> {
+                movimentar(lancamento.getConta(), valor.negate());
+                movimentar(lancamento.getContaDestino(), valor);
+            }
+        }
+    }
+
+    private static void movimentar(Conta conta, BigDecimal valor) {
+        if (conta == null) return;
+
+        conta.setSaldo(conta.getSaldo().add(valor));
     }
 
     private static void validarForma(Lancamento lancamento, FormaLancamento forma) {
