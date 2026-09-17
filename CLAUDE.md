@@ -21,7 +21,9 @@ Backend / API — release: branch + Pull Request (`origin`: `ByGustavoo/PrismaAP
 - Log4j2 — Logback e `spring-boot-starter-logging` são **excluídos** em
   `configurations.configureEach`; não reintroduza dependências que os tragam de volta
 - Springdoc OpenAPI 3.1.0 (Swagger UI)
-- JUnit 5 + `spring-boot-starter-test`; cobertura via JaCoCo
+- JUnit 5 + `spring-boot-starter-test` e os starters de teste por módulo do Spring Boot 4
+  (`flyway-test`, `webmvc-test`, `data-jpa-test`, `validation-test`); cobertura via JaCoCo
+- Docker (build em dois estágios) e GitHub Actions (build no PR, imagem no push para `main`)
 
 ## Estrutura
 
@@ -39,15 +41,25 @@ src/main/java/br/com/prismaapi/
   service/         regras de negócio e cálculos (faturas, saldo, previsão, dashboard, relatórios, avisos)
 src/main/resources/
   application.yaml config base + perfis dev, prod e test
+  banner.txt       banner do start, com ${build.version} e ${build.data}
   log4j2.xml       console em dev, arquivo rotativo em /app/logs em prod
   db/migration/    V1.0__CreateTables.sql (esquema) e V1.1__InsertCategorias.sql (catálogo de categorias)
 .run/              run configurations do IntelliJ (ignoradas pelo Git)
+.github/workflows/ workflow.yml (build no PR) e release.yml (imagem no push para main)
+Dockerfile         build em dois estágios: gradle:jdk25 compila, eclipse-temurin:25-jre executa
+docker-compose-postgres.yml   PostgreSQL 18 local na 5432
+docker-compose-prismaapi.yml  a imagem do Docker Hub na 9027, variáveis vindas do .env
 src/test/java/br/com/prismaapi/
   config/          AbstractTest, AbstractControllerTest e TestDataBaseConfig (datasource dos testes)
   repository/      um pacote por repositório, espelhando o main: <Recurso>RepositoryTest
 src/test/resources/
   db/test/         V1.2__PopularBanco.sql, dados de exemplo aplicados só no perfil test
 ```
+
+São 15 recursos sob `/v1`, com 47 endpoints no total: `avisos`, `cartoes`, `categorias`,
+`compras-parceladas`, `contas`, `dashboard`, `despesas-recorrentes`, `faturas`, `investimentos`,
+`lancamentos`, `metas`, `orcamentos`, `previsao`, `relatorios` e `sistema`. O esquema tem 11
+tabelas, todas em `prisma`.
 
 ## Comandos
 
@@ -80,8 +92,26 @@ relatório HTML em `build/reports/jacoco`.
   `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD`. Sem elas a aplicação não sobe.
   As run configurations do IntelliJ já as definem apontando para um Postgres local.
 - `prismaapi.cors.origens-permitidas` recebe padrões de origem separados por vírgula
-  (`allowedOriginPatterns`). O perfil dev libera as portas locais porque um segundo Vite ou o
-  acesso por IP recebiam `403` no preflight.
+  (`allowedOriginPatterns`). O padrão da config base é `http://localhost:5173`, a origem do Vite do
+  PrismaWeb; o perfil dev a substitui pelas portas locais porque um segundo Vite ou o acesso por IP
+  recebiam `403` no preflight. Em prod, sobrescreva a propriedade em vez de editar o YAML.
+
+## Docker e CI
+
+- `Dockerfile` — `gradle:jdk25` roda `gradle build -x test` e `eclipse-temurin:25-jre` executa o jar
+  como `PrismaAPI.jar`. O `COPY build/libs/*.jar` só casa com um arquivo porque a task `jar` está
+  desabilitada no `build.gradle.kts`; se você reabilitá-la, o build da imagem passa a copiar dois jars.
+- `docker-compose-postgres.yml` sobe um PostgreSQL 18 local (`prisma`/`postgres`) na 5432 — é o banco
+  que os perfis dev e test assumem por padrão. `docker-compose-prismaapi.yml` sobe a imagem publicada
+  no perfil `prod`, na 9027, com `TZ=GMT-3`, as variáveis `DATABASE_*` vindas de um `.env` ao lado e
+  `./logs` montado em `/app/logs`, que é onde o `log4j2.xml` grava em prod.
+- `.github/workflows/workflow.yml` roda em Pull Request para `main`: sobe um PostgreSQL 18 de serviço
+  e executa `./gradlew build jacocoTestReport`. Como os testes de repositório precisam da `V1.2`, o
+  banco do CI é criado do zero pelo Flyway a cada execução.
+- `.github/workflows/release.yml` roda no push para `main`: extrai a versão com um `grep '^version'`
+  no `build.gradle.kts` e publica a imagem no Docker Hub nessa tag e em `latest`. Ou seja, o
+  `version = "1.0.0"` do Gradle é ao mesmo tempo a tag da imagem e o que `GET /v1/sistema/versao`
+  devolve — subir a versão é editar essa linha, e uma linha `version` fora do formato quebra o release.
 
 ## Convenções
 
@@ -101,6 +131,9 @@ relatório HTML em `build/reports/jacoco`.
   existe na validação de campo, com uma mensagem por campo (a de ausência vence quando o campo
   quebra mais de uma regra). Nas falhas técnicas o `GlobalExceptionHandler` loga a exceção e
   responde uma frase fixa — nunca texto de exceção, SQL ou assinatura de método
+- **Texto de corpo JSON chega sem espaço nas pontas.** O `JacksonConfig` troca o desserializador de
+  `String` por um que aplica `strip()`: nenhuma validação nem regra de negócio precisa aparar o
+  valor, e `"   "` num campo `@NotBlank` vira `""` antes de ser validado
 - **Data de corpo JSON é estrita.** O `JacksonConfig` troca o desserializador de `LocalDate` por um
   `uuuu-MM-dd` com `ResolverStyle.STRICT`: `2026-02-30` responde `400`, em vez de ser gravada como
   `2026-02-28`. Query params já são estritos pelo `@DateTimeFormat` do Spring
@@ -119,7 +152,9 @@ mudar um sem os outros quebra rotas, migrations ou logs:
   `spring.application.name: prismaapi`, Flyway `schemas` e `default-schema: prisma`
 - Entidades JPA: `@Table(..., schema = "prisma")`, o mesmo schema do Flyway
 - `log4j2.xml`: em `prod`, log rotativo em `/app/logs/PrismaAPI.log`
-- `build.gradle.kts`: o JaCoCo exclui `**/PrismaAPIApplication.class` e `**/config/**`
+- `build.gradle.kts`: o JaCoCo exclui `**/PrismaAPIApplication.class`, `**/config/**`, `**/enums/**`,
+  `**/model/**` e `**/exceptions/**` — o relatório mede controller, service e repository
+- `Dockerfile` e `docker-compose-prismaapi.yml`: o jar copiado e o container se chamam `PrismaAPI`
 
 ## Estado atual
 
@@ -153,16 +188,17 @@ mudar um sem os outros quebra rotas, migrations ou logs:
 - `faturaAtual` do dashboard vem `null` quando nenhum cartão teve movimento no mês.
 - `GET /v1/sistema/versao` lê o `BuildProperties` gerado pelo `buildInfo()` do `build.gradle.kts`, que
   grava `build.time` já truncado em segundos e um `build.data` extra, a mesma data em
-  `dd/MM/uuuu - HH:mm:ss` e sempre no fuso `America/Sao_Paulo` — não em `ZoneId.systemDefault()`,
-  porque o estágio `builder` do `Dockerfile` roda em UTC e a data saía três horas adiantada. O
-  `banner.txt` mostra essas duas linhas no start porque o `spring.config.import` carrega o
-  `build-info.properties` no Environment antes do banner — é a única forma de o banner enxergar
-  valores do build. Rodar a aplicação fora do Gradle, sem esse arquivo, impede o contexto de subir
-  e deixa os `${build.*}` do banner sem resolver.
+  `dd/MM/uuuu - HH:mm:ss`. O `banner.txt` mostra essas duas linhas no start porque o
+  `spring.config.import` carrega o `build-info.properties` no Environment antes do banner — é a única
+  forma de o banner enxergar valores do build. O import é `optional:`, então a falta do arquivo não
+  derruba a configuração; quem derruba é o `SistemaService`, que injeta `BuildProperties`, e esse bean
+  só existe quando o `build-info.properties` está no classpath. Rodar a aplicação fora do Gradle, sem
+  esse arquivo, impede o contexto de subir e deixa os `${build.*}` do banner sem resolver.
 - O banner sai pelo `System.out`, que no Windows usa a página de código do console e corrompe os
   acentos — as linhas de log escapam disso porque o Log4j2 grava UTF-8 direto. Por isso o `bootRun`
   leva `-Dstdout.encoding=UTF-8` e `-Dstderr.encoding=UTF-8` nos `jvmArgs`, e o `ENTRYPOINT` do
   `Dockerfile` leva os mesmos dois. Texto com acento é para funcionar; não troque a palavra.
 - Os testes cobrem só os repositórios: um teste por método próprio, com `assertDoesNotThrow`, rodando
   sobre o banco populado pela `V1.2`. Eles pegaram a falta da extensão `unaccent`, usada pelas buscas
-  de lançamentos e metas e criada no topo da `V1.0`.
+  de lançamentos e metas e criada no topo da `V1.0`. O `AbstractControllerTest` já existe, com os
+  atalhos de `MockMvc` por status, mas ainda não tem nenhum teste de controller em cima dele.
