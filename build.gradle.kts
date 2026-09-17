@@ -1,3 +1,8 @@
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
+
 plugins {
     java
     id("jacoco")
@@ -7,6 +12,17 @@ plugins {
 
 version = "1.0.0"
 group = "br.com.prismaapi"
+
+val instanteDoBuild: Instant = Instant.now().truncatedTo(ChronoUnit.SECONDS)
+
+springBoot {
+    buildInfo {
+        properties {
+            time.set(instanteDoBuild.toString())
+            additional.put("data", DateTimeFormatter.ofPattern("dd/MM/uuuu - HH:mm:ss").withZone(ZoneId.systemDefault()).format(instanteDoBuild))
+        }
+    }
+}
 
 java {
     toolchain {
@@ -64,7 +80,10 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
     testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
     testImplementation("org.springframework.boot:spring-boot-starter-validation-test")
+}
 
+tasks.named<JavaExec>("bootRun") {
+    jvmArgs("-Dstdout.encoding=UTF-8", "-Dstderr.encoding=UTF-8")
 }
 
 tasks.withType<Test> {

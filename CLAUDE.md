@@ -151,6 +151,16 @@ mudar um sem os outros quebra rotas, migrations ou logs:
 - `DespesaRecorrenteService` devolve `proximoVencimento` avançado pela frequência até hoje
   (`Frequencia.proximaOcorrencia`, a mesma conta da previsão); o banco guarda a data informada.
 - `faturaAtual` do dashboard vem `null` quando nenhum cartão teve movimento no mês.
+- `GET /v1/sistema/versao` lê o `BuildProperties` gerado pelo `buildInfo()` do `build.gradle.kts`, que
+  grava `build.time` já truncado em segundos e um `build.data` extra, a mesma data em
+  `dd/MM/uuuu - HH:mm:ss`. O `banner.txt` mostra essas duas linhas no start porque o
+  `spring.config.import` carrega o `build-info.properties` no Environment antes do banner — é a única
+  forma de o banner enxergar valores do build. Rodar a aplicação fora do Gradle, sem esse arquivo,
+  impede o contexto de subir e deixa os `${build.*}` do banner sem resolver.
+- O banner sai pelo `System.out`, que no Windows usa a página de código do console e corrompe os
+  acentos — as linhas de log escapam disso porque o Log4j2 grava UTF-8 direto. Por isso o `bootRun`
+  leva `-Dstdout.encoding=UTF-8` e `-Dstderr.encoding=UTF-8` nos `jvmArgs`, e o `ENTRYPOINT` do
+  `Dockerfile` leva os mesmos dois. Texto com acento é para funcionar; não troque a palavra.
 - Os testes cobrem só os repositórios: um teste por método próprio, com `assertDoesNotThrow`, rodando
   sobre o banco populado pela `V1.2`. Eles pegaram a falta da extensão `unaccent`, usada pelas buscas
   de lançamentos e metas e criada no topo da `V1.0`.

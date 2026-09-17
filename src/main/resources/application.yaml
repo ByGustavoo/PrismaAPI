@@ -13,6 +13,9 @@ spring:
   application:
     name: prismaapi
 
+  config:
+    import: "optional:classpath:META-INF/build-info.properties"
+
   servlet:
     encoding:
       charset: UTF-8
