@@ -119,7 +119,7 @@ jobs:
             REVISION=${{ needs.versao.outputs.commit }}
             BUILD_DATE=${{ needs.versao.outputs.data }}
           cache-from: type=gha,scope=release
-          cache-to: type=gha,mode=max,scope=release
+          cache-to: type=gha,mode=max,scope=release,ignore-error=true
 
   registrar:
     name: Criar tag e release
