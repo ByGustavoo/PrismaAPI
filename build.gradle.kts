@@ -10,7 +10,7 @@ plugins {
     id("io.spring.dependency-management") version "1.1.7"
 }
 
-version = "1.0.0"
+version = providers.gradleProperty("versao").getOrElse("1.0.0")
 group = "br.com.prismaapi"
 
 val instanteDoBuild: Instant = Instant.now().truncatedTo(ChronoUnit.SECONDS)

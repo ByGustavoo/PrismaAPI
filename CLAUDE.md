@@ -23,7 +23,7 @@ Backend / API — release: branch + Pull Request (`origin`: `ByGustavoo/PrismaAP
 - Springdoc OpenAPI 3.1.0 (Swagger UI)
 - JUnit 5 + `spring-boot-starter-test` e os starters de teste por módulo do Spring Boot 4
   (`flyway-test`, `webmvc-test`, `data-jpa-test`, `validation-test`); cobertura via JaCoCo
-- Docker (build em dois estágios) e GitHub Actions (build no PR, imagem no push para `main`)
+- Docker (build em dois estágios) e GitHub Actions (build no PR; imagem, tag e Release no merge para `main`)
 
 ## Estrutura
 
@@ -45,7 +45,7 @@ src/main/resources/
   log4j2.xml       console em dev, arquivo rotativo em /app/logs em prod
   db/migration/    V1.0__CreateTables.sql (esquema) e V1.1__InsertCategorias.sql (catálogo de categorias)
 .run/              run configurations do IntelliJ (ignoradas pelo Git)
-.github/workflows/ workflow.yml (build no PR) e release.yml (imagem no push para main)
+.github/workflows/ workflow.yml (build no PR) e release.yml (imagem, tag e Release no merge para main)
 Dockerfile         build em dois estágios: gradle:jdk25 compila, eclipse-temurin:25-jre executa
 docker-compose-postgres.yml   PostgreSQL 18 local na 5432
 docker-compose-prismaapi.yml  a imagem do Docker Hub na 9027, variáveis vindas do .env
@@ -99,7 +99,9 @@ relatório HTML em `build/reports/jacoco`.
 ## Docker e CI
 
 - `Dockerfile` — `gradle:jdk25` roda `gradle build -x test` e `eclipse-temurin:25-jre` executa o jar
-  como `PrismaAPI.jar`. O `COPY build/libs/*.jar` só casa com um arquivo porque a task `jar` está
+  como `PrismaAPI.jar`. O estágio de build roda na plataforma do runner (`$BUILDPLATFORM`), porque o
+  jar é o mesmo em amd64 e arm64 e compilar sob QEMU seria lento. O build-arg `VERSION` vira
+  `-Pversao` no Gradle e o label `org.opencontainers.image.version`. O `COPY build/libs/*.jar` só casa com um arquivo porque a task `jar` está
   desabilitada no `build.gradle.kts`; se você reabilitá-la, o build da imagem passa a copiar dois jars.
 - `docker-compose-postgres.yml` sobe um PostgreSQL 18 local (`prisma`/`postgres`) na 5432 — é o banco
   que os perfis dev e test assumem por padrão. `docker-compose-prismaapi.yml` sobe a imagem publicada
@@ -108,10 +110,15 @@ relatório HTML em `build/reports/jacoco`.
 - `.github/workflows/workflow.yml` roda em Pull Request para `main`: sobe um PostgreSQL 18 de serviço
   e executa `./gradlew build jacocoTestReport`. Como os testes de repositório precisam da `V1.2`, o
   banco do CI é criado do zero pelo Flyway a cada execução.
-- `.github/workflows/release.yml` roda no push para `main`: extrai a versão com um `grep '^version'`
-  no `build.gradle.kts` e publica a imagem no Docker Hub nessa tag e em `latest`. Ou seja, o
-  `version = "1.0.0"` do Gradle é ao mesmo tempo a tag da imagem e o que `GET /v1/sistema/versao`
-  devolve — subir a versão é editar essa linha, e uma linha `version` fora do formato quebra o release.
+- `.github/workflows/release.yml` é o mesmo do PrismaWeb: roda quando um PR é mergeado em `main` (ou
+  manualmente, por `workflow_dispatch`, escolhendo o incremento). Parte da última tag `vX.Y.Z` e sobe o
+  patch — ou o minor/major, se o PR tiver o rótulo `release:minor`/`release:major` —, publica a imagem
+  multi-arch no Docker Hub nessa versão e em `latest`, e cria a tag e a Release no GitHub com notas
+  geradas. Push direto em `main`, sem PR, não gera release.
+- A versão vem da tag, não do arquivo: o `build.gradle.kts` declara
+  `version = providers.gradleProperty("versao").getOrElse("1.0.0")`, e o workflow passa a versão
+  calculada como `-Pversao`, então o que `GET /v1/sistema/versao` devolve é a versão da Release. O
+  `1.0.0` é só o valor de builds locais e a base da primeira release, quando ainda não há tag.
 
 ## Convenções
 
