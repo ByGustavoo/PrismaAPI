@@ -7,4 +7,4 @@ ${AnsiColor.BRIGHT_GREEN}
  =========|_|==============|___/=/_/_/_/
 ${AnsiColor.DEFAULT}
 ${AnsiColor.BRIGHT_GREEN}Versão: ${build.version}${AnsiColor.DEFAULT}
-${AnsiStyle.FAINT}Data: ${AnsiStyle.NORMAL} ${build.data}
+${AnsiStyle.FAINT}Data:${AnsiStyle.NORMAL} ${build.data}
