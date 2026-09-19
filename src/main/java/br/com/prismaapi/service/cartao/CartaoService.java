@@ -19,6 +19,8 @@ import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import br.com.prismaapi.service.fatura.FaturaService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,6 +47,7 @@ public class CartaoService {
     private static final Collator ORDEM_ALFABETICA = Collator.getInstance(Locale.forLanguageTag("pt-BR"));
     private static final List<TipoCartao> ORDEM_DOS_TIPOS = List.of(TipoCartao.CREDITO, TipoCartao.DEBITO, TipoCartao.VALE_ALIMENTACAO, TipoCartao.VALE_REFEICAO);
 
+    @Cacheable("cartoes")
     @Transactional(readOnly = true)
     public List<CartaoDTO> listar() {
         log.info("Listando os cartões...");
@@ -61,6 +64,7 @@ public class CartaoService {
     }
 
     @Transactional
+    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "contas", "dashboard", "despesas-recorrentes", "faturas", "lancamentos", "previsao", "relatorios"}, allEntries = true)
     public CartaoDTO salvar(SalvarCartaoDTO salvarCartaoDTO) {
         log.info("Salvando o cartão... - Nome: {} - Tipo: {}", salvarCartaoDTO.nome(), salvarCartaoDTO.tipo());
         var cartao = cartaoMapper.toEntity(salvarCartaoDTO);
@@ -70,6 +74,7 @@ public class CartaoService {
     }
 
     @Transactional
+    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "contas", "dashboard", "despesas-recorrentes", "faturas", "lancamentos", "previsao", "relatorios"}, allEntries = true)
     public CartaoDTO atualizar(UUID id, SalvarCartaoDTO salvarCartaoDTO) {
         log.info("Atualizando o cartão... - ID: [{}]", id);
         var cartao = buscar(id);
@@ -81,6 +86,7 @@ public class CartaoService {
     }
 
     @Transactional
+    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "contas", "dashboard", "despesas-recorrentes", "faturas", "lancamentos", "previsao", "relatorios"}, allEntries = true)
     public void deletar(UUID id) {
         log.info("Deletando o cartão... - ID: [{}]", id);
         var cartao = buscar(id);

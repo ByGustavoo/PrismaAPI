@@ -22,11 +22,11 @@ public interface FaturaMapper {
     @Mapping(target = "parcela", ignore = true)
     ItemFaturaDTO toItemDTO(Lancamento lancamento);
 
-    @Mapping(target = "id", expression = "java(compraParcelada.getId() + \"-\" + parcela.numero())")
-    @Mapping(target = "descricao", source = "compraParcelada.descricao")
-    @Mapping(target = "data", source = "compraParcelada.dataCompra")
     @Mapping(target = "valor", source = "valor")
-    @Mapping(target = "categoria", source = "compraParcelada.categoria")
     @Mapping(target = "parcela", source = "parcela")
+    @Mapping(target = "data", source = "compraParcelada.dataCompra")
+    @Mapping(target = "descricao", source = "compraParcelada.descricao")
+    @Mapping(target = "categoria", source = "compraParcelada.categoria")
+    @Mapping(target = "id", expression = "java(compraParcelada.getId() + \"-\" + parcela.numero())")
     ItemFaturaDTO toItemParceladoDTO(CompraParcelada compraParcelada, ParcelaItemFaturaDTO parcela, BigDecimal valor);
 }

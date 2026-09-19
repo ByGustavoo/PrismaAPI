@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.UUID;
 
 @Schema(description = "Representa o modelo de dados de uma Compra Parcelada.")
@@ -24,7 +25,7 @@ public record CompraParceladaDTO(
         LocalDate dataCompra,
 
         @JsonFormat(pattern = "yyyy-MM")
-        LocalDate primeiroMes,
+        YearMonth primeiroMes,
 
         UUID idCartao,
 

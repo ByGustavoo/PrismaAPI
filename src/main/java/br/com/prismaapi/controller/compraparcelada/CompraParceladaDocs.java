@@ -21,16 +21,7 @@ import java.util.UUID;
 @Tag(name = "Compra Parcelada", description = "Endpoints relacionados às compras parceladas no cartão de crédito")
 public interface CompraParceladaDocs {
 
-    @Operation(
-            summary = "Lista as compras parceladas",
-            description = """
-                    Retorna cada compra com o cronograma de parcelas e os totais já calculados: as compras \
-                    em andamento primeiro, da mais recente para a mais antiga, e as quitadas ao fim.
-
-                    Cada parcela cai na fatura do seu mês e vence junto com ela. As primeiras levam o \
-                    valor arredondado para baixo e a última absorve a sobra, para a soma fechar com o \
-                    valor total. A parcela vencida é PAGA, a primeira ainda não vencida é a ATUAL e as \
-                    demais são FUTURA; parcelaAtual vem nula quando a compra já foi quitada.""")
+    @GetMapping
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
@@ -44,11 +35,21 @@ public interface CompraParceladaDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @GetMapping
+    @Operation(
+            summary = "Lista as compras parceladas",
+            description = """
+                    Retorna cada compra com o cronograma de parcelas e os totais já calculados: as compras \
+                    em andamento primeiro, da mais recente para a mais antiga, e as quitadas ao fim.
+
+                    Cada parcela cai na fatura do seu mês e vence junto com ela. As primeiras levam o \
+                    valor arredondado para baixo e a última absorve a sobra, para a soma fechar com o \
+                    valor total. A parcela vencida é PAGA, a primeira ainda não vencida é a ATUAL e as \
+                    demais são FUTURA; parcelaAtual vem nula quando a compra já foi quitada.""")
     ResponseEntity<List<PlanoCompraParceladaDTO>> listarComprasParceladas(
             @Parameter(description = "Id do cartão; sem ele, retorna as compras de todos os cartões")
             @RequestParam(required = false) UUID idCartao);
 
+    @PostMapping
     @Operation(
             summary = "Cadastra uma compra parcelada",
             description = """
@@ -77,9 +78,9 @@ public interface CompraParceladaDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @PostMapping
     ResponseEntity<CompraParceladaDTO> salvarCompraParcelada(@RequestBody @Valid SalvarCompraParceladaDTO salvarCompraParceladaDTO);
 
+    @PutMapping("/{id}")
     @Operation(
             summary = "Atualiza uma compra parcelada",
             description = """
@@ -110,13 +111,13 @@ public interface CompraParceladaDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @PutMapping("/{id}")
     ResponseEntity<CompraParceladaDTO> atualizarCompraParcelada(
             @Parameter(description = "Id da compra parcelada")
             @PathVariable UUID id,
 
             @RequestBody @Valid SalvarCompraParceladaDTO salvarCompraParceladaDTO);
 
+    @DeleteMapping("/{id}")
     @Operation(
             summary = "Exclui uma compra parcelada",
             description = """
@@ -141,7 +142,6 @@ public interface CompraParceladaDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @DeleteMapping("/{id}")
     ResponseEntity<Void> deletarCompraParcelada(
             @Parameter(description = "Id da compra parcelada")
             @PathVariable UUID id);

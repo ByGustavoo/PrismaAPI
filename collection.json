@@ -1,0 +1,1933 @@
+{
+    "info": {
+        "name": "PrismaAPI",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "event": [
+        {
+            "listen": "prerequest",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    "const doisDigitos = (numero) => String(numero).padStart(2, \"0\");",
+                    "const formatarData = (data) => `${data.getFullYear()}-${doisDigitos(data.getMonth() + 1)}-${doisDigitos(data.getDate())}`;",
+                    "const formatarMes = (data) => `${data.getFullYear()}-${doisDigitos(data.getMonth() + 1)}`;",
+                    "",
+                    "const hoje = new Date();",
+                    "pm.collectionVariables.set(\"hoje\", formatarData(hoje));",
+                    "pm.collectionVariables.set(\"mesAtual\", formatarMes(hoje));",
+                    "pm.collectionVariables.set(\"proximoMes\", formatarMes(new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1)));",
+                    "pm.collectionVariables.set(\"inicioDoAno\", `${hoje.getFullYear()}-01-01`);",
+                    "pm.collectionVariables.set(\"primeiroMesDoAno\", `${hoje.getFullYear()}-01`);",
+                    "",
+                    "if (!pm.collectionVariables.get(\"idCategoriaDespesa\") || !pm.collectionVariables.get(\"idCategoriaReceita\")) {",
+                    "    pm.sendRequest(pm.collectionVariables.get(\"baseUrl\") + \"/categorias\", (erro, resposta) => {",
+                    "        const categorias = resposta.json();",
+                    "        pm.collectionVariables.set(\"idCategoriaDespesa\", categorias.find(categoria => categoria.tipo === \"DESPESA\").id);",
+                    "        pm.collectionVariables.set(\"idCategoriaReceita\", categorias.find(categoria => categoria.tipo === \"RECEITA\").id);",
+                    "    });",
+                    "}"
+                ]
+            }
+        }
+    ],
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:9017/PrismaAPI/v1"
+        },
+        {
+            "key": "hoje",
+            "value": ""
+        },
+        {
+            "key": "mesAtual",
+            "value": ""
+        },
+        {
+            "key": "proximoMes",
+            "value": ""
+        },
+        {
+            "key": "inicioDoAno",
+            "value": ""
+        },
+        {
+            "key": "primeiroMesDoAno",
+            "value": ""
+        },
+        {
+            "key": "idCategoriaDespesa",
+            "value": ""
+        },
+        {
+            "key": "idCategoriaReceita",
+            "value": ""
+        },
+        {
+            "key": "idCategoriaOrcamento",
+            "value": ""
+        },
+        {
+            "key": "idConta",
+            "value": ""
+        },
+        {
+            "key": "idContaExclusao",
+            "value": ""
+        },
+        {
+            "key": "idCartao",
+            "value": ""
+        },
+        {
+            "key": "idCartaoExclusao",
+            "value": ""
+        },
+        {
+            "key": "idFatura",
+            "value": ""
+        },
+        {
+            "key": "idCompraParcelada",
+            "value": ""
+        },
+        {
+            "key": "idCompraParceladaExclusao",
+            "value": ""
+        },
+        {
+            "key": "idLancamento",
+            "value": ""
+        },
+        {
+            "key": "idDespesaRecorrente",
+            "value": ""
+        },
+        {
+            "key": "idOrcamento",
+            "value": ""
+        },
+        {
+            "key": "idInvestimento",
+            "value": ""
+        },
+        {
+            "key": "idMeta",
+            "value": ""
+        }
+    ],
+    "item": [
+        {
+            "name": "Sistema",
+            "item": [
+                {
+                    "name": "Buscar versão",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/sistema/versao",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "sistema",
+                                "versao"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Categorias",
+            "item": [
+                {
+                    "name": "Listar categorias",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/categorias",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "categorias"
+                            ],
+                            "query": [
+                                {
+                                    "key": "tipo",
+                                    "value": "DESPESA",
+                                    "disabled": true
+                                }
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Contas",
+            "item": [
+                {
+                    "name": "Listar contas",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/contas",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "contas"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Listar origens",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/contas/origens",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "contas",
+                                "origens"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Listar reservas",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/contas/reservas",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "contas",
+                                "reservas"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Salvar conta",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                                    "pm.collectionVariables.set(\"idConta\", pm.response.json().id);"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/contas",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "contas"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"nome\": \"Conta Corrente {{$timestamp}}\",\n    \"instituicao\": \"Nubank\",\n    \"tipo\": \"CORRENTE\",\n    \"saldo\": 2500,\n    \"situacao\": \"ATIVO\",\n    \"incluirNoTotal\": true\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Atualizar conta",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/contas/{{idConta}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "contas",
+                                "{{idConta}}"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"nome\": \"Conta Principal {{$timestamp}}\",\n    \"instituicao\": \"Nubank\",\n    \"tipo\": \"CORRENTE\",\n    \"saldo\": 3200.5,\n    \"situacao\": \"ATIVO\",\n    \"incluirNoTotal\": true\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Buscar evolução",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/contas/{{idConta}}/evolucao",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "contas",
+                                "{{idConta}}",
+                                "evolucao"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Deletar conta",
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.sendRequest({",
+                                    "    url: pm.collectionVariables.get(\"baseUrl\") + \"/contas\",",
+                                    "    method: \"POST\",",
+                                    "    header: { \"Content-Type\": \"application/json\" },",
+                                    "    body: { mode: \"raw\", raw: pm.variables.replaceIn(JSON.stringify({\"nome\":\"Conta Temporária {{$timestamp}}\",\"instituicao\":\"Nubank\",\"tipo\":\"CORRENTE\",\"saldo\":2500,\"situacao\":\"ATIVO\",\"incluirNoTotal\":true})) }",
+                                    "}, (erro, resposta) => pm.collectionVariables.set(\"idContaExclusao\", resposta.json().id));"
+                                ]
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 204\", () => pm.response.to.have.status(204));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/contas/{{idContaExclusao}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "contas",
+                                "{{idContaExclusao}}"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Cartões",
+            "item": [
+                {
+                    "name": "Listar cartões",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/cartoes",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "cartoes"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Salvar cartão",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                                    "pm.collectionVariables.set(\"idCartao\", pm.response.json().id);"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/cartoes",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "cartoes"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"nome\": \"Nubank Roxinho\",\n    \"instituicao\": \"Nubank\",\n    \"tipo\": \"CREDITO\",\n    \"situacao\": \"ATIVO\",\n    \"bandeira\": \"Mastercard\",\n    \"ultimosDigitos\": \"4821\",\n    \"limiteCredito\": 8000,\n    \"diaFechamento\": 3,\n    \"diaVencimento\": 10\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Atualizar cartão",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/cartoes/{{idCartao}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "cartoes",
+                                "{{idCartao}}"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"nome\": \"Nubank Ultravioleta\",\n    \"instituicao\": \"Nubank\",\n    \"tipo\": \"CREDITO\",\n    \"situacao\": \"ATIVO\",\n    \"bandeira\": \"Mastercard\",\n    \"ultimosDigitos\": \"4821\",\n    \"limiteCredito\": 12000,\n    \"diaFechamento\": 3,\n    \"diaVencimento\": 10\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Deletar cartão",
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.sendRequest({",
+                                    "    url: pm.collectionVariables.get(\"baseUrl\") + \"/cartoes\",",
+                                    "    method: \"POST\",",
+                                    "    header: { \"Content-Type\": \"application/json\" },",
+                                    "    body: { mode: \"raw\", raw: pm.variables.replaceIn(JSON.stringify({\"nome\":\"Cartão Temporário\",\"instituicao\":\"Nubank\",\"tipo\":\"CREDITO\",\"situacao\":\"ATIVO\",\"bandeira\":\"Mastercard\",\"ultimosDigitos\":\"4821\",\"limiteCredito\":8000,\"diaFechamento\":3,\"diaVencimento\":10})) }",
+                                    "}, (erro, resposta) => pm.collectionVariables.set(\"idCartaoExclusao\", resposta.json().id));"
+                                ]
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 204\", () => pm.response.to.have.status(204));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/cartoes/{{idCartaoExclusao}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "cartoes",
+                                "{{idCartaoExclusao}}"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Compras parceladas",
+            "item": [
+                {
+                    "name": "Salvar compra parcelada",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                                    "pm.collectionVariables.set(\"idCompraParcelada\", pm.response.json().id);"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/compras-parceladas",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "compras-parceladas"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"descricao\": \"Notebook\",\n    \"valorTotal\": 4999.9,\n    \"parcelas\": 10,\n    \"dataCompra\": \"{{hoje}}\",\n    \"primeiroMes\": \"{{proximoMes}}\",\n    \"idCartao\": \"{{idCartao}}\",\n    \"idCategoria\": \"{{idCategoriaDespesa}}\",\n    \"observacoes\": \"Compra feita na loja oficial.\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Listar compras parceladas",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/compras-parceladas?idCartao={{idCartao}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "compras-parceladas"
+                            ],
+                            "query": [
+                                {
+                                    "key": "idCartao",
+                                    "value": "{{idCartao}}"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Atualizar compra parcelada",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/compras-parceladas/{{idCompraParcelada}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "compras-parceladas",
+                                "{{idCompraParcelada}}"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"descricao\": \"Notebook Gamer\",\n    \"valorTotal\": 5499.9,\n    \"parcelas\": 10,\n    \"dataCompra\": \"{{hoje}}\",\n    \"primeiroMes\": \"{{proximoMes}}\",\n    \"idCartao\": \"{{idCartao}}\",\n    \"idCategoria\": \"{{idCategoriaDespesa}}\",\n    \"observacoes\": \"Compra feita na loja oficial.\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Deletar compra parcelada",
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.sendRequest({",
+                                    "    url: pm.collectionVariables.get(\"baseUrl\") + \"/compras-parceladas\",",
+                                    "    method: \"POST\",",
+                                    "    header: { \"Content-Type\": \"application/json\" },",
+                                    "    body: { mode: \"raw\", raw: pm.variables.replaceIn(JSON.stringify({\"descricao\":\"Fone de ouvido\",\"valorTotal\":899.9,\"parcelas\":10,\"dataCompra\":\"{{hoje}}\",\"primeiroMes\":\"{{proximoMes}}\",\"idCartao\":\"{{idCartao}}\",\"idCategoria\":\"{{idCategoriaDespesa}}\",\"observacoes\":\"Compra feita na loja oficial.\"})) }",
+                                    "}, (erro, resposta) => pm.collectionVariables.set(\"idCompraParceladaExclusao\", resposta.json().id));"
+                                ]
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 204\", () => pm.response.to.have.status(204));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/compras-parceladas/{{idCompraParceladaExclusao}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "compras-parceladas",
+                                "{{idCompraParceladaExclusao}}"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Faturas",
+            "item": [
+                {
+                    "name": "Listar faturas",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                                    "pm.collectionVariables.set(\"idFatura\", pm.response.json()[0].id);"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/faturas?idCartao={{idCartao}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "faturas"
+                            ],
+                            "query": [
+                                {
+                                    "key": "idCartao",
+                                    "value": "{{idCartao}}"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Buscar fatura",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/faturas/{{idFatura}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "faturas",
+                                "{{idFatura}}"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Lançamentos",
+            "item": [
+                {
+                    "name": "Salvar lançamento",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                                    "pm.collectionVariables.set(\"idLancamento\", pm.response.json().id);"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/lancamentos",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "lancamentos"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"descricao\": \"Supermercado\",\n    \"valor\": 350.75,\n    \"tipo\": \"DESPESA\",\n    \"situacao\": \"PAGO\",\n    \"forma\": \"PIX\",\n    \"data\": \"{{hoje}}\",\n    \"idCategoria\": \"{{idCategoriaDespesa}}\",\n    \"idOrigem\": \"{{idConta}}\",\n    \"observacoes\": \"Compra do mês.\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Listar lançamentos",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/lancamentos?dataInicial={{inicioDoAno}}&dataFinal={{hoje}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "lancamentos"
+                            ],
+                            "query": [
+                                {
+                                    "key": "dataInicial",
+                                    "value": "{{inicioDoAno}}"
+                                },
+                                {
+                                    "key": "dataFinal",
+                                    "value": "{{hoje}}"
+                                },
+                                {
+                                    "key": "tipo",
+                                    "value": "DESPESA",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "busca",
+                                    "value": "mercado",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "idCategoria",
+                                    "value": "{{idCategoriaDespesa}}",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "idOrigem",
+                                    "value": "{{idConta}}",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "situacao",
+                                    "value": "PAGO",
+                                    "disabled": true
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Atualizar lançamento",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/lancamentos/{{idLancamento}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "lancamentos",
+                                "{{idLancamento}}"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"descricao\": \"Supermercado do mês\",\n    \"valor\": 412.3,\n    \"tipo\": \"DESPESA\",\n    \"situacao\": \"PAGO\",\n    \"forma\": \"PIX\",\n    \"data\": \"{{hoje}}\",\n    \"idCategoria\": \"{{idCategoriaDespesa}}\",\n    \"idOrigem\": \"{{idConta}}\",\n    \"observacoes\": \"Compra do mês.\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Deletar lançamento",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 204\", () => pm.response.to.have.status(204));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/lancamentos/{{idLancamento}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "lancamentos",
+                                "{{idLancamento}}"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Despesas recorrentes",
+            "item": [
+                {
+                    "name": "Salvar despesa recorrente",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                                    "pm.collectionVariables.set(\"idDespesaRecorrente\", pm.response.json().id);"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/despesas-recorrentes",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "despesas-recorrentes"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"descricao\": \"Streaming\",\n    \"valor\": 55.9,\n    \"idCategoria\": \"{{idCategoriaDespesa}}\",\n    \"frequencia\": \"MENSAL\",\n    \"proximoVencimento\": \"{{hoje}}\",\n    \"idOrigem\": \"{{idConta}}\",\n    \"situacao\": \"ATIVO\",\n    \"observacoes\": \"Plano família.\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Listar despesas recorrentes",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/despesas-recorrentes",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "despesas-recorrentes"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Atualizar despesa recorrente",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/despesas-recorrentes/{{idDespesaRecorrente}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "despesas-recorrentes",
+                                "{{idDespesaRecorrente}}"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"descricao\": \"Streaming Premium\",\n    \"valor\": 59.9,\n    \"idCategoria\": \"{{idCategoriaDespesa}}\",\n    \"frequencia\": \"MENSAL\",\n    \"proximoVencimento\": \"{{hoje}}\",\n    \"idOrigem\": \"{{idConta}}\",\n    \"situacao\": \"PAUSADO\",\n    \"observacoes\": \"Plano família.\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Deletar despesa recorrente",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 204\", () => pm.response.to.have.status(204));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/despesas-recorrentes/{{idDespesaRecorrente}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "despesas-recorrentes",
+                                "{{idDespesaRecorrente}}"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Orçamentos",
+            "item": [
+                {
+                    "name": "Buscar visão geral",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/orcamentos/visao-geral?mes={{mesAtual}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "orcamentos",
+                                "visao-geral"
+                            ],
+                            "query": [
+                                {
+                                    "key": "mes",
+                                    "value": "{{mesAtual}}"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Salvar orçamento",
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const baseUrl = pm.collectionVariables.get(\"baseUrl\");",
+                                    "",
+                                    "pm.sendRequest(baseUrl + \"/orcamentos/visao-geral\", (erro, visaoGeral) => {",
+                                    "    const comOrcamento = visaoGeral.json().itens.map(item => item.orcamento.categoria.id);",
+                                    "",
+                                    "    pm.sendRequest(baseUrl + \"/categorias?tipo=DESPESA\", (erro, categorias) => {",
+                                    "        const livre = categorias.json().find(categoria => !comOrcamento.includes(categoria.id));",
+                                    "        pm.collectionVariables.set(\"idCategoriaOrcamento\", livre.id);",
+                                    "    });",
+                                    "});"
+                                ]
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                                    "pm.collectionVariables.set(\"idOrcamento\", pm.response.json().id);"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/orcamentos",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "orcamentos"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"idCategoria\": \"{{idCategoriaOrcamento}}\",\n    \"limiteMensal\": 800\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Atualizar orçamento",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/orcamentos/{{idOrcamento}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "orcamentos",
+                                "{{idOrcamento}}"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"idCategoria\": \"{{idCategoriaOrcamento}}\",\n    \"limiteMensal\": 950\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Deletar orçamento",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 204\", () => pm.response.to.have.status(204));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/orcamentos/{{idOrcamento}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "orcamentos",
+                                "{{idOrcamento}}"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Investimentos",
+            "item": [
+                {
+                    "name": "Buscar carteira",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/investimentos/carteira",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "investimentos",
+                                "carteira"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Salvar investimento",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                                    "pm.collectionVariables.set(\"idInvestimento\", pm.response.json().id);"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/investimentos",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "investimentos"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"nome\": \"CDB Liquidez Diária\",\n    \"classeAtivo\": \"CDB\",\n    \"instituicao\": \"Inter\",\n    \"aportado\": 5000,\n    \"valorAtual\": 5000,\n    \"dataInicio\": \"{{hoje}}\",\n    \"observacoes\": \"100% do CDI.\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Atualizar investimento",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/investimentos/{{idInvestimento}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "investimentos",
+                                "{{idInvestimento}}"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"nome\": \"CDB Liquidez Diária 102% CDI\",\n    \"classeAtivo\": \"CDB\",\n    \"instituicao\": \"Inter\",\n    \"observacoes\": \"102% do CDI.\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Registrar aporte",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 201\", () => pm.response.to.have.status(201));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/investimentos/{{idInvestimento}}/aportes",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "investimentos",
+                                "{{idInvestimento}}",
+                                "aportes"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"valor\": 1000,\n    \"data\": \"{{hoje}}\",\n    \"descricao\": \"Aporte mensal\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Registrar saldo",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 201\", () => pm.response.to.have.status(201));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/investimentos/{{idInvestimento}}/saldos",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "investimentos",
+                                "{{idInvestimento}}",
+                                "saldos"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"valorAtual\": 6045.8,\n    \"data\": \"{{hoje}}\",\n    \"descricao\": \"Rendimento do mês\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Buscar extrato",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/investimentos/{{idInvestimento}}/extrato",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "investimentos",
+                                "{{idInvestimento}}",
+                                "extrato"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Deletar investimento",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 204\", () => pm.response.to.have.status(204));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/investimentos/{{idInvestimento}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "investimentos",
+                                "{{idInvestimento}}"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Metas",
+            "item": [
+                {
+                    "name": "Salvar meta",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                                    "pm.collectionVariables.set(\"idMeta\", pm.response.json().id);"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/metas",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "metas"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"nome\": \"Monitor 27 polegadas\",\n    \"url\": \"https://www.exemplo.com.br/monitor-27\",\n    \"urlImagem\": \"https://www.exemplo.com.br/monitor-27.png\",\n    \"preco\": 1899.9,\n    \"data\": \"{{hoje}}\",\n    \"situacao\": \"ACOMPANHANDO\",\n    \"observacoes\": \"Esperar a Black Friday.\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Listar metas",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/metas",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "metas"
+                            ],
+                            "query": [
+                                {
+                                    "key": "situacao",
+                                    "value": "ACOMPANHANDO",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "busca",
+                                    "value": "monitor",
+                                    "disabled": true
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Atualizar meta",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/metas/{{idMeta}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "metas",
+                                "{{idMeta}}"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"nome\": \"Monitor 27 polegadas 144Hz\",\n    \"url\": \"https://www.exemplo.com.br/monitor-27\",\n    \"urlImagem\": \"https://www.exemplo.com.br/monitor-27.png\",\n    \"situacao\": \"ACOMPANHANDO\",\n    \"observacoes\": \"Comprar abaixo de R$ 1.700,00.\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Registrar preço",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 201\", () => pm.response.to.have.status(201));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/metas/{{idMeta}}/precos",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "metas",
+                                "{{idMeta}}",
+                                "precos"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"preco\": 1749.9,\n    \"data\": \"{{hoje}}\",\n    \"observacao\": \"Cupom de desconto.\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Deletar meta",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 204\", () => pm.response.to.have.status(204));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/metas/{{idMeta}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "metas",
+                                "{{idMeta}}"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Avisos",
+            "item": [
+                {
+                    "name": "Listar avisos",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/avisos",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "avisos"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Dashboard",
+            "item": [
+                {
+                    "name": "Buscar resumo",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/dashboard/resumo?dataInicial={{primeiroMesDoAno}}&dataFinal={{mesAtual}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "dashboard",
+                                "resumo"
+                            ],
+                            "query": [
+                                {
+                                    "key": "dataInicial",
+                                    "value": "{{primeiroMesDoAno}}"
+                                },
+                                {
+                                    "key": "dataFinal",
+                                    "value": "{{mesAtual}}"
+                                }
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Previsão",
+            "item": [
+                {
+                    "name": "Buscar previsão",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/previsao?meses=6",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "previsao"
+                            ],
+                            "query": [
+                                {
+                                    "key": "meses",
+                                    "value": "6"
+                                }
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Relatórios",
+            "item": [
+                {
+                    "name": "Buscar resumo",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/relatorios/resumo?dataInicial={{inicioDoAno}}&dataFinal={{hoje}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "relatorios",
+                                "resumo"
+                            ],
+                            "query": [
+                                {
+                                    "key": "dataInicial",
+                                    "value": "{{inicioDoAno}}"
+                                },
+                                {
+                                    "key": "dataFinal",
+                                    "value": "{{hoje}}"
+                                }
+                            ]
+                        }
+                    }
+                }
+            ]
+        }
+    ]
+}

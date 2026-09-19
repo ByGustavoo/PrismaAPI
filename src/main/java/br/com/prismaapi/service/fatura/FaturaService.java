@@ -20,6 +20,7 @@ import br.com.prismaapi.repository.compraparcelada.CompraParceladaRepository;
 import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,6 +55,7 @@ public class FaturaService {
     private static final Collator ORDEM_ALFABETICA = Collator.getInstance(Locale.forLanguageTag("pt-BR"));
     private static final Pattern FORMATO_DO_ID = Pattern.compile("^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})-(\\d{4}-(?:0[1-9]|1[0-2]))$");
 
+    @Cacheable("faturas")
     @Transactional(readOnly = true)
     public List<FaturaCartaoDTO> listar(UUID idCartao) {
         log.info("Listando as faturas... - ID do Cartão: [{}]", idCartao);
@@ -69,6 +71,7 @@ public class FaturaService {
                 .toList();
     }
 
+    @Cacheable("faturas")
     @Transactional(readOnly = true)
     public DetalheFaturaDTO detalhar(String id) {
         log.info("Detalhando a fatura... - ID: [{}]", id);

@@ -10,7 +10,7 @@ plugins {
     id("io.spring.dependency-management") version "1.1.7"
 }
 
-version = providers.gradleProperty("versao").getOrElse("1.0.0")
+version = providers.gradleProperty("versao").getOrElse("1.0.1")
 group = "br.com.prismaapi"
 
 val instanteDoBuild: Instant = Instant.now().truncatedTo(ChronoUnit.SECONDS)
@@ -52,15 +52,17 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-validation")
 
+    // Redis
+    implementation("org.springframework.boot:spring-boot-starter-cache")
+    implementation("org.springframework.boot:spring-boot-starter-data-redis")
+
     // MapStruct
     implementation("org.mapstruct:mapstruct:1.6.3")
     annotationProcessor("org.mapstruct:mapstruct-processor:1.6.3")
     annotationProcessor("org.projectlombok:lombok-mapstruct-binding:0.2.0")
 
-    // PostgreSQL
+    // PostgreSQL &  Flyway
     runtimeOnly("org.postgresql:postgresql")
-
-    // Flyway
     implementation("org.flywaydb:flyway-database-postgresql")
 
     // Logging

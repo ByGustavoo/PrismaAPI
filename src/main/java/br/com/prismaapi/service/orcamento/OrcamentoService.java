@@ -21,6 +21,8 @@ import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import br.com.prismaapi.repository.orcamento.OrcamentoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,6 +53,7 @@ public class OrcamentoService {
     private static final BigDecimal INICIO_DO_ALERTA = new BigDecimal("0.8");
     private static final Collator ORDEM_ALFABETICA = Collator.getInstance(Locale.forLanguageTag("pt-BR"));
 
+    @Cacheable("orcamentos")
     @Transactional(readOnly = true)
     public VisaoGeralOrcamentoDTO visaoGeral(YearMonth mes) {
         log.info("Buscando a visão geral do orçamento... - Mês: {}", mes);
@@ -88,6 +91,7 @@ public class OrcamentoService {
     }
 
     @Transactional
+    @CacheEvict(value = "orcamentos", allEntries = true)
     public OrcamentoDTO salvar(SalvarOrcamentoDTO salvarOrcamentoDTO) {
         log.info("Salvando o orçamento... - ID da Categoria: [{}]", salvarOrcamentoDTO.idCategoria());
         var orcamento = orcamentoMapper.toEntity(salvarOrcamentoDTO);
@@ -97,6 +101,7 @@ public class OrcamentoService {
     }
 
     @Transactional
+    @CacheEvict(value = "orcamentos", allEntries = true)
     public OrcamentoDTO atualizar(UUID id, SalvarOrcamentoDTO salvarOrcamentoDTO) {
         log.info("Atualizando o orçamento... - ID: [{}]", id);
         var orcamento = buscar(id);
@@ -108,6 +113,7 @@ public class OrcamentoService {
     }
 
     @Transactional
+    @CacheEvict(value = "orcamentos", allEntries = true)
     public void deletar(UUID id) {
         log.info("Deletando o orçamento... - ID: [{}]", id);
         orcamentoRepository.delete(buscar(id));

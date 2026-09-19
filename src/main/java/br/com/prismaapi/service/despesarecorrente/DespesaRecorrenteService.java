@@ -18,6 +18,8 @@ import br.com.prismaapi.repository.conta.ContaRepository;
 import br.com.prismaapi.repository.despesarecorrente.DespesaRecorrenteRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,6 +44,7 @@ public class DespesaRecorrenteService {
     private static final Collator ORDEM_ALFABETICA = Collator.getInstance(Locale.forLanguageTag("pt-BR"));
 
     @Transactional(readOnly = true)
+    @Cacheable("despesas-recorrentes")
     public ResumoDespesasRecorrentesDTO resumir() {
         log.info("Resumindo as despesas recorrentes...");
         var hoje = LocalDate.now();
@@ -75,6 +78,7 @@ public class DespesaRecorrenteService {
     }
 
     @Transactional
+    @CacheEvict(value = {"avisos", "despesas-recorrentes", "previsao"}, allEntries = true)
     public DespesaRecorrenteDTO salvar(SalvarDespesaRecorrenteDTO salvarDespesaRecorrenteDTO) {
         log.info("Salvando a despesa recorrente... - Descrição: {}", salvarDespesaRecorrenteDTO.descricao());
         var despesa = despesaRecorrenteMapper.toEntity(salvarDespesaRecorrenteDTO);
@@ -84,6 +88,7 @@ public class DespesaRecorrenteService {
     }
 
     @Transactional
+    @CacheEvict(value = {"avisos", "despesas-recorrentes", "previsao"}, allEntries = true)
     public DespesaRecorrenteDTO atualizar(UUID id, SalvarDespesaRecorrenteDTO salvarDespesaRecorrenteDTO) {
         log.info("Atualizando a despesa recorrente... - ID: [{}]", id);
         var despesa = buscar(id);
@@ -95,6 +100,7 @@ public class DespesaRecorrenteService {
     }
 
     @Transactional
+    @CacheEvict(value = {"avisos", "despesas-recorrentes", "previsao"}, allEntries = true)
     public void deletar(UUID id) {
         log.info("Deletando a despesa recorrente... - ID: [{}]", id);
         despesaRecorrenteRepository.delete(buscar(id));

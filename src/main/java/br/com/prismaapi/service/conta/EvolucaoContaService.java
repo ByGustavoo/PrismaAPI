@@ -17,6 +17,7 @@ import br.com.prismaapi.repository.conta.ContaRepository;
 import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,6 +42,7 @@ public class EvolucaoContaService {
     private final LancamentoRepository lancamentoRepository;
     private static final Comparator<Lancamento> ORDEM_CRONOLOGICA = Comparator.comparing(Lancamento::getData).thenComparing(Lancamento::getDataCriacao);
 
+    @Cacheable("contas")
     @Transactional(readOnly = true)
     public List<EvolucaoContaDTO> listarReservas() {
         log.info("Listando as reservas...");
@@ -61,6 +63,7 @@ public class EvolucaoContaService {
                 .toList();
     }
 
+    @Cacheable("contas")
     @Transactional(readOnly = true)
     public EvolucaoContaDTO buscarEvolucao(UUID id) {
         log.info("Buscando a evolução da conta... - ID: [{}]", id);

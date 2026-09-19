@@ -14,8 +14,8 @@ public record ExtratoInvestimentoDTO(
 
         Integer quantidadeAportes,
 
-        @JsonInclude(JsonInclude.Include.ALWAYS)
         @JsonFormat(pattern = "yyyy-MM-dd")
+        @JsonInclude(JsonInclude.Include.ALWAYS)
         LocalDate ultimoAporte,
 
         List<MovimentacaoInvestimentoDTO> movimentacoes,

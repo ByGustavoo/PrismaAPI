@@ -20,6 +20,16 @@ import java.util.UUID;
 @Tag(name = "Cartão", description = "Endpoints relacionados aos cartões")
 public interface CartaoDocs {
 
+    @GetMapping
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Cartões retornados com sucesso!"),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Erro interno do servidor!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
+    })
     @Operation(
             summary = "Lista os cartões",
             description = """
@@ -31,18 +41,9 @@ public interface CartaoDocs {
                     débito aponta para a conta que acessa e os vales carregam saldo próprio. O limite \
                     comprometido do crédito é calculado a cada leitura, somando as faturas ainda não \
                     pagas, inclusive as futuras formadas por parcelas já assumidas.""")
-    @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Cartões retornados com sucesso!"),
-            @ApiResponse(
-                    responseCode = "500",
-                    description = "Erro interno do servidor!",
-                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
-    })
-    @GetMapping
     ResponseEntity<List<CartaoDTO>> listarCartoes();
 
+    @PostMapping
     @Operation(
             summary = "Cadastra um cartão",
             description = """
@@ -70,9 +71,9 @@ public interface CartaoDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @PostMapping
     ResponseEntity<CartaoDTO> salvarCartao(@RequestBody @Valid SalvarCartaoDTO salvarCartaoDTO);
 
+    @PutMapping("/{id}")
     @Operation(
             summary = "Atualiza um cartão",
             description = """
@@ -102,13 +103,13 @@ public interface CartaoDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @PutMapping("/{id}")
     ResponseEntity<CartaoDTO> atualizarCartao(
             @Parameter(description = "Id do cartão")
             @PathVariable UUID id,
 
             @RequestBody @Valid SalvarCartaoDTO salvarCartaoDTO);
 
+    @DeleteMapping("/{id}")
     @Operation(
             summary = "Exclui um cartão",
             description = """
@@ -139,7 +140,6 @@ public interface CartaoDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @DeleteMapping("/{id}")
     ResponseEntity<Void> deletarCartao(
             @Parameter(description = "Id do cartão")
             @PathVariable UUID id);

@@ -16,17 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 @Tag(name = "Previsão", description = "Endpoints relacionados à projeção do saldo nos próximos meses")
 public interface PrevisaoDocs {
 
-    @Operation(
-            summary = "Projeta o saldo dos próximos meses",
-            description = """
-                    Parte do saldo total de hoje e projeta mês a mês, a partir do mês que vem, a receita, \
-                    as despesas e o saldo no fim de cada mês, apontando o mês de menor saldo.
-
-                    A receita é a média dos três meses fechados. As despesas recorrentes entram no mês \
-                    exato em que vencem e as parcelas no mês da fatura em que caem. O gasto variável é a \
-                    média de despesa dos três meses fechados menos as recorrentes médias do mesmo período, \
-                    nunca negativo. As parcelas não são descontadas: elas não são lançamentos e nunca \
-                    entram nessa média.""")
+    @GetMapping
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
@@ -40,7 +30,17 @@ public interface PrevisaoDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @GetMapping
+    @Operation(
+            summary = "Projeta o saldo dos próximos meses",
+            description = """
+                    Parte do saldo total de hoje e projeta mês a mês, a partir do mês que vem, a receita, \
+                    as despesas e o saldo no fim de cada mês, apontando o mês de menor saldo.
+
+                    A receita é a média dos três meses fechados. As despesas recorrentes entram no mês \
+                    exato em que vencem e as parcelas no mês da fatura em que caem. O gasto variável é a \
+                    média de despesa dos três meses fechados menos as recorrentes médias do mesmo período, \
+                    nunca negativo. As parcelas não são descontadas: elas não são lançamentos e nunca \
+                    entram nessa média.""")
     ResponseEntity<PrevisaoDTO> buscarPrevisao(
             @Parameter(description = "Quantidade de meses projetados, de 1 a 24; sem ele, 6", example = "6")
             @RequestParam(required = false) Integer meses);

@@ -19,6 +19,8 @@ import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import br.com.prismaapi.repository.lancamento.LancamentoSpecification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +44,7 @@ public class LancamentoService {
 
     private static final Sort MAIS_RECENTES_PRIMEIRO = Sort.by(Sort.Order.desc("data"), Sort.Order.desc("dataCriacao"));
 
+    @Cacheable("lancamentos")
     @Transactional(readOnly = true)
     public List<LancamentoDTO> listar(FiltroLancamentoDTO filtro) {
         log.info("Listando os lançamentos... - Filtro: {}", filtro);
@@ -54,6 +57,7 @@ public class LancamentoService {
     }
 
     @Transactional
+    @CacheEvict(value = {"avisos", "cartoes", "contas", "dashboard", "faturas", "lancamentos", "orcamentos", "previsao", "relatorios"}, allEntries = true)
     public LancamentoDTO salvar(SalvarLancamentoDTO salvarLancamentoDTO) {
         log.info("Salvando o lançamento... - Descrição: {} - Tipo: {}", salvarLancamentoDTO.descricao(), salvarLancamentoDTO.tipo());
         var lancamento = lancamentoMapper.toEntity(salvarLancamentoDTO);
@@ -64,6 +68,7 @@ public class LancamentoService {
     }
 
     @Transactional
+    @CacheEvict(value = {"avisos", "cartoes", "contas", "dashboard", "faturas", "lancamentos", "orcamentos", "previsao", "relatorios"}, allEntries = true)
     public LancamentoDTO atualizar(UUID id, SalvarLancamentoDTO salvarLancamentoDTO) {
         log.info("Atualizando o lançamento... - ID: [{}]", id);
         var lancamento = buscar(id);
@@ -77,6 +82,7 @@ public class LancamentoService {
     }
 
     @Transactional
+    @CacheEvict(value = {"avisos", "cartoes", "contas", "dashboard", "faturas", "lancamentos", "orcamentos", "previsao", "relatorios"}, allEntries = true)
     public void deletar(UUID id) {
         log.info("Deletando o lançamento... - ID: [{}]", id);
         var lancamento = buscar(id);

@@ -14,7 +14,19 @@ services:
       - DATABASE_USER=${DATABASE_USER}
       - DATABASE_PASSWORD=${DATABASE_PASSWORD}
 
+      - REDIS_IP=redis
+      - REDIS_PORT=6379
+
     volumes:
       - ./logs:/app/logs
+
+    restart: always
+
+  redis:
+    container_name: "Redis"
+    image: "redis:alpine3.23"
+
+    ports:
+      - "6379:6379"
 
     restart: always

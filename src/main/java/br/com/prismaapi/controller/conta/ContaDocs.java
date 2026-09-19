@@ -22,14 +22,7 @@ import java.util.UUID;
 @Tag(name = "Conta", description = "Endpoints relacionados às contas")
 public interface ContaDocs {
 
-    @Operation(
-            summary = "Lista as contas",
-            description = """
-                    Retorna todas as contas, com as ativas primeiro. Dentro de cada grupo, a ordem é \
-                    alfabética pelo nome e, no empate, pela instituição.
-
-                    Conta inativa continua na lista: ela sai do saldo total e dos seletores de \
-                    lançamento, mas o histórico dela segue legível.""")
+    @GetMapping
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
@@ -39,17 +32,17 @@ public interface ContaDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @GetMapping
+    @Operation(
+            summary = "Lista as contas",
+            description = """
+                    Retorna todas as contas, com as ativas primeiro. Dentro de cada grupo, a ordem é \
+                    alfabética pelo nome e, no empate, pela instituição.
+
+                    Conta inativa continua na lista: ela sai do saldo total e dos seletores de \
+                    lançamento, mas o histórico dela segue legível.""")
     ResponseEntity<List<ContaDTO>> listarContas();
 
-    @Operation(
-            summary = "Lista as origens de dinheiro",
-            description = """
-                    Retorna contas e cartões na mesma lista, do jeito que os seletores de lançamento \
-                    precisam: as contas primeiro e os cartões depois, cada grupo em ordem alfabética.
-
-                    Só entram registros ativos. O cartão de débito fica de fora, porque ele é apenas \
-                    o meio de acessar a conta, que já está na lista.""")
+    @GetMapping("/origens")
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
@@ -59,16 +52,17 @@ public interface ContaDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @GetMapping("/origens")
+    @Operation(
+            summary = "Lista as origens de dinheiro",
+            description = """
+                    Retorna contas e cartões na mesma lista, do jeito que os seletores de lançamento \
+                    precisam: as contas primeiro e os cartões depois, cada grupo em ordem alfabética.
+
+                    Só entram registros ativos. O cartão de débito fica de fora, porque ele é apenas \
+                    o meio de acessar a conta, que já está na lista.""")
     ResponseEntity<List<OrigemDTO>> listarOrigens();
 
-    @Operation(
-            summary = "Lista a evolução das contas de reserva",
-            description = """
-                    Retorna a evolução de cada conta de finalidade RESERVA (reserva de emergência, \
-                    poupança e previdência), ativas e inativas, na mesma ordem da listagem de contas.
-
-                    Cada item tem o mesmo formato da evolução de uma conta.""")
+    @GetMapping("/reservas")
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
@@ -78,24 +72,16 @@ public interface ContaDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @GetMapping("/reservas")
+    @Operation(
+            summary = "Lista a evolução das contas de reserva",
+            description = """
+                    Retorna a evolução de cada conta de finalidade RESERVA (reserva de emergência, \
+                    poupança e previdência), ativas e inativas, na mesma ordem da listagem de contas.
+
+                    Cada item tem o mesmo formato da evolução de uma conta.""")
     ResponseEntity<List<EvolucaoContaDTO>> listarReservas();
 
-    @Operation(
-            summary = "Evolução de uma conta",
-            description = """
-                    Retorna a evolução da conta nos últimos doze meses. Não há cadastro próprio: ela sai \
-                    dos lançamentos pagos com data até hoje. Transferência recebida e receita viram \
-                    APORTE, receita na categoria Rendimentos vira RENDIMENTO, e transferência enviada ou \
-                    despesa paga pela conta vira RESGATE.
-
-                    O saldo inicial é o saldo de hoje menos o efeito dos lançamentos da janela, então a \
-                    conta sempre fecha: saldoInicial + aportes − resgates + rendimentos = saldoAtual. A \
-                    rentabilidade é a fração rendimentos ÷ (saldoInicial + aportes − resgates). A \
-                    evolução tem doze pontos, do mais antigo ao atual: valor é o saldo no fim do mês \
-                    (hoje, no corrente) e aportado é esse saldo sem os rendimentos. As movimentações vêm \
-                    da mais recente para a mais antiga, com valor sempre positivo e o saldo logo depois \
-                    de cada uma.""")
+    @GetMapping("/{id}/evolucao")
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
@@ -113,11 +99,26 @@ public interface ContaDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @GetMapping("/{id}/evolucao")
+    @Operation(
+            summary = "Evolução de uma conta",
+            description = """
+                    Retorna a evolução da conta nos últimos doze meses. Não há cadastro próprio: ela sai \
+                    dos lançamentos pagos com data até hoje. Transferência recebida e receita viram \
+                    APORTE, receita na categoria Rendimentos vira RENDIMENTO, e transferência enviada ou \
+                    despesa paga pela conta vira RESGATE.
+
+                    O saldo inicial é o saldo de hoje menos o efeito dos lançamentos da janela, então a \
+                    conta sempre fecha: saldoInicial + aportes − resgates + rendimentos = saldoAtual. A \
+                    rentabilidade é a fração rendimentos ÷ (saldoInicial + aportes − resgates). A \
+                    evolução tem doze pontos, do mais antigo ao atual: valor é o saldo no fim do mês \
+                    (hoje, no corrente) e aportado é esse saldo sem os rendimentos. As movimentações vêm \
+                    da mais recente para a mais antiga, com valor sempre positivo e o saldo logo depois \
+                    de cada uma.""")
     ResponseEntity<EvolucaoContaDTO> buscarEvolucao(
             @Parameter(description = "Id da conta")
             @PathVariable UUID id);
 
+    @PostMapping
     @Operation(
             summary = "Cadastra uma conta",
             description = """
@@ -144,9 +145,9 @@ public interface ContaDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @PostMapping
     ResponseEntity<ContaDTO> salvarConta(@RequestBody @Valid SalvarContaDTO salvarContaDTO);
 
+    @PutMapping("/{id}")
     @Operation(
             summary = "Atualiza uma conta",
             description = """
@@ -175,13 +176,13 @@ public interface ContaDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @PutMapping("/{id}")
     ResponseEntity<ContaDTO> atualizarConta(
             @Parameter(description = "Id da conta")
             @PathVariable UUID id,
 
             @RequestBody @Valid SalvarContaDTO salvarContaDTO);
 
+    @DeleteMapping("/{id}")
     @Operation(
             summary = "Exclui uma conta",
             description = """
@@ -215,7 +216,6 @@ public interface ContaDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @DeleteMapping("/{id}")
     ResponseEntity<Void> deletarConta(
             @Parameter(description = "Id da conta")
             @PathVariable UUID id);

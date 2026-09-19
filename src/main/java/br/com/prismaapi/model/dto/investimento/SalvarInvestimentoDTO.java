@@ -38,9 +38,9 @@ public record SalvarInvestimentoDTO(
         @Digits(integer = 12, fraction = 2, message = "O campo 'valorAtual' deve ter no máximo duas casas decimais!")
         BigDecimal valorAtual,
 
+        @JsonFormat(pattern = "yyyy-MM-dd")
         @NotNull(message = "O campo 'dataInicio' é obrigatório!")
         @PastOrPresent(message = "O campo 'dataInicio' não pode estar no futuro!")
-        @JsonFormat(pattern = "yyyy-MM-dd")
         LocalDate dataInicio,
 
         @Size(max = 500, message = "O campo 'observacoes' deve ter no máximo 500 caracteres!")

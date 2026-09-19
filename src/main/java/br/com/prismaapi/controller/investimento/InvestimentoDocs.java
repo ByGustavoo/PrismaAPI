@@ -24,6 +24,16 @@ import java.util.UUID;
 @Tag(name = "Investimento", description = "Endpoints relacionados aos investimentos e à carteira consolidada")
 public interface InvestimentoDocs {
 
+    @GetMapping("/carteira")
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Carteira retornada com sucesso!"),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Erro interno do servidor!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
+    })
     @Operation(
             summary = "Resumo consolidado da carteira",
             description = """
@@ -37,18 +47,9 @@ public interface InvestimentoDocs {
                     primeira movimentação da carteira, com no mínimo dois e no máximo doze pontos. A \
                     alocação traz só as classes com posição e, como as posições, vem do maior valor atual \
                     para o menor.""")
-    @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Carteira retornada com sucesso!"),
-            @ApiResponse(
-                    responseCode = "500",
-                    description = "Erro interno do servidor!",
-                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
-    })
-    @GetMapping("/carteira")
     ResponseEntity<CarteiraDTO> buscarCarteira();
 
+    @GetMapping("/{id}/extrato")
     @Operation(
             summary = "Extrato de um investimento",
             description = """
@@ -77,22 +78,11 @@ public interface InvestimentoDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @GetMapping("/{id}/extrato")
     ResponseEntity<ExtratoInvestimentoDTO> buscarExtrato(
             @Parameter(description = "Id do investimento")
             @PathVariable UUID id);
 
-    @Operation(
-            summary = "Cadastra um investimento",
-            description = """
-                    Cadastra o investimento e devolve o registro salvo. O aportado é a aplicação inicial \
-                    e o valor atual, o saldo de hoje: o servidor grava um aporte do aportado na data de \
-                    início, com a descrição "Aplicação inicial", e, se o valor atual for diferente, um \
-                    saldo informado na data de hoje, com a descrição "Saldo informado no cadastro".
-
-                    Valor atual abaixo do aportado é aceito, porque posição no prejuízo existe. A data \
-                    da aplicação inicial não pode estar no futuro. Nome, instituição e observações são \
-                    gravados sem os espaços das pontas.""")
+    @PostMapping
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "201",
@@ -106,9 +96,20 @@ public interface InvestimentoDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @PostMapping
+    @Operation(
+            summary = "Cadastra um investimento",
+            description = """
+                    Cadastra o investimento e devolve o registro salvo. O aportado é a aplicação inicial \
+                    e o valor atual, o saldo de hoje: o servidor grava um aporte do aportado na data de \
+                    início, com a descrição "Aplicação inicial", e, se o valor atual for diferente, um \
+                    saldo informado na data de hoje, com a descrição "Saldo informado no cadastro".
+
+                    Valor atual abaixo do aportado é aceito, porque posição no prejuízo existe. A data \
+                    da aplicação inicial não pode estar no futuro. Nome, instituição e observações são \
+                    gravados sem os espaços das pontas.""")
     ResponseEntity<InvestimentoDTO> salvarInvestimento(@RequestBody @Valid SalvarInvestimentoDTO salvarInvestimentoDTO);
 
+    @PutMapping("/{id}")
     @Operation(
             summary = "Atualiza um investimento",
             description = """
@@ -134,13 +135,13 @@ public interface InvestimentoDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @PutMapping("/{id}")
     ResponseEntity<InvestimentoDTO> atualizarInvestimento(
             @Parameter(description = "Id do investimento")
             @PathVariable UUID id,
 
             @RequestBody @Valid AtualizarInvestimentoDTO atualizarInvestimentoDTO);
 
+    @PostMapping("/{id}/aportes")
     @Operation(
             summary = "Registra um aporte num investimento",
             description = """
@@ -170,13 +171,13 @@ public interface InvestimentoDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @PostMapping("/{id}/aportes")
     ResponseEntity<InvestimentoDTO> registrarAporte(
             @Parameter(description = "Id do investimento")
             @PathVariable UUID id,
 
             @RequestBody @Valid SalvarAporteInvestimentoDTO salvarAporteInvestimentoDTO);
 
+    @PostMapping("/{id}/saldos")
     @Operation(
             summary = "Informa o saldo atual de um investimento",
             description = """
@@ -205,13 +206,13 @@ public interface InvestimentoDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @PostMapping("/{id}/saldos")
     ResponseEntity<InvestimentoDTO> registrarSaldo(
             @Parameter(description = "Id do investimento")
             @PathVariable UUID id,
 
             @RequestBody @Valid SalvarSaldoInvestimentoDTO salvarSaldoInvestimentoDTO);
 
+    @DeleteMapping("/{id}")
     @Operation(
             summary = "Exclui um investimento",
             description = """
@@ -236,7 +237,6 @@ public interface InvestimentoDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @DeleteMapping("/{id}")
     ResponseEntity<Void> deletarInvestimento(
             @Parameter(description = "Id do investimento")
             @PathVariable UUID id);

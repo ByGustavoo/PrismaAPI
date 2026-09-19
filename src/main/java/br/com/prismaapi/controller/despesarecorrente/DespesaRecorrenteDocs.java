@@ -20,6 +20,16 @@ import java.util.UUID;
 @Tag(name = "Despesa Recorrente", description = "Endpoints relacionados às despesas fixas que se repetem")
 public interface DespesaRecorrenteDocs {
 
+    @GetMapping
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Despesas recorrentes retornadas com sucesso!"),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Erro interno do servidor!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
+    })
     @Operation(
             summary = "Lista as despesas recorrentes",
             description = """
@@ -31,18 +41,9 @@ public interface DespesaRecorrenteDocs {
                     4,3452, a média real de semanas num mês, a quinzenal por 2,1726, e as demais são \
                     divididas pelo número de meses entre uma ocorrência e outra. O custo anual é o \
                     mensal vezes doze. Os dois contam só as despesas ativas.""")
-    @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Despesas recorrentes retornadas com sucesso!"),
-            @ApiResponse(
-                    responseCode = "500",
-                    description = "Erro interno do servidor!",
-                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
-    })
-    @GetMapping
     ResponseEntity<ResumoDespesasRecorrentesDTO> listarDespesasRecorrentes();
 
+    @PostMapping
     @Operation(
             summary = "Cadastra uma despesa recorrente",
             description = """
@@ -68,9 +69,9 @@ public interface DespesaRecorrenteDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @PostMapping
     ResponseEntity<DespesaRecorrenteDTO> salvarDespesaRecorrente(@RequestBody @Valid SalvarDespesaRecorrenteDTO salvarDespesaRecorrenteDTO);
 
+    @PutMapping("/{id}")
     @Operation(
             summary = "Atualiza uma despesa recorrente",
             description = """
@@ -100,13 +101,13 @@ public interface DespesaRecorrenteDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @PutMapping("/{id}")
     ResponseEntity<DespesaRecorrenteDTO> atualizarDespesaRecorrente(
             @Parameter(description = "Id da despesa recorrente")
             @PathVariable UUID id,
 
             @RequestBody @Valid SalvarDespesaRecorrenteDTO salvarDespesaRecorrenteDTO);
 
+    @DeleteMapping("/{id}")
     @Operation(
             summary = "Exclui uma despesa recorrente",
             description = """
@@ -131,7 +132,6 @@ public interface DespesaRecorrenteDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @DeleteMapping("/{id}")
     ResponseEntity<Void> deletarDespesaRecorrente(
             @Parameter(description = "Id da despesa recorrente")
             @PathVariable UUID id);

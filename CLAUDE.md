@@ -30,7 +30,7 @@ Backend / API — release: branch + Pull Request (`origin`: `ByGustavoo/PrismaAP
 ```
 src/main/java/br/com/prismaapi/
   PrismaAPIApplication.java
-  config/          CorsConfig (origens por propriedade), DataBaseConfig, JacksonConfig
+  config/          CorsConfig (origens por propriedade), DataBaseConfig, JacksonConfig, RedisConfig
   controller/      um pacote por recurso: <Recurso>Controller + <Recurso>Docs (mapeamento e OpenAPI)
   enums/           enums do domínio
   exceptions/      uma RuntimeException por falha de negócio, dto/ e handler/GlobalExceptionHandler
@@ -47,7 +47,7 @@ src/main/resources/
 .run/              run configurations do IntelliJ (ignoradas pelo Git)
 .github/workflows/ workflow.yml (build no PR) e release.yml (imagem, tag e Release no merge para main)
 Dockerfile         build em dois estágios: gradle:jdk25 compila, eclipse-temurin:25-jre executa
-docker-compose-postgres.yml   PostgreSQL 18 local na 5432
+docker-compose-postgres.yml   PostgreSQL 18 local na 5432 e Redis na 6379
 docker-compose-prismaapi.yml  a imagem do Docker Hub na 9027, variáveis vindas do .env
 src/test/java/br/com/prismaapi/
   config/          AbstractTest, AbstractControllerTest e TestDataBaseConfig (datasource dos testes)
@@ -87,10 +87,13 @@ relatório HTML em `build/reports/jacoco`.
 - `test` — só para `./gradlew test`. O datasource vem do `TestDataBaseConfig` (as mesmas variáveis
   `DATABASE_*`, com padrão `localhost:5432/prisma`), e o Flyway lê `classpath:db/migration` e
   `classpath:db/test`: a `V1.2__PopularBanco.sql` popula o banco com um ano de dados relativos à data em
-  que roda. Aponte as variáveis para um banco próprio, nunca para o de dev, que não conhece a `V1.2`
+  que roda. Aponte as variáveis para um banco próprio, nunca para o de dev, que não conhece a `V1.2`.
+  O `RedisConfig` não vale no perfil, e `spring.cache.type: none` desliga o cache, então os testes não
+  dependem de um Redis rodando
 - Variáveis obrigatórias em `dev` e `prod`: `DATABASE_IP`, `DATABASE_PORT`,
-  `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD`. Sem elas a aplicação não sobe.
-  As run configurations do IntelliJ já as definem apontando para um Postgres local.
+  `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD`, `REDIS_IP` e `REDIS_PORT`. Sem elas a
+  aplicação não sobe. `REDIS_PASSWORD` é opcional, porque o Redis dos compose sobe sem senha. As run
+  configurations do IntelliJ já as definem apontando para o Postgres e o Redis locais.
 - `prismaapi.cors.origens-permitidas` recebe padrões de origem separados por vírgula
   (`allowedOriginPatterns`). O padrão da config base é `http://localhost:5173`, a origem do Vite do
   PrismaWeb; o perfil dev a substitui pelas portas locais porque um segundo Vite ou o acesso por IP
@@ -104,9 +107,10 @@ relatório HTML em `build/reports/jacoco`.
   `-Pversao` no Gradle e o label `org.opencontainers.image.version`. O `COPY build/libs/*.jar` só casa com um arquivo porque a task `jar` está
   desabilitada no `build.gradle.kts`; se você reabilitá-la, o build da imagem passa a copiar dois jars.
 - `docker-compose-postgres.yml` sobe um PostgreSQL 18 local (`prisma`/`postgres`) na 5432 — é o banco
-  que os perfis dev e test assumem por padrão. `docker-compose-prismaapi.yml` sobe a imagem publicada
-  no perfil `prod`, na 9027, com `TZ=GMT-3`, as variáveis `DATABASE_*` vindas de um `.env` ao lado e
-  `./logs` montado em `/app/logs`, que é onde o `log4j2.xml` grava em prod.
+  que os perfis dev e test assumem por padrão — e um Redis sem senha na 6379, o cache do dev.
+  `docker-compose-prismaapi.yml` sobe a imagem publicada no perfil `prod`, na 9027, com `TZ=GMT-3`, as
+  variáveis `DATABASE_*` vindas de um `.env` ao lado, `REDIS_IP=redis` (o nome do serviço do Redis no
+  mesmo compose) e `./logs` montado em `/app/logs`, que é onde o `log4j2.xml` grava em prod.
 - `.github/workflows/workflow.yml` roda em Pull Request para `main`: sobe um PostgreSQL 18 de serviço
   e executa `./gradlew build jacocoTestReport`. Como os testes de repositório precisam da `V1.2`, o
   banco do CI é criado do zero pelo Flyway a cada execução.
@@ -205,6 +209,24 @@ mudar um sem os outros quebra rotas, migrations ou logs:
   acentos — as linhas de log escapam disso porque o Log4j2 grava UTF-8 direto. Por isso o `bootRun`
   leva `-Dstdout.encoding=UTF-8` e `-Dstderr.encoding=UTF-8` nos `jvmArgs`, e o `ENTRYPOINT` do
   `Dockerfile` leva os mesmos dois. Texto com acento é para funcionar; não troque a palavra.
+- Toda leitura de `GET` dos services passa pelo cache do Redis (`@Cacheable`), com um cache por recurso
+  (`contas`, `faturas`, `dashboard`…) e TTL de 15 minutos; só a versão do sistema fica de fora. A chave,
+  montada no `RedisConfig`, leva a data de hoje, a geração, o método e os parâmetros, porque quase todo cálculo
+  depende de `LocalDate.now()` e a virada do dia não pode servir o resultado de ontem. Cada escrita
+  limpa com `@CacheEvict(allEntries = true)` todos os caches que leem a tabela alterada — lançamento
+  mexe em saldo, fatura, previsão, avisos, orçamento, dashboard e relatório, então leva todos eles. Um
+  `GET` novo ou uma leitura nova de outra tabela exige revisar esses `@CacheEvict`.
+- O cache nunca derruba a API. Com o Redis fora, o `errorHandler` do `RedisConfig` registra a falha e a
+  leitura vai ao banco; o Lettuce recusa comandos enquanto está desconectado e desiste em 2 segundos, em
+  vez dos 60 do padrão. Uma limpeza que falha não pode deixar dado velho para quando o Redis voltar: a
+  chave leva também uma geração, iniciada no instante em que a aplicação sobe e incrementada a cada
+  falha de limpeza, e a chave velha nunca mais é lida. Por isso as gravações no cache são imediatas
+  (`immediateWrites`): no modo assíncrono padrão, a falha da limpeza some sem chegar ao handler.
+- O valor vai para o Redis em JSON, sem `Serializable`. O `TypeResolverBuilder` montado no `RedisConfig` grava o tipo em tudo que não
+  é primitivo, inclusive records e as listas finais de `.toList()`, e registra qualquer `List` como
+  `ArrayList`, porque a view de `.reversed()` não tem como ser reconstruída. Campo de DTO precisa voltar
+  do JSON como saiu: um `LocalDate` com `@JsonFormat(pattern = "yyyy-MM")` quebra a leitura do cache,
+  e o tipo certo é `YearMonth`.
 - Os testes cobrem só os repositórios: um teste por método próprio, com `assertDoesNotThrow`, rodando
   sobre o banco populado pela `V1.2`. Eles pegaram a falta da extensão `unaccent`, usada pelas buscas
   de lançamentos e metas e criada no topo da `V1.0`. O `AbstractControllerTest` já existe, com os

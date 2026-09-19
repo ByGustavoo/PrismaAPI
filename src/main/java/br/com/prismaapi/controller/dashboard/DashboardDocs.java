@@ -19,16 +19,7 @@ import java.time.YearMonth;
 @Tag(name = "Dashboard", description = "Endpoints relacionados ao resumo da tela inicial")
 public interface DashboardDocs {
 
-    @Operation(
-            summary = "Resumo consolidado do dashboard",
-            description = """
-                    Retorna, numa só resposta, os totais do período, as variações contra a janela \
-                    anterior de mesmo tamanho e as quatro séries que alimentam os gráficos.
-
-                    Sem os dois parâmetros, responde pelo mês corrente. Eles andam juntos: enviar \
-                    apenas um é requisição inválida. Num recorte de mês único as séries de histórico \
-                    de saldo, fluxo de caixa e gasto diário abrem para seis meses, porque um mês \
-                    sozinho não desenha linha nenhuma.""")
+    @GetMapping("/resumo")
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
@@ -42,7 +33,16 @@ public interface DashboardDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @GetMapping("/resumo")
+    @Operation(
+            summary = "Resumo consolidado do dashboard",
+            description = """
+                    Retorna, numa só resposta, os totais do período, as variações contra a janela \
+                    anterior de mesmo tamanho e as quatro séries que alimentam os gráficos.
+
+                    Sem os dois parâmetros, responde pelo mês corrente. Eles andam juntos: enviar \
+                    apenas um é requisição inválida. Num recorte de mês único as séries de histórico \
+                    de saldo, fluxo de caixa e gasto diário abrem para seis meses, porque um mês \
+                    sozinho não desenha linha nenhuma.""")
     ResponseEntity<DashboardDTO> buscarResumo(
             @Parameter(description = "Primeiro mês do recorte", example = "2026-09")
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM") YearMonth dataInicial,

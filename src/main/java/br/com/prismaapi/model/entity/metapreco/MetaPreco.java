@@ -21,8 +21,8 @@ public class MetaPreco {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_meta", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     private Meta meta;
 
     @Column(nullable = false)

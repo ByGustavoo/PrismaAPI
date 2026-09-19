@@ -18,6 +18,7 @@ import br.com.prismaapi.service.cartao.CartaoService;
 import br.com.prismaapi.service.fatura.FaturaService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,6 +51,7 @@ public class AvisoService {
     private static final BigDecimal LIMITE_EM_ATENCAO = new BigDecimal("0.7");
     private static final Collator ORDEM_ALFABETICA = Collator.getInstance(PT_BR);
 
+    @Cacheable("avisos")
     @Transactional(readOnly = true)
     public List<AvisoDTO> listar() {
         log.info("Listando os avisos... - Data: {}", LocalDate.now());

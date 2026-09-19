@@ -6,6 +6,7 @@ import br.com.prismaapi.model.mapper.categoria.CategoriaMapper;
 import br.com.prismaapi.repository.categoria.CategoriaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +24,7 @@ public class CategoriaService {
     private final CategoriaRepository categoriaRepository;
     private static final Collator ORDEM_ALFABETICA = Collator.getInstance(Locale.forLanguageTag("pt-BR"));
 
+    @Cacheable("categorias")
     @Transactional(readOnly = true)
     public List<CategoriaDTO> listar(TipoCategoria tipo) {
         log.info("Listando as categorias... - Tipo: {}", tipo);

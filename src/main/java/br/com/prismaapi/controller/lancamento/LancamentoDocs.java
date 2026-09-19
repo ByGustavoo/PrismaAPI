@@ -24,6 +24,7 @@ import java.util.UUID;
 @Tag(name = "Lançamento", description = "Endpoints relacionados a receitas, despesas e transferências")
 public interface LancamentoDocs {
 
+    @GetMapping
     @Operation(
             summary = "Lista os lançamentos",
             description = """
@@ -46,7 +47,6 @@ public interface LancamentoDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @GetMapping
     ResponseEntity<List<LancamentoDTO>> listarLancamentos(
             @Parameter(description = "Tipo do lançamento", example = "DESPESA")
             @RequestParam(required = false) TipoLancamento tipo,
@@ -69,6 +69,7 @@ public interface LancamentoDocs {
             @Parameter(description = "Situação do lançamento", example = "PAGO")
             @RequestParam(required = false) SituacaoLancamento situacao);
 
+    @PostMapping
     @Operation(
             summary = "Cadastra um lançamento",
             description = """
@@ -94,9 +95,9 @@ public interface LancamentoDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @PostMapping
     ResponseEntity<LancamentoDTO> salvarLancamento(@RequestBody @Valid SalvarLancamentoDTO salvarLancamentoDTO);
 
+    @PutMapping("/{id}")
     @Operation(
             summary = "Atualiza um lançamento",
             description = """
@@ -125,13 +126,13 @@ public interface LancamentoDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @PutMapping("/{id}")
     ResponseEntity<LancamentoDTO> atualizarLancamento(
             @Parameter(description = "Id do lançamento")
             @PathVariable UUID id,
 
             @RequestBody @Valid SalvarLancamentoDTO salvarLancamentoDTO);
 
+    @DeleteMapping("/{id}")
     @Operation(
             summary = "Exclui um lançamento",
             description = "Remove o lançamento de forma definitiva e responde sem corpo.")
@@ -152,7 +153,6 @@ public interface LancamentoDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @DeleteMapping("/{id}")
     ResponseEntity<Void> deletarLancamento(
             @Parameter(description = "Id do lançamento")
             @PathVariable UUID id);

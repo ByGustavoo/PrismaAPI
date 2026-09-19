@@ -19,6 +19,7 @@ import java.util.List;
 @Tag(name = "Categoria", description = "Endpoints relacionados ao catálogo de categorias")
 public interface CategoriaDocs {
 
+    @GetMapping
     @Operation(
             summary = "Lista as categorias",
             description = """
@@ -39,7 +40,6 @@ public interface CategoriaDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @GetMapping
     ResponseEntity<List<CategoriaDTO>> listarCategorias(
             @Parameter(description = "Tipo da categoria", example = "DESPESA")
             @RequestParam(required = false) TipoCategoria tipo);

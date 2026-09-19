@@ -36,8 +36,8 @@ public record SalvarLancamentoDTO(
         @NotNull(message = "O campo 'forma' é obrigatório!")
         FormaLancamento forma,
 
-        @NotNull(message = "O campo 'data' é obrigatório!")
         @JsonFormat(pattern = "yyyy-MM-dd")
+        @NotNull(message = "O campo 'data' é obrigatório!")
         LocalDate data,
 
         UUID idCategoria,

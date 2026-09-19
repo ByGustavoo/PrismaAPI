@@ -8,6 +8,9 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 
+import java.time.LocalDate;
+import java.time.YearMonth;
+
 @Mapper(componentModel = "spring", uses = CategoriaMapper.class)
 public interface CompraParceladaMapper {
 
@@ -30,4 +33,8 @@ public interface CompraParceladaMapper {
     @Mapping(target = "dataCriacao", ignore = true)
     @Mapping(target = "dataAtualizacao", ignore = true)
     void updateEntity(SalvarCompraParceladaDTO salvarCompraParceladaDTO, @MappingTarget CompraParcelada compraParcelada);
+
+    default YearMonth toYearMonth(LocalDate data) {
+        return data == null ? null : YearMonth.from(data);
+    }
 }

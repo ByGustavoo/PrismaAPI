@@ -38,8 +38,8 @@ public class CompraParcelada {
     @Column(name = "primeiro_mes", nullable = false)
     private LocalDate primeiroMes;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_cartao", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     private Cartao cartao;
 
     @ManyToOne(fetch = FetchType.LAZY)

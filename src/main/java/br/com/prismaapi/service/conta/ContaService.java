@@ -18,6 +18,8 @@ import br.com.prismaapi.repository.despesarecorrente.DespesaRecorrenteRepository
 import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,6 +43,7 @@ public class ContaService {
     private final DespesaRecorrenteRepository despesaRecorrenteRepository;
     private static final Collator ORDEM_ALFABETICA = Collator.getInstance(Locale.forLanguageTag("pt-BR"));
 
+    @Cacheable("contas")
     @Transactional(readOnly = true)
     public List<ContaDTO> listar() {
         log.info("Listando as contas...");
@@ -53,6 +56,7 @@ public class ContaService {
                 .toList();
     }
 
+    @Cacheable("contas")
     @Transactional(readOnly = true)
     public List<OrigemDTO> listarOrigens() {
         log.info("Listando as origens...");
@@ -70,6 +74,7 @@ public class ContaService {
     }
 
     @Transactional
+    @CacheEvict(value = {"avisos", "cartoes", "contas", "dashboard", "despesas-recorrentes", "lancamentos", "previsao", "relatorios"}, allEntries = true)
     public ContaDTO salvar(SalvarContaDTO salvarContaDTO) {
         log.info("Salvando a conta... - Nome: {} - Instituição: {}", salvarContaDTO.nome(), salvarContaDTO.instituicao());
         validarDuplicidade(salvarContaDTO, null);
@@ -81,6 +86,7 @@ public class ContaService {
     }
 
     @Transactional
+    @CacheEvict(value = {"avisos", "cartoes", "contas", "dashboard", "despesas-recorrentes", "lancamentos", "previsao", "relatorios"}, allEntries = true)
     public ContaDTO atualizar(UUID id, SalvarContaDTO salvarContaDTO) {
         log.info("Atualizando a conta... - ID: [{}]", id);
         var conta = buscar(id);
@@ -94,6 +100,7 @@ public class ContaService {
     }
 
     @Transactional
+    @CacheEvict(value = {"avisos", "cartoes", "contas", "dashboard", "despesas-recorrentes", "lancamentos", "previsao", "relatorios"}, allEntries = true)
     public void deletar(UUID id) {
         log.info("Deletando a conta... - ID: [{}]", id);
         var conta = buscar(id);

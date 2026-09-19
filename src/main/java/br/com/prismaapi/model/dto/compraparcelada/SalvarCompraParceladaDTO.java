@@ -32,12 +32,12 @@ public record SalvarCompraParceladaDTO(
         @Max(value = 48, message = "O campo 'parcelas' deve estar entre 1 e 48!")
         Short parcelas,
 
-        @NotNull(message = "O campo 'dataCompra' é obrigatório!")
         @JsonFormat(pattern = "yyyy-MM-dd")
+        @NotNull(message = "O campo 'dataCompra' é obrigatório!")
         LocalDate dataCompra,
 
-        @NotNull(message = "O campo 'primeiroMes' é obrigatório!")
         @JsonFormat(pattern = "yyyy-MM")
+        @NotNull(message = "O campo 'primeiroMes' é obrigatório!")
         YearMonth primeiroMes,
 
         @NotNull(message = "O campo 'idCartao' é obrigatório!")

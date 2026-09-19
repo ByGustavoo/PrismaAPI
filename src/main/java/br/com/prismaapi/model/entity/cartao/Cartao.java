@@ -52,8 +52,8 @@ public class Cartao {
     @Column(name = "dia_vencimento")
     private Short diaVencimento;
 
-    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_conta")
+    @ManyToOne(fetch = FetchType.LAZY)
     private Conta conta;
 
     @Column(precision = 14, scale = 2)

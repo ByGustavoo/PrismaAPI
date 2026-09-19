@@ -22,6 +22,8 @@ import br.com.prismaapi.repository.meta.MetaSpecification;
 import br.com.prismaapi.repository.metapreco.MetaPrecoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,6 +52,7 @@ public class MetaService {
     private static final BigDecimal FAIXA_DA_ESTABILIDADE = new BigDecimal("0.005");
     private static final Collator ORDEM_ALFABETICA = Collator.getInstance(Locale.forLanguageTag("pt-BR"));
 
+    @Cacheable("metas")
     @Transactional(readOnly = true)
     public ResumoMetasDTO listar(SituacaoMeta situacao, String busca) {
         log.info("Listando as metas... - Situação: {} - Busca: {}", situacao, busca);
@@ -88,6 +91,7 @@ public class MetaService {
     }
 
     @Transactional
+    @CacheEvict(value = "metas", allEntries = true)
     public MetaDTO salvar(SalvarMetaDTO salvarMetaDTO) {
         log.info("Salvando a meta... - Nome: {}", salvarMetaDTO.nome());
         var meta = metaMapper.toEntity(salvarMetaDTO);
@@ -100,6 +104,7 @@ public class MetaService {
     }
 
     @Transactional
+    @CacheEvict(value = "metas", allEntries = true)
     public MetaDTO atualizar(UUID id, AtualizarMetaDTO atualizarMetaDTO) {
         log.info("Atualizando a meta... - ID: [{}]", id);
         var meta = buscar(id);
@@ -111,6 +116,7 @@ public class MetaService {
     }
 
     @Transactional
+    @CacheEvict(value = "metas", allEntries = true)
     public MetaDTO registrarPreco(UUID id, SalvarMetaPrecoDTO salvarMetaPrecoDTO) {
         log.info("Registrando o preço da meta... - ID: [{}] - Data: {}", id, salvarMetaPrecoDTO.data());
         var meta = buscar(id);
@@ -133,6 +139,7 @@ public class MetaService {
     }
 
     @Transactional
+    @CacheEvict(value = "metas", allEntries = true)
     public void deletar(UUID id) {
         log.info("Deletando a meta... - ID: [{}]", id);
         metaRepository.delete(buscar(id));

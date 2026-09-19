@@ -13,27 +13,27 @@ import java.util.UUID;
 @Mapper(componentModel = "spring", uses = CategoriaMapper.class)
 public interface LancamentoMapper {
 
-    @Mapping(target = "idOrigem", expression = "java(idOrigem(lancamento))")
-    @Mapping(target = "nomeOrigem", expression = "java(nomeOrigem(lancamento))")
     @Mapping(target = "idContaDestino", source = "contaDestino.id")
     @Mapping(target = "nomeContaDestino", source = "contaDestino.nome")
+    @Mapping(target = "idOrigem", expression = "java(idOrigem(lancamento))")
+    @Mapping(target = "nomeOrigem", expression = "java(nomeOrigem(lancamento))")
     LancamentoDTO toDTO(Lancamento lancamento);
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "categoria", ignore = true)
     @Mapping(target = "conta", ignore = true)
     @Mapping(target = "cartao", ignore = true)
-    @Mapping(target = "contaDestino", ignore = true)
+    @Mapping(target = "categoria", ignore = true)
     @Mapping(target = "dataCriacao", ignore = true)
+    @Mapping(target = "contaDestino", ignore = true)
     @Mapping(target = "dataAtualizacao", ignore = true)
     Lancamento toEntity(SalvarLancamentoDTO salvarLancamentoDTO);
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "categoria", ignore = true)
     @Mapping(target = "conta", ignore = true)
     @Mapping(target = "cartao", ignore = true)
-    @Mapping(target = "contaDestino", ignore = true)
+    @Mapping(target = "categoria", ignore = true)
     @Mapping(target = "dataCriacao", ignore = true)
+    @Mapping(target = "contaDestino", ignore = true)
     @Mapping(target = "dataAtualizacao", ignore = true)
     void updateEntity(SalvarLancamentoDTO salvarLancamentoDTO, @MappingTarget Lancamento lancamento);
 

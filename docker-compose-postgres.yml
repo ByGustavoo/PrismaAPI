@@ -11,5 +11,14 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql
 
+  redis:
+    container_name: "Redis"
+    image: "redis:alpine3.23"
+
+    ports:
+      - "6379:6379"
+
+    restart: always
+
 volumes:
   postgres-data:

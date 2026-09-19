@@ -25,6 +25,8 @@ import br.com.prismaapi.repository.investimento.InvestimentoRepository;
 import br.com.prismaapi.repository.movimentacaoinvestimento.MovimentacaoInvestimentoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -60,6 +62,7 @@ public class InvestimentoService {
     private static final Comparator<Investimento> MAIOR_VALOR_PRIMEIRO = Comparator.comparing(Investimento::getValorAtual, Comparator.reverseOrder()).thenComparing(Investimento::getNome, ORDEM_ALFABETICA);
     private static final Comparator<MovimentacaoInvestimento> ORDEM_DA_SERIE = Comparator.comparing(MovimentacaoInvestimento::getData).thenComparing(MovimentacaoInvestimento::getDataCriacao).thenComparing(MovimentacaoInvestimento::getTipo);
 
+    @Cacheable("investimentos")
     @Transactional(readOnly = true)
     public CarteiraDTO resumirCarteira() {
         log.info("Resumindo a carteira de investimentos...");
@@ -95,6 +98,7 @@ public class InvestimentoService {
         return pontosDaCarteira(seriesPorInvestimento().values(), meses, LocalDate.now());
     }
 
+    @Cacheable("investimentos")
     @Transactional(readOnly = true)
     public ExtratoInvestimentoDTO buscarExtrato(UUID id) {
         log.info("Buscando o extrato do investimento... - ID: [{}]", id);
@@ -121,6 +125,7 @@ public class InvestimentoService {
     }
 
     @Transactional
+    @CacheEvict(value = {"dashboard", "investimentos", "relatorios"}, allEntries = true)
     public InvestimentoDTO salvar(SalvarInvestimentoDTO salvarInvestimentoDTO) {
         log.info("Salvando o investimento... - Nome: {}", salvarInvestimentoDTO.nome());
         var investimento = investimentoMapper.toEntity(salvarInvestimentoDTO);
@@ -140,6 +145,7 @@ public class InvestimentoService {
     }
 
     @Transactional
+    @CacheEvict(value = {"dashboard", "investimentos", "relatorios"}, allEntries = true)
     public InvestimentoDTO atualizar(UUID id, AtualizarInvestimentoDTO atualizarInvestimentoDTO) {
         log.info("Atualizando o investimento... - ID: [{}]", id);
         var investimento = buscar(id);
@@ -151,6 +157,7 @@ public class InvestimentoService {
     }
 
     @Transactional
+    @CacheEvict(value = {"dashboard", "investimentos", "relatorios"}, allEntries = true)
     public InvestimentoDTO registrarAporte(UUID id, SalvarAporteInvestimentoDTO salvarAporteInvestimentoDTO) {
         log.info("Registrando o aporte do investimento... - ID: [{}] - Data: {}", id, salvarAporteInvestimentoDTO.data());
         var investimento = buscar(id);
@@ -162,6 +169,7 @@ public class InvestimentoService {
     }
 
     @Transactional
+    @CacheEvict(value = {"dashboard", "investimentos", "relatorios"}, allEntries = true)
     public InvestimentoDTO registrarSaldo(UUID id, SalvarSaldoInvestimentoDTO salvarSaldoInvestimentoDTO) {
         log.info("Registrando o saldo do investimento... - ID: [{}] - Data: {}", id, salvarSaldoInvestimentoDTO.data());
         var investimento = buscar(id);
@@ -173,6 +181,7 @@ public class InvestimentoService {
     }
 
     @Transactional
+    @CacheEvict(value = {"dashboard", "investimentos", "relatorios"}, allEntries = true)
     public void deletar(UUID id) {
         log.info("Deletando o investimento... - ID: [{}]", id);
         investimentoRepository.delete(buscar(id));

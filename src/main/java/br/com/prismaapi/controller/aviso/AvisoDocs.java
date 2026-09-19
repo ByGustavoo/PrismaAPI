@@ -16,6 +16,16 @@ import java.util.List;
 @Tag(name = "Aviso", description = "Endpoints relacionados aos avisos do sino do cabeçalho")
 public interface AvisoDocs {
 
+    @GetMapping
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Avisos retornados com sucesso!"),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Erro interno do servidor!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
+    })
     @Operation(
             summary = "Lista os avisos",
             description = """
@@ -28,15 +38,5 @@ public interface AvisoDocs {
                     a partir de 90% do limite, ATENCAO para o que vence em até sete dias ou para o cartão \
                     entre 70% e 90%, e INFO para o resto; lançamento agendado é sempre INFO. A lista vem \
                     da severidade mais alta para a mais baixa e, dentro de cada uma, pela data.""")
-    @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Avisos retornados com sucesso!"),
-            @ApiResponse(
-                    responseCode = "500",
-                    description = "Erro interno do servidor!",
-                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
-    })
-    @GetMapping
     ResponseEntity<List<AvisoDTO>> listarAvisos();
 }

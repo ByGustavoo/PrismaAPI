@@ -22,18 +22,7 @@ import java.util.UUID;
 @Tag(name = "Orçamento", description = "Endpoints relacionados aos limites mensais por categoria de despesa")
 public interface OrcamentoDocs {
 
-    @Operation(
-            summary = "Consumo dos orçamentos no mês",
-            description = """
-                    Retorna, para o mês consultado, cada limite com o gasto, o que resta, o consumo e a \
-                    situação, além dos totais planejados e das categorias que tiveram gasto sem limite \
-                    definido. Não existe listagem crua: os limites são lidos daqui.
-
-                    O limite não tem mês e vale até ser alterado; o gasto é apurado pelas despesas do mês. \
-                    O consumo é fração e passa de 1 no estouro, e o restante fica negativo. A situação é \
-                    SEGURO abaixo de 80% do limite, ALERTA a partir de 80% e ESTOURADO a partir de 100%. \
-                    A projeção só é calculada a partir do décimo dia do mês e vem zerada antes disso. Os \
-                    itens vêm do maior consumo para o menor.""")
+    @GetMapping("/visao-geral")
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
@@ -47,11 +36,23 @@ public interface OrcamentoDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @GetMapping("/visao-geral")
+    @Operation(
+            summary = "Consumo dos orçamentos no mês",
+            description = """
+                    Retorna, para o mês consultado, cada limite com o gasto, o que resta, o consumo e a \
+                    situação, além dos totais planejados e das categorias que tiveram gasto sem limite \
+                    definido. Não existe listagem crua: os limites são lidos daqui.
+
+                    O limite não tem mês e vale até ser alterado; o gasto é apurado pelas despesas do mês. \
+                    O consumo é fração e passa de 1 no estouro, e o restante fica negativo. A situação é \
+                    SEGURO abaixo de 80% do limite, ALERTA a partir de 80% e ESTOURADO a partir de 100%. \
+                    A projeção só é calculada a partir do décimo dia do mês e vem zerada antes disso. Os \
+                    itens vêm do maior consumo para o menor.""")
     ResponseEntity<VisaoGeralOrcamentoDTO> buscarVisaoGeral(
             @Parameter(description = "Mês consultado; sem ele, o mês corrente", example = "2026-09")
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM") YearMonth mes);
 
+    @PostMapping
     @Operation(
             summary = "Cadastra um orçamento",
             description = """
@@ -81,9 +82,9 @@ public interface OrcamentoDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @PostMapping
     ResponseEntity<OrcamentoDTO> salvarOrcamento(@RequestBody @Valid SalvarOrcamentoDTO salvarOrcamentoDTO);
 
+    @PutMapping("/{id}")
     @Operation(
             summary = "Atualiza um orçamento",
             description = """
@@ -117,13 +118,13 @@ public interface OrcamentoDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @PutMapping("/{id}")
     ResponseEntity<OrcamentoDTO> atualizarOrcamento(
             @Parameter(description = "Id do orçamento")
             @PathVariable UUID id,
 
             @RequestBody @Valid SalvarOrcamentoDTO salvarOrcamentoDTO);
 
+    @DeleteMapping("/{id}")
     @Operation(
             summary = "Exclui um orçamento",
             description = """
@@ -148,7 +149,6 @@ public interface OrcamentoDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @DeleteMapping("/{id}")
     ResponseEntity<Void> deletarOrcamento(
             @Parameter(description = "Id do orçamento")
             @PathVariable UUID id);

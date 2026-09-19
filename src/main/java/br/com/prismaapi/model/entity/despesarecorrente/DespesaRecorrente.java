@@ -47,12 +47,12 @@ public class DespesaRecorrente {
     @JoinColumn(name = "id_categoria")
     private Categoria categoria;
 
-    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_conta")
+    @ManyToOne(fetch = FetchType.LAZY)
     private Conta conta;
 
-    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_cartao")
+    @ManyToOne(fetch = FetchType.LAZY)
     private Cartao cartao;
 
     @Column(columnDefinition = "TEXT")

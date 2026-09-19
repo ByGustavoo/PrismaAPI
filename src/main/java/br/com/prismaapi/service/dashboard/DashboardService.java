@@ -23,6 +23,7 @@ import br.com.prismaapi.service.fatura.FaturaService;
 import br.com.prismaapi.service.saldo.SaldoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,6 +51,7 @@ public class DashboardService {
     private final InvestimentoRepository investimentoRepository;
     private static final String PERIODO_INVALIDO = "O período informado é inválido!";
 
+    @Cacheable("dashboard")
     @Transactional(readOnly = true)
     public DashboardDTO resumir(YearMonth dataInicial, YearMonth dataFinal) {
         log.info("Resumindo o dashboard... - Data Inicial: {} - Data Final: {}", dataInicial, dataFinal);

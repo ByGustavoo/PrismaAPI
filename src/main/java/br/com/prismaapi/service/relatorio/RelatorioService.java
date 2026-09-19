@@ -23,6 +23,7 @@ import br.com.prismaapi.service.investimento.InvestimentoService;
 import br.com.prismaapi.service.saldo.SaldoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,6 +52,7 @@ public class RelatorioService {
     private final LancamentoRepository lancamentoRepository;
     private static final DateTimeFormatter FORMATO_DO_DIA = DateTimeFormatter.ofPattern("dd/MM");
 
+    @Cacheable("relatorios")
     @Transactional(readOnly = true)
     public RelatorioDTO resumir(LocalDate dataInicial, LocalDate dataFinal) {
         log.info("Resumindo o relatório... - Data Inicial: {} - Data Final: {}", dataInicial, dataFinal);

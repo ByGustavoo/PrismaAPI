@@ -23,6 +23,8 @@ import br.com.prismaapi.repository.compraparcelada.CompraParceladaRepository;
 import br.com.prismaapi.service.fatura.FaturaService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,6 +48,7 @@ public class CompraParceladaService {
     private final CompraParceladaRepository compraParceladaRepository;
 
     @Transactional(readOnly = true)
+    @Cacheable("compras-parceladas")
     public List<PlanoCompraParceladaDTO> listar(UUID idCartao) {
         log.info("Listando as compras parceladas... - ID do Cartão: [{}]", idCartao);
         var hoje = LocalDate.now();
@@ -60,6 +63,7 @@ public class CompraParceladaService {
     }
 
     @Transactional
+    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "dashboard", "faturas", "previsao", "relatorios"}, allEntries = true)
     public CompraParceladaDTO salvar(SalvarCompraParceladaDTO salvarCompraParceladaDTO) {
         log.info("Salvando a compra parcelada... - Descrição: {}", salvarCompraParceladaDTO.descricao());
         var compra = compraParceladaMapper.toEntity(salvarCompraParceladaDTO);
@@ -69,6 +73,7 @@ public class CompraParceladaService {
     }
 
     @Transactional
+    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "dashboard", "faturas", "previsao", "relatorios"}, allEntries = true)
     public CompraParceladaDTO atualizar(UUID id, SalvarCompraParceladaDTO salvarCompraParceladaDTO) {
         log.info("Atualizando a compra parcelada... - ID: [{}]", id);
         var compra = buscar(id);
@@ -80,6 +85,7 @@ public class CompraParceladaService {
     }
 
     @Transactional
+    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "dashboard", "faturas", "previsao", "relatorios"}, allEntries = true)
     public void deletar(UUID id) {
         log.info("Deletando a compra parcelada... - ID: [{}]", id);
         compraParceladaRepository.delete(buscar(id));

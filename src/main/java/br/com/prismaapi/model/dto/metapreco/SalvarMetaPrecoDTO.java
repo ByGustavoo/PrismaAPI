@@ -19,9 +19,9 @@ public record SalvarMetaPrecoDTO(
         @Digits(integer = 12, fraction = 2, message = "O campo 'preco' deve ter no máximo duas casas decimais!")
         BigDecimal preco,
 
+        @JsonFormat(pattern = "yyyy-MM-dd")
         @NotNull(message = "O campo 'data' é obrigatório!")
         @PastOrPresent(message = "O campo 'data' não pode estar no futuro!")
-        @JsonFormat(pattern = "yyyy-MM-dd")
         LocalDate data,
 
         @Size(max = 500, message = "O campo 'observacao' deve ter no máximo 500 caracteres!")

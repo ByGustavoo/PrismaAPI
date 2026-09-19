@@ -19,18 +19,7 @@ import java.time.LocalDate;
 @Tag(name = "Relatório", description = "Endpoints relacionados ao relatório consolidado de um período")
 public interface RelatorioDocs {
 
-    @Operation(
-            summary = "Relatório consolidado do período",
-            description = """
-                    Retorna, para o recorte de datas informado, receitas, despesas e resultado, as \
-                    variações contra o intervalo anterior de mesma duração, os totais por categoria e por \
-                    origem, o fluxo de caixa, a evolução do saldo e o patrimônio separado entre contas e \
-                    investimentos. Recorte sem lançamento responde com as listas vazias.
-
-                    O fluxo de caixa e a evolução do saldo são agrupados conforme a duração do recorte: por \
-                    dia até 10 dias, por semana até 45 dias, rotulada pelo primeiro dia, e por mês acima \
-                    disso. O saldo de cada grupo é o do último dia dele. O patrimônio cobre no mínimo seis \
-                    meses. Transferências ficam fora da contagem de lançamentos e do gasto por origem.""")
+    @GetMapping("/resumo")
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
@@ -44,7 +33,18 @@ public interface RelatorioDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @GetMapping("/resumo")
+    @Operation(
+            summary = "Relatório consolidado do período",
+            description = """
+                    Retorna, para o recorte de datas informado, receitas, despesas e resultado, as \
+                    variações contra o intervalo anterior de mesma duração, os totais por categoria e por \
+                    origem, o fluxo de caixa, a evolução do saldo e o patrimônio separado entre contas e \
+                    investimentos. Recorte sem lançamento responde com as listas vazias.
+
+                    O fluxo de caixa e a evolução do saldo são agrupados conforme a duração do recorte: por \
+                    dia até 10 dias, por semana até 45 dias, rotulada pelo primeiro dia, e por mês acima \
+                    disso. O saldo de cada grupo é o do último dia dele. O patrimônio cobre no mínimo seis \
+                    meses. Transferências ficam fora da contagem de lançamentos e do gasto por origem.""")
     ResponseEntity<RelatorioDTO> buscarResumo(
             @Parameter(description = "Início do recorte, inclusivo", example = "2026-09-01")
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate dataInicial,

@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 @Tag(name = "Sistema", description = "Endpoints relacionados às informações da própria API")
 public interface SistemaDocs {
 
+    @GetMapping("/versao")
     @Operation(
             summary = "Busca a versão da API",
             description = """
@@ -29,6 +30,5 @@ public interface SistemaDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @GetMapping("/versao")
     ResponseEntity<VersaoSistemaDTO> buscarVersao();
 }

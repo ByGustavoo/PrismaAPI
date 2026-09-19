@@ -23,19 +23,7 @@ import java.util.UUID;
 @Tag(name = "Meta", description = "Endpoints relacionados às metas de compra e ao histórico de preços")
 public interface MetaDocs {
 
-    @Operation(
-            summary = "Lista as metas",
-            description = """
-                    Retorna cada meta com o histórico de preços em ordem cronológica e a análise já \
-                    calculada, da atualizada mais recentemente para a mais antiga, além dos totais.
-
-                    A variação e a tendência são medidas contra o primeiro preço, e a tendência é \
-                    ESTAVEL enquanto a variação fica dentro de 0,5%. A economia é o quanto o preço atual \
-                    está abaixo do maior já registrado. A leitura é PRIMEIRO com um registro só, ESTAVEL \
-                    quando todos os preços são iguais, MENOR ou MAIOR quando o preço atual está nos 5% \
-                    das pontas da faixa e, fora delas, ABAIXO_DA_MEDIA ou ACIMA_DA_MEDIA. Os totais somam \
-                    só as metas em acompanhamento. A busca casa com o nome e a observação, sem \
-                    diferenciar maiúscula nem acento.""")
+    @GetMapping
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
@@ -49,7 +37,19 @@ public interface MetaDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @GetMapping
+    @Operation(
+            summary = "Lista as metas",
+            description = """
+                    Retorna cada meta com o histórico de preços em ordem cronológica e a análise já \
+                    calculada, da atualizada mais recentemente para a mais antiga, além dos totais.
+
+                    A variação e a tendência são medidas contra o primeiro preço, e a tendência é \
+                    ESTAVEL enquanto a variação fica dentro de 0,5%. A economia é o quanto o preço atual \
+                    está abaixo do maior já registrado. A leitura é PRIMEIRO com um registro só, ESTAVEL \
+                    quando todos os preços são iguais, MENOR ou MAIOR quando o preço atual está nos 5% \
+                    das pontas da faixa e, fora delas, ABAIXO_DA_MEDIA ou ACIMA_DA_MEDIA. Os totais somam \
+                    só as metas em acompanhamento. A busca casa com o nome e a observação, sem \
+                    diferenciar maiúscula nem acento.""")
     ResponseEntity<ResumoMetasDTO> listarMetas(
             @Parameter(description = "Situação da meta", example = "ACOMPANHANDO")
             @RequestParam(required = false) SituacaoMeta situacao,
@@ -57,6 +57,7 @@ public interface MetaDocs {
             @Parameter(description = "Texto buscado no nome e na observação", example = "notebook")
             @RequestParam(required = false) String busca);
 
+    @PostMapping
     @Operation(
             summary = "Cadastra uma meta",
             description = """
@@ -79,9 +80,9 @@ public interface MetaDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @PostMapping
     ResponseEntity<MetaDTO> salvarMeta(@RequestBody @Valid SalvarMetaDTO salvarMetaDTO);
 
+    @PutMapping("/{id}")
     @Operation(
             summary = "Atualiza uma meta",
             description = """
@@ -107,13 +108,13 @@ public interface MetaDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @PutMapping("/{id}")
     ResponseEntity<MetaDTO> atualizarMeta(
             @Parameter(description = "Id da meta")
             @PathVariable UUID id,
 
             @RequestBody @Valid AtualizarMetaDTO atualizarMetaDTO);
 
+    @PostMapping("/{id}/precos")
     @Operation(
             summary = "Registra um preço da meta",
             description = """
@@ -148,13 +149,13 @@ public interface MetaDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @PostMapping("/{id}/precos")
     ResponseEntity<MetaDTO> registrarPreco(
             @Parameter(description = "Id da meta")
             @PathVariable UUID id,
 
             @RequestBody @Valid SalvarMetaPrecoDTO salvarMetaPrecoDTO);
 
+    @DeleteMapping("/{id}")
     @Operation(
             summary = "Exclui uma meta",
             description = """
@@ -177,7 +178,6 @@ public interface MetaDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    @DeleteMapping("/{id}")
     ResponseEntity<Void> deletarMeta(
             @Parameter(description = "Id da meta")
             @PathVariable UUID id);

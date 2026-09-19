@@ -52,7 +52,7 @@
 
 ## 🔐 Variáveis de Ambiente
 
-Obrigatórias nos perfis `dev` e `prod` (usadas por `DataBaseConfig`):
+Obrigatórias nos perfis `dev` e `prod` (usadas por `DataBaseConfig` e `RedisConfig`):
 
 | Variável | Descrição |
 |---|---|
@@ -61,6 +61,9 @@ Obrigatórias nos perfis `dev` e `prod` (usadas por `DataBaseConfig`):
 | `DATABASE_NAME` | Nome do banco |
 | `DATABASE_USER` | Usuário do banco |
 | `DATABASE_PASSWORD` | Senha do banco |
+| `REDIS_IP` | Host do Redis |
+| `REDIS_PORT` | Porta do Redis |
+| `REDIS_PASSWORD` | Senha do Redis (opcional) |
 
 No perfil `test` as mesmas variáveis são lidas por `TestDataBaseConfig`, que assume
 `localhost:5432/prisma` quando elas não estão definidas.

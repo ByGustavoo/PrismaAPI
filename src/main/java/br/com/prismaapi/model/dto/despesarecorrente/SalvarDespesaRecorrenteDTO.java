@@ -31,8 +31,8 @@ public record SalvarDespesaRecorrenteDTO(
         @NotNull(message = "O campo 'frequencia' é obrigatório!")
         Frequencia frequencia,
 
-        @NotNull(message = "O campo 'proximoVencimento' é obrigatório!")
         @JsonFormat(pattern = "yyyy-MM-dd")
+        @NotNull(message = "O campo 'proximoVencimento' é obrigatório!")
         LocalDate proximoVencimento,
 
         @NotNull(message = "O campo 'idOrigem' é obrigatório!")
