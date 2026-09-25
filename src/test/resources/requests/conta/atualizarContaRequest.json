@@ -1,0 +1,8 @@
+{
+  "nome": "Carteira",
+  "instituicao": "Dinheiro vivo",
+  "tipo": "OUTRA",
+  "saldo": 350.00,
+  "situacao": "ATIVO",
+  "incluirNoTotal": true
+}

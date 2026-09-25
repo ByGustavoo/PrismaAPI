@@ -1,0 +1,10 @@
+{
+  "descricao": "Smartphone",
+  "valorTotal": 3200.00,
+  "parcelas": 10,
+  "dataCompra": "2026-09-15",
+  "primeiroMes": "2026-10",
+  "idCartao": "%s",
+  "idCategoria": "%s",
+  "observacoes": "Troca do aparelho antigo."
+}

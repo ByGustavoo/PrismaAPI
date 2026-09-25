@@ -1,0 +1,9 @@
+{
+  "nome": "Tesouro IPCA+ 2035",
+  "classeAtivo": "TESOURO",
+  "instituicao": "Corretora Prisma",
+  "aportado": 3000.00,
+  "valorAtual": 3000.00,
+  "dataInicio": "2026-09-01",
+  "observacoes": "Aposentadoria."
+}

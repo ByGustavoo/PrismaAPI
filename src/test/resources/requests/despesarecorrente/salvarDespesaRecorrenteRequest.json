@@ -1,0 +1,10 @@
+{
+  "descricao": "Seguro de vida",
+  "valor": 89.90,
+  "idCategoria": "%s",
+  "frequencia": "MENSAL",
+  "proximoVencimento": "2026-10-05",
+  "idOrigem": "%s",
+  "situacao": "ATIVO",
+  "observacoes": "Débito automático."
+}

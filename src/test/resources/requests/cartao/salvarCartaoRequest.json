@@ -1,0 +1,11 @@
+{
+  "nome": "Aurora Black",
+  "instituicao": "Banco Aurora",
+  "tipo": "CREDITO",
+  "situacao": "ATIVO",
+  "bandeira": "Mastercard",
+  "ultimosDigitos": "5566",
+  "limiteCredito": 8000.00,
+  "diaFechamento": 5,
+  "diaVencimento": 12
+}

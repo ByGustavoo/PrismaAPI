@@ -9,6 +9,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -18,7 +19,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 @Import(value = TestDataBaseConfig.class)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public abstract class AbstractControllerTest {
+public abstract class AbstractControllerTest extends AbstractTest {
 
     @Autowired
     protected MockMvc mockMvc;
@@ -35,22 +36,8 @@ public abstract class AbstractControllerTest {
                 .andExpect(status().isCreated());
     }
 
-    protected void testPostStatusOk(String url, String requestBody) throws Exception {
-        mockMvc.perform(post(url)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody))
-                .andExpect(status().isOk());
-    }
-
-    protected void testPostStatusConflict(String url, String requestBody) throws Exception {
-        mockMvc.perform(post(url)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody))
-                .andExpect(status().isConflict());
-    }
-
-    protected void testPatch(String url, String requestBody) throws Exception {
-        mockMvc.perform(patch(url)
+    protected void testPut(String url, String requestBody) throws Exception {
+        mockMvc.perform(put(url)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isOk());

@@ -1,0 +1,11 @@
+{
+  "descricao": "Supermercado",
+  "valor": 245.80,
+  "tipo": "DESPESA",
+  "situacao": "PAGO",
+  "forma": "PIX",
+  "data": "2026-09-01",
+  "idCategoria": "%s",
+  "idOrigem": "%s",
+  "observacoes": "Compra do mês."
+}

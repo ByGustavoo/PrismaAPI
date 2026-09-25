@@ -1,0 +1,10 @@
+{
+  "descricao": "Aluguel",
+  "valor": 2350.00,
+  "idCategoria": "%s",
+  "frequencia": "MENSAL",
+  "proximoVencimento": "2026-10-10",
+  "idOrigem": "%s",
+  "situacao": "ATIVO",
+  "observacoes": "Reajuste anual pelo IPCA."
+}

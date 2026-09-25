@@ -1,0 +1,11 @@
+{
+  "nome": "Cartão antigo",
+  "instituicao": "Banco Horizonte",
+  "tipo": "CREDITO",
+  "situacao": "INATIVO",
+  "bandeira": "Visa",
+  "ultimosDigitos": "0055",
+  "limiteCredito": 2500.00,
+  "diaFechamento": 10,
+  "diaVencimento": 17
+}

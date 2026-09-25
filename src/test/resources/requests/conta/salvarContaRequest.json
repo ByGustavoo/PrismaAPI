@@ -1,0 +1,8 @@
+{
+  "nome": "Conta investimento",
+  "instituicao": "Banco Horizonte",
+  "tipo": "CORRENTE",
+  "saldo": 1500.00,
+  "situacao": "ATIVO",
+  "incluirNoTotal": true
+}

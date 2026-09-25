@@ -1,0 +1,10 @@
+{
+  "descricao": "Geladeira",
+  "valorTotal": 3800.00,
+  "parcelas": 12,
+  "dataCompra": "2026-01-21",
+  "primeiroMes": "2026-02",
+  "idCartao": "%s",
+  "idCategoria": "%s",
+  "observacoes": "Frete incluído."
+}

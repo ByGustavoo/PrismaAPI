@@ -1,0 +1,11 @@
+{
+  "descricao": "Aluguel",
+  "valor": 2350.00,
+  "tipo": "DESPESA",
+  "situacao": "PAGO",
+  "forma": "PIX",
+  "data": "2026-09-10",
+  "idCategoria": "%s",
+  "idOrigem": "%s",
+  "observacoes": "Reajuste anual pelo IPCA."
+}
