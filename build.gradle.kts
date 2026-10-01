@@ -61,27 +61,28 @@ dependencies {
     annotationProcessor("org.mapstruct:mapstruct-processor:1.6.3")
     annotationProcessor("org.projectlombok:lombok-mapstruct-binding:0.2.0")
 
-    // PostgreSQL &  Flyway
+    // Banco de dados
     runtimeOnly("org.postgresql:postgresql")
     implementation("org.flywaydb:flyway-database-postgresql")
-
-    // Logging
-    implementation("org.springframework.boot:spring-boot-starter-log4j2")
 
     // Lombok
     compileOnly("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")
 
+    // Logging
+    implementation("org.springframework.boot:spring-boot-starter-log4j2")
+
     // Swagger
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.0")
 
-    // Tests
+    // Testes
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.boot:spring-boot-starter-flyway-test")
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
     testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
     testImplementation("org.springframework.boot:spring-boot-starter-validation-test")
+
 }
 
 tasks.named<JavaExec>("bootRun") {
