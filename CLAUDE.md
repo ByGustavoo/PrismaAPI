@@ -110,7 +110,9 @@ relatório HTML em `build/reports/jacoco`.
   que os perfis dev e test assumem por padrão — e um Redis sem senha na 6379, o cache do dev.
   `docker-compose-prismaapi.yml` sobe a imagem publicada no perfil `prod`, na 9027, com `TZ=GMT-3`, as
   variáveis `DATABASE_*` vindas de um `.env` ao lado, `REDIS_IP=redis` (o nome do serviço do Redis no
-  mesmo compose) e `./logs` montado em `/app/logs`, que é onde o `log4j2.xml` grava em prod.
+  mesmo compose) e `./logs` montado em `/app/logs`, que é onde o `log4j2.xml` grava em prod. O Redis
+  desse compose se chama `PrismaRedis` e não publica porta no host, para não disputar o nome `Redis`
+  e a 6379 com o do `docker-compose-postgres.yml`.
 - `.github/workflows/workflow.yml` roda em Pull Request para `main`: sobe um PostgreSQL 18 de serviço
   e executa `./gradlew build jacocoTestReport`. Como os testes de repositório precisam da `V1.2`, o
   banco do CI é criado do zero pelo Flyway a cada execução.

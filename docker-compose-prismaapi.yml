@@ -20,13 +20,13 @@ services:
     volumes:
       - ./logs:/app/logs
 
+    depends_on:
+      - redis
+
     restart: always
 
   redis:
-    container_name: "Redis"
+    container_name: "PrismaRedis"
     image: "redis:alpine3.23"
-
-    ports:
-      - "6379:6379"
 
     restart: always
