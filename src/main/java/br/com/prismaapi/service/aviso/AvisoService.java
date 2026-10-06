@@ -74,7 +74,7 @@ public class AvisoService {
         return faturaService.listar(null)
                 .stream()
                 .filter(fatura -> fatura.situacao() != SituacaoFatura.PAGA && fatura.situacao() != SituacaoFatura.FUTURA)
-                .filter(fatura -> fatura.total().signum() > 0)
+                .filter(fatura -> fatura.valorRestante().signum() > 0)
                 .filter(fatura -> !fatura.dataVencimento().isAfter(hoje.plusDays(DIAS_DE_ANTECEDENCIA)))
                 .filter(fatura -> !fatura.dataVencimento().isBefore(hoje.minusDays(DIAS_DE_ANTECEDENCIA)))
                 .map(fatura -> new AvisoDTO(
@@ -84,7 +84,7 @@ public class AvisoService {
                         "Fatura do " + fatura.nomeCartao(),
                         descricaoDaFatura(fatura, hoje),
                         fatura.dataVencimento(),
-                        fatura.total(),
+                        fatura.valorRestante(),
                         "/faturas"))
                 .toList();
     }

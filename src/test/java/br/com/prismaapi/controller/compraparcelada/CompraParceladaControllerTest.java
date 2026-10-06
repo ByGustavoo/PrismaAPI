@@ -67,4 +67,18 @@ class CompraParceladaControllerTest extends AbstractControllerTest {
 
         testDelete("/v1/compras-parceladas/" + idCompra);
     }
+
+    @Test
+    void registrarPagamentoParcelaTest() throws Exception {
+        var idCompra = buscar(compraParceladaRepository, compra -> compra.getDescricao().equals("Curso de idiomas")).getId();
+
+        testPost("/v1/compras-parceladas/" + idCompra + "/parcelas/4/pagamento", "");
+    }
+
+    @Test
+    void deletarPagamentoParcelaTest() throws Exception {
+        var idCompra = buscar(compraParceladaRepository, compra -> compra.getDescricao().equals("Curso de idiomas")).getId();
+
+        testDelete("/v1/compras-parceladas/" + idCompra + "/parcelas/1/pagamento");
+    }
 }

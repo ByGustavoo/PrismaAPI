@@ -24,6 +24,8 @@ public record ItemFaturaDTO(
         @JsonInclude(JsonInclude.Include.ALWAYS)
         CategoriaDTO categoria,
 
-        ParcelaItemFaturaDTO parcela
+        ParcelaItemFaturaDTO parcela,
+
+        Boolean paga
 
 ) {}

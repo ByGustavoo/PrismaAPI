@@ -1,6 +1,7 @@
 package br.com.prismaapi.controller.compraparcelada;
 
 import br.com.prismaapi.model.dto.compraparcelada.CompraParceladaDTO;
+import br.com.prismaapi.model.dto.compraparcelada.PagamentoParcelaDTO;
 import br.com.prismaapi.model.dto.compraparcelada.PlanoCompraParceladaDTO;
 import br.com.prismaapi.model.dto.compraparcelada.SalvarCompraParceladaDTO;
 import br.com.prismaapi.service.compraparcelada.CompraParceladaService;
@@ -38,6 +39,17 @@ public class CompraParceladaController implements CompraParceladaDocs {
     @Override
     public ResponseEntity<Void> deletarCompraParcelada(UUID id) {
         compraParceladaService.deletar(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    public ResponseEntity<PagamentoParcelaDTO> registrarPagamentoParcela(UUID id, Integer numero) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(compraParceladaService.registrarPagamento(id, numero));
+    }
+
+    @Override
+    public ResponseEntity<Void> deletarPagamentoParcela(UUID id, Integer numero) {
+        compraParceladaService.deletarPagamento(id, numero);
         return ResponseEntity.noContent().build();
     }
 }

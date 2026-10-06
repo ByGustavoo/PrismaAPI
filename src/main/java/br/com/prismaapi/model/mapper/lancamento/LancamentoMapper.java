@@ -26,6 +26,7 @@ public interface LancamentoMapper {
     @Mapping(target = "dataCriacao", ignore = true)
     @Mapping(target = "contaDestino", ignore = true)
     @Mapping(target = "dataAtualizacao", ignore = true)
+    @Mapping(target = "dataPagamentoFatura", ignore = true)
     Lancamento toEntity(SalvarLancamentoDTO salvarLancamentoDTO);
 
     @Mapping(target = "id", ignore = true)
@@ -35,6 +36,7 @@ public interface LancamentoMapper {
     @Mapping(target = "dataCriacao", ignore = true)
     @Mapping(target = "contaDestino", ignore = true)
     @Mapping(target = "dataAtualizacao", ignore = true)
+    @Mapping(target = "dataPagamentoFatura", ignore = true)
     void updateEntity(SalvarLancamentoDTO salvarLancamentoDTO, @MappingTarget Lancamento lancamento);
 
     default UUID idOrigem(Lancamento lancamento) {

@@ -12,6 +12,8 @@ public record DespesaCartaoProjecao(
 
         BigDecimal valor,
 
+        BigDecimal valorPago,
+
         Long quantidade
 
 ) {}

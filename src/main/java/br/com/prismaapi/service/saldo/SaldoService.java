@@ -44,7 +44,7 @@ public class SaldoService {
         lancamentoRepository.agruparTransferenciasQueEntramNoTotal(inicio, fim, hoje)
                 .forEach(entrada -> movimentos.merge(entrada.data(), entrada.valor(), BigDecimal::add));
 
-        faturaService.parcelasPorVencimento(hoje)
+        faturaService.parcelasPorDataDePagamento(hoje)
                 .subMap(inicio, false, fim, true)
                 .forEach((vencimento, valor) -> movimentos.merge(vencimento, valor.negate(), BigDecimal::add));
 

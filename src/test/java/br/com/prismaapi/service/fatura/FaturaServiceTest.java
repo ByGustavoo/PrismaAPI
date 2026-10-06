@@ -10,6 +10,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.Map;
 
 @SpringBootTest
 class FaturaServiceTest extends AbstractTest {
@@ -38,6 +39,23 @@ class FaturaServiceTest extends AbstractTest {
     }
 
     @Test
+    void registrarPagamentoTest() {
+        var idCartao = buscar(cartaoRepository, cartao -> cartao.getNome().equals("Aurora Platinum")).getId();
+
+        var fatura = Assertions.assertDoesNotThrow(() -> faturaService.registrarPagamento(idCartao + "-" + YearMonth.now()));
+        Assertions.assertNotNull(fatura);
+    }
+
+    @Test
+    void deletarPagamentoTest() {
+        var idCartao = buscar(cartaoRepository, cartao -> cartao.getNome().equals("Aurora Platinum")).getId();
+
+        faturaService.registrarPagamento(idCartao + "-" + YearMonth.now());
+
+        Assertions.assertDoesNotThrow(() -> faturaService.deletarPagamento(idCartao + "-" + YearMonth.now()));
+    }
+
+    @Test
     void faturaEmDestaqueTest() {
         var fatura = Assertions.assertDoesNotThrow(() -> faturaService.faturaEmDestaque(YearMonth.now(), LocalDate.now()));
         Assertions.assertNotNull(fatura);
@@ -53,13 +71,19 @@ class FaturaServiceTest extends AbstractTest {
     void cronogramaTest() {
         var compra = buscar(compraParceladaRepository, encontrada -> encontrada.getDescricao().equals("Notebook"));
 
-        var parcelas = Assertions.assertDoesNotThrow(() -> faturaService.cronograma(compra, LocalDate.now()));
+        var parcelas = Assertions.assertDoesNotThrow(() -> faturaService.cronograma(compra, LocalDate.now(), Map.of()));
         Assertions.assertNotNull(parcelas);
     }
 
     @Test
-    void parcelasPorVencimentoTest() {
-        var parcelas = Assertions.assertDoesNotThrow(() -> faturaService.parcelasPorVencimento(LocalDate.now()));
+    void pagamentosPorCompraTest() {
+        var pagamentos = Assertions.assertDoesNotThrow(() -> faturaService.pagamentosPorCompra());
+        Assertions.assertNotNull(pagamentos);
+    }
+
+    @Test
+    void parcelasPorDataDePagamentoTest() {
+        var parcelas = Assertions.assertDoesNotThrow(() -> faturaService.parcelasPorDataDePagamento(LocalDate.now()));
         Assertions.assertNotNull(parcelas);
     }
 }

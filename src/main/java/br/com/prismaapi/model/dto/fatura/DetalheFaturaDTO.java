@@ -24,6 +24,10 @@ public record DetalheFaturaDTO(
 
         BigDecimal total,
 
+        BigDecimal valorPago,
+
+        BigDecimal valorRestante,
+
         SituacaoFatura situacao,
 
         @JsonFormat(pattern = "yyyy-MM-dd")

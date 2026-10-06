@@ -106,6 +106,21 @@ class LancamentoRepositoryTest extends AbstractTest {
     }
 
     @Test
+    void somarDespesasPagasDoCartaoTest() {
+        Assertions.assertDoesNotThrow(() -> lancamentoRepository.somarDespesasPagasDoCartao(UUID.randomUUID(), LocalDate.now().minusMonths(1), LocalDate.now()));
+    }
+
+    @Test
+    void marcarDespesasDoCartaoComoPagasTest() {
+        Assertions.assertDoesNotThrow(() -> lancamentoRepository.marcarDespesasDoCartaoComoPagas(UUID.randomUUID(), LocalDate.now().minusMonths(1), LocalDate.now(), LocalDate.now()));
+    }
+
+    @Test
+    void desmarcarDespesasDoCartaoTest() {
+        Assertions.assertDoesNotThrow(() -> lancamentoRepository.desmarcarDespesasDoCartao(UUID.randomUUID(), LocalDate.now().minusMonths(1), LocalDate.now()));
+    }
+
+    @Test
     void agruparDespesasDosCartoesTest() {
         Assertions.assertDoesNotThrow(() -> lancamentoRepository.agruparDespesasDosCartoes(List.of(UUID.randomUUID())));
     }

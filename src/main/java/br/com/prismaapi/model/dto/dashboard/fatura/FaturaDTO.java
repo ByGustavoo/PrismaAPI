@@ -7,6 +7,8 @@ public record FaturaDTO(
 
         BigDecimal total,
 
+        BigDecimal valorRestante,
+
         String nomeCartao,
 
         String dataVencimento,

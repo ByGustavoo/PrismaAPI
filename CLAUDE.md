@@ -43,7 +43,9 @@ src/main/resources/
   application.yaml config base + perfis dev, prod e test
   banner.txt       banner do start, com ${build.version} e ${build.data}
   log4j2.xml       console em dev, arquivo rotativo em /app/logs em prod
-  db/migration/    V1.0__CreateTables.sql (esquema) e V1.1__InsertCategorias.sql (catálogo de categorias)
+  db/migration/    V1.0__CreateTables.sql (esquema), V1.1__InsertCategorias.sql (catálogo de categorias),
+                   V1.3__CreateParcelasPagas.sql (pagamento antecipado de parcela) e
+                   V1.5__AddPagamentoFaturaLancamentos.sql (pagamento de fatura na despesa do cartão)
 .run/              run configurations do IntelliJ (ignoradas pelo Git)
 .github/workflows/ workflow.yml (build no PR) e release.yml (imagem, tag e Release no merge para main)
 Dockerfile         build em dois estágios: gradle:jdk25 compila, eclipse-temurin:25-jre executa
@@ -53,12 +55,13 @@ src/test/java/br/com/prismaapi/
   config/          AbstractTest, AbstractControllerTest e TestDataBaseConfig (datasource dos testes)
   repository/      um pacote por repositório, espelhando o main: <Recurso>RepositoryTest
 src/test/resources/
-  db/test/         V1.2__PopularBanco.sql, dados de exemplo aplicados só no perfil test
+  db/test/         V1.2__PopularBanco.sql e V1.4__PopularParcelasPagas.sql, dados de exemplo aplicados
+                   só no perfil test
 ```
 
-São 15 recursos sob `/v1`, com 47 endpoints no total: `avisos`, `cartoes`, `categorias`,
+São 15 recursos sob `/v1`, com 51 endpoints no total: `avisos`, `cartoes`, `categorias`,
 `compras-parceladas`, `contas`, `dashboard`, `despesas-recorrentes`, `faturas`, `investimentos`,
-`lancamentos`, `metas`, `orcamentos`, `previsao`, `relatorios` e `sistema`. O esquema tem 11
+`lancamentos`, `metas`, `orcamentos`, `previsao`, `relatorios` e `sistema`. O esquema tem 12
 tabelas, todas em `prisma`.
 
 ## Comandos
@@ -88,6 +91,17 @@ relatório HTML em `build/reports/jacoco`.
   `DATABASE_*`, com padrão `localhost:5432/prisma`), e o Flyway lê `classpath:db/migration` e
   `classpath:db/test`: a `V1.2__PopularBanco.sql` popula o banco com um ano de dados relativos à data em
   que roda. Aponte as variáveis para um banco próprio, nunca para o de dev, que não conhece a `V1.2`.
+  **As versões de `db/migration` e `db/test` formam uma sequência só**: a `V1.3` e a `V1.5` são de
+  produção e a `V1.4` é carga de teste. O perfil `test` leva `spring.flyway.out-of-order: true`, porque
+  num banco que o `dev` já levou até a `V1.5` a `V1.4` fica pendente abaixo da última aplicada, e sem
+  isso o Flyway recusa o banco; por rodar sobre dados que podem já existir, a carga usa `ON CONFLICT`. Migração nova de produção leva o número seguinte ao último
+  arquivo das duas pastas, e a carga que depende dela vem num arquivo novo depois — renumerar a
+  `V1.2` obrigaria a recriar todo banco que já a aplicou.
+- O perfil `dev` leva `spring.flyway.ignore-migration-patterns: "*:missing,*:future"`. O banco local
+  de desenvolvimento costuma ser o mesmo em que os testes já rodaram, então ele tem a `V1.2` no
+  histórico, e o `dev` não a enxerga no classpath. Enquanto a carga de teste era a versão mais alta,
+  o Flyway a tratava como futura e a ignorava sozinho; com a `V1.3` ela passou a ser uma migração
+  faltando, e a aplicação não subia. `prod` e `test` continuam com a validação estrita.
   O `RedisConfig` não vale no perfil, e `spring.cache.type: none` desliga o cache, então os testes não
   dependem de um Redis rodando
 - Variáveis obrigatórias em `dev` e `prod`: `DATABASE_IP`, `DATABASE_PORT`,
@@ -179,6 +193,21 @@ mudar um sem os outros quebra rotas, migrations ou logs:
   o antigo e aplica o novo, `DELETE` desfaz — cada passo só se o lançamento em questão é `PAGO`.
   `PENDENTE` e `AGENDADO` não mexem, qualquer que seja a data, e lançamento em cartão não mexe em conta.
   Como `PAGO` não aceita data futura, não há tarefa agendada.
+- Parcela de compra parcelada pode ser marcada como paga antes de vencer (`parcelas_pagas`, uma linha
+  por compra e número, com `ON DELETE CASCADE`). `FaturaService.cronograma` trata como `PAGA` a
+  parcela vencida ou marcada, e `pagamentoAntecipado` só é verdadeiro na marcada que ainda não
+  venceu. A parcela marcada continua na fatura, mas entra em `valorPago` e sai de `valorRestante`,
+  que é o que o limite comprometido e o aviso de fatura somam; `parcelasPorDataDePagamento` a leva
+  para a data do pagamento, e é dali que saldo e previsão a leem. Fatura já fechada com
+  `valorRestante` zero sai como `PAGA`. `PUT` que reduz o número de parcelas apaga as marcas além
+  do novo total. Parcela já paga responde `409`; número fora da compra e pagamento inexistente, `404`.
+- A fatura inteira tambem pode ser marcada como paga (`POST` e `DELETE /v1/faturas/{id}/pagamento`). O
+  pagamento é dos itens que ela tem naquele momento, e não do ciclo: as parcelas em aberto ganham
+  linha em `parcelas_pagas`, inclusive as já vencidas, e as despesas do ciclo recebem
+  `lancamentos.data_pagamento_fatura` (`V1.5`), coluna que só o `FaturaService` escreve — o `PUT` do
+  lançamento a preserva. Compra que entra depois numa fatura aberta volta a contar no
+  `valorRestante`. Desfazer limpa todas as marcas da fatura, também as de parcela feitas uma a uma.
+  Fatura sem nada a pagar responde `409`; desfazer sem pagamento registrado, `404`.
 - A linha do saldo (`SaldoService`, usada por dashboard e relatórios) reconstrói o passado só com os
   `PAGO` e projeta o futuro com os agendados; desconta despesa em cartão de crédito na data da compra e
   cada parcela na data de vencimento da fatura em que cai.

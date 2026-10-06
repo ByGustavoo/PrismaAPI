@@ -8,18 +8,24 @@ import br.com.prismaapi.exceptions.CartaoNaoAceitaParcelamentoException;
 import br.com.prismaapi.exceptions.CategoriaDeReceitaException;
 import br.com.prismaapi.exceptions.CategoriaInexistenteException;
 import br.com.prismaapi.exceptions.CompraParceladaNaoEncontradaException;
+import br.com.prismaapi.exceptions.PagamentoDeParcelaNaoEncontradoException;
+import br.com.prismaapi.exceptions.ParcelaJaPagaException;
+import br.com.prismaapi.exceptions.ParcelaNaoEncontradaException;
 import br.com.prismaapi.exceptions.PrimeiroMesAnteriorACompraException;
 import br.com.prismaapi.model.dto.compraparcelada.CompraParceladaDTO;
+import br.com.prismaapi.model.dto.compraparcelada.PagamentoParcelaDTO;
 import br.com.prismaapi.model.dto.compraparcelada.ParcelaDTO;
 import br.com.prismaapi.model.dto.compraparcelada.PlanoCompraParceladaDTO;
 import br.com.prismaapi.model.dto.compraparcelada.SalvarCompraParceladaDTO;
 import br.com.prismaapi.model.entity.cartao.Cartao;
 import br.com.prismaapi.model.entity.categoria.Categoria;
 import br.com.prismaapi.model.entity.compraparcelada.CompraParcelada;
+import br.com.prismaapi.model.entity.parcelapaga.ParcelaPaga;
 import br.com.prismaapi.model.mapper.compraparcelada.CompraParceladaMapper;
 import br.com.prismaapi.repository.cartao.CartaoRepository;
 import br.com.prismaapi.repository.categoria.CategoriaRepository;
 import br.com.prismaapi.repository.compraparcelada.CompraParceladaRepository;
+import br.com.prismaapi.repository.parcelapaga.ParcelaPagaRepository;
 import br.com.prismaapi.service.fatura.FaturaService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +40,7 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
@@ -45,6 +52,7 @@ public class CompraParceladaService {
     private final CartaoRepository cartaoRepository;
     private final CategoriaRepository categoriaRepository;
     private final CompraParceladaMapper compraParceladaMapper;
+    private final ParcelaPagaRepository parcelaPagaRepository;
     private final CompraParceladaRepository compraParceladaRepository;
 
     @Transactional(readOnly = true)
@@ -52,11 +60,12 @@ public class CompraParceladaService {
     public List<PlanoCompraParceladaDTO> listar(UUID idCartao) {
         log.info("Listando as compras parceladas... - ID do Cartão: [{}]", idCartao);
         var hoje = LocalDate.now();
+        var pagamentos = faturaService.pagamentosPorCompra();
 
         return compraParceladaRepository.buscarComCartaoECategoria()
                 .stream()
                 .filter(compra -> idCartao == null || compra.getCartao().getId().equals(idCartao))
-                .map(compra -> planejar(compra, hoje))
+                .map(compra -> planejar(compra, hoje, pagamentos.getOrDefault(compra.getId(), Map.of())))
                 .sorted(Comparator.comparing((PlanoCompraParceladaDTO plano) -> plano.parcelasRestantes() == 0)
                         .thenComparing(plano -> plano.compra().dataCompra(), Comparator.reverseOrder()))
                 .toList();
@@ -80,6 +89,7 @@ public class CompraParceladaService {
 
         compraParceladaMapper.updateEntity(salvarCompraParceladaDTO, compra);
         preencher(compra, salvarCompraParceladaDTO);
+        parcelaPagaRepository.deletarAcimaDe(id, compra.getParcelas());
 
         return compraParceladaMapper.toDTO(compra);
     }
@@ -91,6 +101,50 @@ public class CompraParceladaService {
         compraParceladaRepository.delete(buscar(id));
     }
 
+    @Transactional
+    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "dashboard", "faturas", "previsao", "relatorios"}, allEntries = true)
+    public PagamentoParcelaDTO registrarPagamento(UUID id, Integer numero) {
+        log.info("Registrando o pagamento da parcela... - ID: [{}] - Parcela: {}", id, numero);
+        var compra = buscar(id);
+        var hoje = LocalDate.now();
+        var pagamentos = faturaService.pagamentosPorCompra().getOrDefault(id, Map.of());
+
+        var parcela = faturaService.cronograma(compra, hoje, pagamentos)
+                .stream()
+                .filter(encontrada -> encontrada.numero().equals(numero))
+                .findFirst()
+                .orElseThrow(() -> {
+                    log.warn("Parcela não encontrada! - ID: [{}] - Parcela: {}", id, numero);
+                    return new ParcelaNaoEncontradaException("Parcela não encontrada!");
+                });
+
+        if (parcela.situacao() == SituacaoParcela.PAGA) {
+            log.error("Essa parcela já está paga!");
+            throw new ParcelaJaPagaException("Essa parcela já está paga!");
+        }
+
+        var pagamento = new ParcelaPaga();
+
+        pagamento.setCompraParcelada(compra);
+        pagamento.setNumero(numero.shortValue());
+        pagamento.setDataPagamento(hoje);
+
+        return compraParceladaMapper.toPagamentoDTO(parcelaPagaRepository.save(pagamento));
+    }
+
+    @Transactional
+    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "dashboard", "faturas", "previsao", "relatorios"}, allEntries = true)
+    public void deletarPagamento(UUID id, Integer numero) {
+        log.info("Deletando o pagamento da parcela... - ID: [{}] - Parcela: {}", id, numero);
+        var pagamento = parcelaPagaRepository.findByCompraParceladaIdAndNumero(id, numero.shortValue())
+                .orElseThrow(() -> {
+                    log.warn("Pagamento de parcela não encontrado! - ID: [{}] - Parcela: {}", id, numero);
+                    return new PagamentoDeParcelaNaoEncontradoException("Essa parcela não tem pagamento registrado!");
+                });
+
+        parcelaPagaRepository.delete(pagamento);
+    }
+
     private CompraParcelada buscar(UUID id) {
         return compraParceladaRepository.findById(id)
                 .orElseThrow(() -> {
@@ -99,8 +153,8 @@ public class CompraParceladaService {
                 });
     }
 
-    private PlanoCompraParceladaDTO planejar(CompraParcelada compra, LocalDate hoje) {
-        var cronograma = faturaService.cronograma(compra, hoje);
+    private PlanoCompraParceladaDTO planejar(CompraParcelada compra, LocalDate hoje, Map<Integer, LocalDate> pagamentos) {
+        var cronograma = faturaService.cronograma(compra, hoje, pagamentos);
 
         var pagas = cronograma.stream()
                 .filter(parcela -> parcela.situacao() == SituacaoParcela.PAGA)

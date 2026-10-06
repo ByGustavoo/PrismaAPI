@@ -14,6 +14,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -217,10 +218,50 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, UUID>, J
                                      @Param("fim") LocalDate fim);
 
     @Query("""
+            SELECT SUM(lancamento.valor)
+            FROM Lancamento lancamento
+            WHERE lancamento.tipo = br.com.prismaapi.enums.TipoLancamento.DESPESA
+              AND lancamento.cartao.id = :cartaoId
+              AND lancamento.data BETWEEN :inicio AND :fim
+              AND lancamento.dataPagamentoFatura IS NOT NULL
+            """)
+    BigDecimal somarDespesasPagasDoCartao(@Param("cartaoId") UUID cartaoId,
+                                          @Param("inicio") LocalDate inicio,
+                                          @Param("fim") LocalDate fim);
+
+    @Modifying
+    @Query("""
+            UPDATE Lancamento lancamento
+            SET lancamento.dataPagamentoFatura = :dataPagamento
+            WHERE lancamento.tipo = br.com.prismaapi.enums.TipoLancamento.DESPESA
+              AND lancamento.cartao.id = :cartaoId
+              AND lancamento.data BETWEEN :inicio AND :fim
+              AND lancamento.dataPagamentoFatura IS NULL
+            """)
+    void marcarDespesasDoCartaoComoPagas(@Param("cartaoId") UUID cartaoId,
+                                         @Param("inicio") LocalDate inicio,
+                                         @Param("fim") LocalDate fim,
+                                         @Param("dataPagamento") LocalDate dataPagamento);
+
+    @Modifying
+    @Query("""
+            UPDATE Lancamento lancamento
+            SET lancamento.dataPagamentoFatura = NULL
+            WHERE lancamento.tipo = br.com.prismaapi.enums.TipoLancamento.DESPESA
+              AND lancamento.cartao.id = :cartaoId
+              AND lancamento.data BETWEEN :inicio AND :fim
+              AND lancamento.dataPagamentoFatura IS NOT NULL
+            """)
+    void desmarcarDespesasDoCartao(@Param("cartaoId") UUID cartaoId,
+                                   @Param("inicio") LocalDate inicio,
+                                   @Param("fim") LocalDate fim);
+
+    @Query("""
             SELECT new br.com.prismaapi.model.dto.cartao.projection.DespesaCartaoProjecao(
                        cartao.id,
                        lancamento.data,
                        SUM(lancamento.valor),
+                       SUM(CASE WHEN lancamento.dataPagamentoFatura IS NOT NULL THEN lancamento.valor END),
                        COUNT(lancamento))
             FROM Lancamento lancamento
             JOIN lancamento.cartao cartao

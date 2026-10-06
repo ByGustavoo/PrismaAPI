@@ -1,5 +1,6 @@
 package br.com.prismaapi.model.dto.fatura;
 
+import br.com.prismaapi.enums.SituacaoParcela;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.UUID;
@@ -11,6 +12,10 @@ public record ParcelaItemFaturaDTO(
 
         Integer total,
 
-        UUID idCompra
+        UUID idCompra,
+
+        SituacaoParcela situacao,
+
+        Boolean pagamentoAntecipado
 
 ) {}

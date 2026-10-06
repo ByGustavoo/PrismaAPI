@@ -19,6 +19,8 @@ public record ParcelaDTO(
 
         BigDecimal valor,
 
-        SituacaoParcela situacao
+        SituacaoParcela situacao,
+
+        Boolean pagamentoAntecipado
 
 ) {}

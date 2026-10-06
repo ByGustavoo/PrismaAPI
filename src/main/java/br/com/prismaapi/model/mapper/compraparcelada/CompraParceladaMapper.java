@@ -1,8 +1,10 @@
 package br.com.prismaapi.model.mapper.compraparcelada;
 
 import br.com.prismaapi.model.dto.compraparcelada.CompraParceladaDTO;
+import br.com.prismaapi.model.dto.compraparcelada.PagamentoParcelaDTO;
 import br.com.prismaapi.model.dto.compraparcelada.SalvarCompraParceladaDTO;
 import br.com.prismaapi.model.entity.compraparcelada.CompraParcelada;
+import br.com.prismaapi.model.entity.parcelapaga.ParcelaPaga;
 import br.com.prismaapi.model.mapper.categoria.CategoriaMapper;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -33,6 +35,9 @@ public interface CompraParceladaMapper {
     @Mapping(target = "dataCriacao", ignore = true)
     @Mapping(target = "dataAtualizacao", ignore = true)
     void updateEntity(SalvarCompraParceladaDTO salvarCompraParceladaDTO, @MappingTarget CompraParcelada compraParcelada);
+
+    @Mapping(target = "idCompra", source = "compraParcelada.id")
+    PagamentoParcelaDTO toPagamentoDTO(ParcelaPaga parcelaPaga);
 
     default YearMonth toYearMonth(LocalDate data) {
         return data == null ? null : YearMonth.from(data);

@@ -79,7 +79,7 @@ public class PrevisaoService {
         var cenario = new CenarioPrevisao(
                 lancamentos,
                 recorrentes,
-                faturaService.parcelasPorVencimento(hoje),
+                faturaService.parcelasPorDataDePagamento(hoje),
                 base,
                 base.despesaMedia().subtract(base.recorrentesMedia()).max(BigDecimal.ZERO),
                 despesasRepetidas(mesesDaBase, lancamentos),

@@ -20,13 +20,15 @@ public interface FaturaMapper {
     DetalheFaturaDTO toDetalheDTO(FaturaCartaoDTO fatura, List<ItemFaturaDTO> itens);
 
     @Mapping(target = "parcela", ignore = true)
+    @Mapping(target = "paga", expression = "java(lancamento.getDataPagamentoFatura() != null)")
     ItemFaturaDTO toItemDTO(Lancamento lancamento);
 
+    @Mapping(target = "paga", source = "paga")
     @Mapping(target = "valor", source = "valor")
     @Mapping(target = "parcela", source = "parcela")
     @Mapping(target = "data", source = "compraParcelada.dataCompra")
     @Mapping(target = "descricao", source = "compraParcelada.descricao")
     @Mapping(target = "categoria", source = "compraParcelada.categoria")
     @Mapping(target = "id", expression = "java(compraParcelada.getId() + \"-\" + parcela.numero())")
-    ItemFaturaDTO toItemParceladoDTO(CompraParcelada compraParcelada, ParcelaItemFaturaDTO parcela, BigDecimal valor);
+    ItemFaturaDTO toItemParceladoDTO(CompraParcelada compraParcelada, ParcelaItemFaturaDTO parcela, BigDecimal valor, Boolean paga);
 }

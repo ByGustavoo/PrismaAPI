@@ -2,6 +2,7 @@ package br.com.prismaapi.controller.compraparcelada;
 
 import br.com.prismaapi.exceptions.dto.ErrorResponseDTO;
 import br.com.prismaapi.model.dto.compraparcelada.CompraParceladaDTO;
+import br.com.prismaapi.model.dto.compraparcelada.PagamentoParcelaDTO;
 import br.com.prismaapi.model.dto.compraparcelada.PlanoCompraParceladaDTO;
 import br.com.prismaapi.model.dto.compraparcelada.SalvarCompraParceladaDTO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -43,8 +44,10 @@ public interface CompraParceladaDocs {
 
                     Cada parcela cai na fatura do seu mês e vence junto com ela. As primeiras levam o \
                     valor arredondado para baixo e a última absorve a sobra, para a soma fechar com o \
-                    valor total. A parcela vencida é PAGA, a primeira ainda não vencida é a ATUAL e as \
-                    demais são FUTURA; parcelaAtual vem nula quando a compra já foi quitada.""")
+                    valor total. A parcela vencida ou com pagamento registrado é PAGA, a primeira ainda \
+                    em aberto é a ATUAL e as demais são FUTURA; parcelaAtual vem nula quando a compra já \
+                    foi quitada. pagamentoAntecipado marca a parcela paga antes do vencimento, a única \
+                    cujo pagamento pode ser desfeito.""")
     ResponseEntity<List<PlanoCompraParceladaDTO>> listarComprasParceladas(
             @Parameter(description = "Id do cartão; sem ele, retorna as compras de todos os cartões")
             @RequestParam(required = false) UUID idCartao);
@@ -145,4 +148,76 @@ public interface CompraParceladaDocs {
     ResponseEntity<Void> deletarCompraParcelada(
             @Parameter(description = "Id da compra parcelada")
             @PathVariable UUID id);
+
+    @PostMapping("/{id}/parcelas/{numero}/pagamento")
+    @Operation(
+            summary = "Registra o pagamento antecipado de uma parcela",
+            description = """
+                    Marca como paga, com a data de hoje, uma parcela que ainda não venceu, e devolve o \
+                    pagamento registrado. Não há corpo na requisição.
+
+                    A parcela paga continua na fatura do seu mês, mas sai do que falta pagar nela, do \
+                    limite comprometido do cartão, dos avisos e da previsão; no saldo, ela passa a pesar \
+                    na data do pagamento, e não mais no vencimento. A parcela vencida já conta como paga \
+                    e é recusada, assim como a que já tem pagamento registrado.""")
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "Pagamento da parcela registrado com sucesso!"),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Id ou número da parcela inválido!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Compra parcelada ou parcela não encontrada!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "Parcela já paga!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Erro interno do servidor!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
+    })
+    ResponseEntity<PagamentoParcelaDTO> registrarPagamentoParcela(
+            @Parameter(description = "Id da compra parcelada")
+            @PathVariable UUID id,
+
+            @Parameter(description = "Número da parcela, a partir de 1")
+            @PathVariable Integer numero);
+
+    @DeleteMapping("/{id}/parcelas/{numero}/pagamento")
+    @Operation(
+            summary = "Desfaz o pagamento antecipado de uma parcela",
+            description = """
+                    Remove o pagamento registrado e responde sem corpo. A parcela volta a contar no que \
+                    falta pagar da fatura, no limite comprometido do cartão e na previsão.
+
+                    A parcela que já venceu continua PAGA depois disso, porque passa a valer a data de \
+                    vencimento.""")
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "204",
+                    description = "Pagamento da parcela desfeito com sucesso!"),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Id ou número da parcela inválido!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Pagamento de parcela não encontrado!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Erro interno do servidor!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
+    })
+    ResponseEntity<Void> deletarPagamentoParcela(
+            @Parameter(description = "Id da compra parcelada")
+            @PathVariable UUID id,
+
+            @Parameter(description = "Número da parcela, a partir de 1")
+            @PathVariable Integer numero);
 }

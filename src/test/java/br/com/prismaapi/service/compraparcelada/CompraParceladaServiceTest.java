@@ -80,4 +80,19 @@ class CompraParceladaServiceTest extends AbstractTest {
 
         Assertions.assertDoesNotThrow(() -> compraParceladaService.deletar(idCompra));
     }
+
+    @Test
+    void registrarPagamentoTest() {
+        var idCompra = buscar(compraParceladaRepository, compra -> compra.getDescricao().equals("Curso de idiomas")).getId();
+
+        var pagamento = Assertions.assertDoesNotThrow(() -> compraParceladaService.registrarPagamento(idCompra, 4));
+        Assertions.assertNotNull(pagamento);
+    }
+
+    @Test
+    void deletarPagamentoTest() {
+        var idCompra = buscar(compraParceladaRepository, compra -> compra.getDescricao().equals("Curso de idiomas")).getId();
+
+        Assertions.assertDoesNotThrow(() -> compraParceladaService.deletarPagamento(idCompra, 1));
+    }
 }

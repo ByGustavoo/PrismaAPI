@@ -173,6 +173,45 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
+    @ExceptionHandler(ParcelaNaoEncontradaException.class)
+    public ResponseEntity<ErrorResponseDTO> handleParcelaNaoEncontradaException(ParcelaNaoEncontradaException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.NOT_FOUND.value(),
+                "Parcela não encontrada!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/parcela-nao-encontrada",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(PagamentoDeParcelaNaoEncontradoException.class)
+    public ResponseEntity<ErrorResponseDTO> handlePagamentoDeParcelaNaoEncontradoException(PagamentoDeParcelaNaoEncontradoException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.NOT_FOUND.value(),
+                "Pagamento de parcela não encontrado!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/pagamento-de-parcela-nao-encontrado",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(PagamentoDeFaturaNaoEncontradoException.class)
+    public ResponseEntity<ErrorResponseDTO> handlePagamentoDeFaturaNaoEncontradoException(PagamentoDeFaturaNaoEncontradoException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.NOT_FOUND.value(),
+                "Pagamento de fatura não encontrado!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/pagamento-de-fatura-nao-encontrado",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
     @ExceptionHandler(InvestimentoNaoEncontradoException.class)
     public ResponseEntity<ErrorResponseDTO> handleInvestimentoNaoEncontradoException(InvestimentoNaoEncontradoException ex, HttpServletRequest pHttpServletRequest) {
 
@@ -337,6 +376,32 @@ public class GlobalExceptionHandler {
                 "Preço Duplicado!",
                 pHttpServletRequest.getRequestURI(),
                 "/PrismaAPI/problems/preco-duplicado",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(ParcelaJaPagaException.class)
+    public ResponseEntity<ErrorResponseDTO> handleParcelaJaPagaException(ParcelaJaPagaException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.CONFLICT.value(),
+                "Parcela Já Paga!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/parcela-ja-paga",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(FaturaJaPagaException.class)
+    public ResponseEntity<ErrorResponseDTO> handleFaturaJaPagaException(FaturaJaPagaException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.CONFLICT.value(),
+                "Fatura Já Paga!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/fatura-ja-paga",
                 ex.getMessage());
 
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);

@@ -6,6 +6,8 @@ import java.util.UUID;
 
 public record ParcelaProjecao(
 
+        UUID id,
+
         UUID cartaoId,
 
         BigDecimal valorTotal,

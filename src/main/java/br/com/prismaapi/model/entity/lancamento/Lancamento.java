@@ -48,6 +48,9 @@ public class Lancamento {
     @Column(nullable = false)
     private LocalDate data;
 
+    @Column(name = "data_pagamento_fatura")
+    private LocalDate dataPagamentoFatura;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_categoria")
     private Categoria categoria;

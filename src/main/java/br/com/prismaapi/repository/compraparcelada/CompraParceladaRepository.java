@@ -18,6 +18,7 @@ public interface CompraParceladaRepository extends JpaRepository<CompraParcelada
 
     @Query("""
             SELECT new br.com.prismaapi.model.dto.dashboard.projection.ParcelaProjecao(
+                       compra.id,
                        compra.cartao.id,
                        compra.valorTotal,
                        compra.parcelas,
@@ -29,6 +30,7 @@ public interface CompraParceladaRepository extends JpaRepository<CompraParcelada
 
     @Query("""
             SELECT new br.com.prismaapi.model.dto.dashboard.projection.ParcelaProjecao(
+                       compra.id,
                        compra.cartao.id,
                        compra.valorTotal,
                        compra.parcelas,
