@@ -13,6 +13,7 @@ import br.com.prismaapi.model.dto.fatura.FaturaCartaoDTO;
 import br.com.prismaapi.model.entity.despesarecorrente.DespesaRecorrente;
 import br.com.prismaapi.model.entity.lancamento.Lancamento;
 import br.com.prismaapi.repository.despesarecorrente.DespesaRecorrenteRepository;
+import br.com.prismaapi.repository.investimento.InvestimentoRepository;
 import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import br.com.prismaapi.service.cartao.CartaoService;
 import br.com.prismaapi.service.fatura.FaturaService;
@@ -45,6 +46,7 @@ public class AvisoService {
     private final FaturaService faturaService;
     private static final int DIAS_DE_ANTECEDENCIA = 15;
     private final LancamentoRepository lancamentoRepository;
+    private final InvestimentoRepository investimentoRepository;
     private static final Locale PT_BR = Locale.forLanguageTag("pt-BR");
     private final DespesaRecorrenteRepository despesaRecorrenteRepository;
     private static final BigDecimal LIMITE_CRITICO = new BigDecimal("0.9");
@@ -62,6 +64,7 @@ public class AvisoService {
         avisos.addAll(lancamentosEmAberto(hoje));
         avisos.addAll(recorrentesVencendo(hoje));
         avisos.addAll(cartoesPertoDoLimite(hoje));
+        avisos.addAll(investimentosSemAtualizacao(hoje));
 
         return avisos.stream()
                 .sorted(Comparator.comparing((AvisoDTO aviso) -> aviso.severidade().getPrioridade())
@@ -123,6 +126,21 @@ public class AvisoService {
                         hoje,
                         null,
                         "/cartoes"))
+                .toList();
+    }
+
+    private List<AvisoDTO> investimentosSemAtualizacao(LocalDate hoje) {
+        return investimentoRepository.findByDataUltimaMovimentacaoLessThanEqual(hoje.minusDays(30))
+                .stream()
+                .map(investimento -> new AvisoDTO(
+                        "aviso-investimento-" + investimento.getId(),
+                        TipoAviso.INVESTIMENTO_DESATUALIZADO,
+                        SeveridadeAviso.ATENCAO,
+                        investimento.getNome(),
+                        "Sem atualização " + prazo(hoje, investimento.getDataUltimaMovimentacao()) + " — Confira o saldo em " + investimento.getInstituicao(),
+                        investimento.getDataUltimaMovimentacao(),
+                        null,
+                        "/investimentos?investimento=" + investimento.getId()))
                 .toList();
     }
 

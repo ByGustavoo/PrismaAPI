@@ -218,6 +218,11 @@ mudar um sem os outros quebra rotas, migrations ou logs:
 - Investimento tem série em `movimentacoes_investimento` (`APORTE` soma valor, `RENDIMENTO` guarda o
   saldo informado). `aportado`, `valor_atual`, `data_inicio` e `data_ultima_movimentacao` de
   `investimentos` são o resumo dessa série, regravado a cada movimentação; o `PUT` não mexe em valores.
+- Investimento sem movimentação há 30 dias ou mais vira aviso (`INVESTIMENTO_DESATUALIZADO`, sempre
+  `ATENCAO`, sem `valor`), lido de `data_ultima_movimentacao`: é o lembrete de conferir o saldo na
+  instituição, e some quando um aporte ou um saldo é registrado. A `rota` leva o id
+  (`/investimentos?investimento=<id>`), que o PrismaWeb usa para abrir o registro de saldo. Por isso
+  toda escrita do `InvestimentoService` limpa também o cache `avisos`.
 - `PrevisaoService` projeta o resto do mês corrente e os meses cheios a partir das médias dos três meses
   fechados, contando recorrentes para trás e para frente de `proximoVencimento`
   (`Frequencia.ocorrenciaAnterior`).

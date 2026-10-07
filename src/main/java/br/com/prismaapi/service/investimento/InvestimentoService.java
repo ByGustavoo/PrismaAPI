@@ -125,7 +125,7 @@ public class InvestimentoService {
     }
 
     @Transactional
-    @CacheEvict(value = {"dashboard", "investimentos", "relatorios"}, allEntries = true)
+    @CacheEvict(value = {"avisos", "dashboard", "investimentos", "relatorios"}, allEntries = true)
     public InvestimentoDTO salvar(SalvarInvestimentoDTO salvarInvestimentoDTO) {
         log.info("Salvando o investimento... - Nome: {}", salvarInvestimentoDTO.nome());
         var investimento = investimentoMapper.toEntity(salvarInvestimentoDTO);
@@ -145,7 +145,7 @@ public class InvestimentoService {
     }
 
     @Transactional
-    @CacheEvict(value = {"dashboard", "investimentos", "relatorios"}, allEntries = true)
+    @CacheEvict(value = {"avisos", "dashboard", "investimentos", "relatorios"}, allEntries = true)
     public InvestimentoDTO atualizar(UUID id, AtualizarInvestimentoDTO atualizarInvestimentoDTO) {
         log.info("Atualizando o investimento... - ID: [{}]", id);
         var investimento = buscar(id);
@@ -157,7 +157,7 @@ public class InvestimentoService {
     }
 
     @Transactional
-    @CacheEvict(value = {"dashboard", "investimentos", "relatorios"}, allEntries = true)
+    @CacheEvict(value = {"avisos", "dashboard", "investimentos", "relatorios"}, allEntries = true)
     public InvestimentoDTO registrarAporte(UUID id, SalvarAporteInvestimentoDTO salvarAporteInvestimentoDTO) {
         log.info("Registrando o aporte do investimento... - ID: [{}] - Data: {}", id, salvarAporteInvestimentoDTO.data());
         var investimento = buscar(id);
@@ -169,7 +169,7 @@ public class InvestimentoService {
     }
 
     @Transactional
-    @CacheEvict(value = {"dashboard", "investimentos", "relatorios"}, allEntries = true)
+    @CacheEvict(value = {"avisos", "dashboard", "investimentos", "relatorios"}, allEntries = true)
     public InvestimentoDTO registrarSaldo(UUID id, SalvarSaldoInvestimentoDTO salvarSaldoInvestimentoDTO) {
         log.info("Registrando o saldo do investimento... - ID: [{}] - Data: {}", id, salvarSaldoInvestimentoDTO.data());
         var investimento = buscar(id);
@@ -181,7 +181,7 @@ public class InvestimentoService {
     }
 
     @Transactional
-    @CacheEvict(value = {"dashboard", "investimentos", "relatorios"}, allEntries = true)
+    @CacheEvict(value = {"avisos", "dashboard", "investimentos", "relatorios"}, allEntries = true)
     public void deletar(UUID id) {
         log.info("Deletando o investimento... - ID: [{}]", id);
         investimentoRepository.delete(buscar(id));
