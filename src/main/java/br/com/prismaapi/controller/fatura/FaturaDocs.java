@@ -89,6 +89,11 @@ public interface FaturaDocs {
                     despesas lançadas no cartão durante o ciclo e as parcelas que caem no mês. Não há \
                     corpo na requisição, e a resposta é a fatura já recalculada.
 
+                    Cada parcela em aberto gera uma despesa PAGA na conta de pagamento do cartão, como no \
+                    pagamento de uma parcela só. As despesas lançadas direto no cartão não geram outra \
+                    despesa, porque já contam na data da compra: o pagamento só debita o valor delas do \
+                    saldo da conta. Sem conta de pagamento definida no cartão, o pagamento é recusado.
+
                     O pagamento vale para os itens, e não para o ciclo: uma compra que entrar depois numa \
                     fatura ainda aberta volta a contar no valorRestante. A fatura já fechada sem nada a \
                     pagar passa a PAGA; a aberta continua ABERTA, com valorRestante zero.""")
@@ -102,7 +107,7 @@ public interface FaturaDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "409",
-                    description = "Fatura já paga!",
+                    description = "Fatura já paga, ou cartão sem conta de pagamento!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "500",
@@ -118,8 +123,9 @@ public interface FaturaDocs {
             summary = "Desfaz o pagamento de uma fatura",
             description = """
                     Remove todo pagamento registrado nos itens da fatura, inclusive o das parcelas \
-                    marcadas uma a uma, e responde sem corpo. A parcela que já venceu continua PAGA, \
-                    porque passa a valer a data de vencimento.""")
+                    marcadas uma a uma, e responde sem corpo. As despesas geradas pelas parcelas são \
+                    removidas e tudo o que o pagamento debitou volta ao saldo da conta. A parcela que já \
+                    venceu continua PAGA, porque passa a valer a data de vencimento.""")
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "204",

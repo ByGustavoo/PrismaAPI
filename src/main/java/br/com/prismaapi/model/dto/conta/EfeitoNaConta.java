@@ -3,10 +3,14 @@ package br.com.prismaapi.model.dto.conta;
 import br.com.prismaapi.enums.TipoMovimentacaoConta;
 import br.com.prismaapi.model.entity.lancamento.Lancamento;
 
+import java.time.LocalDate;
+
 public record EfeitoNaConta(
 
         Lancamento lancamento,
 
-        TipoMovimentacaoConta tipo
+        TipoMovimentacaoConta tipo,
+
+        LocalDate data
 
 ) {}

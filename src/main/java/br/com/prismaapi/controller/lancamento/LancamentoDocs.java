@@ -104,7 +104,10 @@ public interface LancamentoDocs {
                     Substitui o lançamento inteiro pelo corpo enviado, com as mesmas regras do cadastro.
 
                     Origem, destino e categoria são refeitos a partir dos ids: o que não vier no corpo \
-                    é limpo, e não preservado. Trocar uma despesa por transferência remove a categoria.""")
+                    é limpo, e não preservado. Trocar uma despesa por transferência remove a categoria.
+
+                    O lançamento gerado pelo pagamento de uma parcela, que vem com o campo parcela, não \
+                    pode ser alterado nem excluído por aqui: o pagamento é desfeito na compra parcelada.""")
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
@@ -116,6 +119,10 @@ public interface LancamentoDocs {
             @ApiResponse(
                     responseCode = "404",
                     description = "Lançamento não encontrado!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "Lançamento gerado pelo pagamento de uma parcela!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "422",
@@ -147,6 +154,10 @@ public interface LancamentoDocs {
             @ApiResponse(
                     responseCode = "404",
                     description = "Lançamento não encontrado!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "Lançamento gerado pelo pagamento de uma parcela!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "500",

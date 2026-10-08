@@ -42,6 +42,8 @@ public record LancamentoDTO(
 
         String nomeContaDestino,
 
+        ParcelaLancamentoDTO parcela,
+
         String observacoes
 
 ) {}

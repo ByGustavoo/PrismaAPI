@@ -6,6 +6,7 @@ import br.com.prismaapi.enums.TipoLancamento;
 import br.com.prismaapi.model.entity.cartao.Cartao;
 import br.com.prismaapi.model.entity.categoria.Categoria;
 import br.com.prismaapi.model.entity.conta.Conta;
+import br.com.prismaapi.model.entity.parcelapaga.ParcelaPaga;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -66,6 +67,14 @@ public class Lancamento {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_conta_destino")
     private Conta contaDestino;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_parcela_paga")
+    private ParcelaPaga parcelaPaga;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_conta_pagamento_fatura")
+    private Conta contaPagamentoFatura;
 
     @Column(columnDefinition = "TEXT")
     private String observacoes;

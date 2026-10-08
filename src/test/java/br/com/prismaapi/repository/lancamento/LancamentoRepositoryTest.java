@@ -4,6 +4,7 @@ import br.com.prismaapi.config.AbstractTest;
 import br.com.prismaapi.enums.SituacaoLancamento;
 import br.com.prismaapi.enums.TipoLancamento;
 import br.com.prismaapi.model.dto.lancamento.FiltroLancamentoDTO;
+import br.com.prismaapi.repository.conta.ContaRepository;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +20,9 @@ import java.util.UUID;
 class LancamentoRepositoryTest extends AbstractTest {
 
     @Autowired
+    private ContaRepository contaRepository;
+
+    @Autowired
     private LancamentoRepository lancamentoRepository;
 
     @Test
@@ -29,10 +33,15 @@ class LancamentoRepositoryTest extends AbstractTest {
     }
 
     @Test
-    void countByContaIdOrContaDestinoIdTest() {
+    void findByParcelaPagaIdTest() {
+        Assertions.assertDoesNotThrow(() -> lancamentoRepository.findByParcelaPagaId(UUID.randomUUID()));
+    }
+
+    @Test
+    void countByContaIdOrContaDestinoIdOrContaPagamentoFaturaIdTest() {
         var id = UUID.randomUUID();
 
-        Assertions.assertDoesNotThrow(() -> lancamentoRepository.countByContaIdOrContaDestinoId(id, id));
+        Assertions.assertDoesNotThrow(() -> lancamentoRepository.countByContaIdOrContaDestinoIdOrContaPagamentoFaturaId(id, id, id));
     }
 
     @Test
@@ -111,8 +120,15 @@ class LancamentoRepositoryTest extends AbstractTest {
     }
 
     @Test
+    void agruparPagamentosDeFaturaDoTotalPorDiaTest() {
+        Assertions.assertDoesNotThrow(() -> lancamentoRepository.agruparPagamentosDeFaturaDoTotalPorDia(LocalDate.now().minusYears(1), LocalDate.now()));
+    }
+
+    @Test
     void marcarDespesasDoCartaoComoPagasTest() {
-        Assertions.assertDoesNotThrow(() -> lancamentoRepository.marcarDespesasDoCartaoComoPagas(UUID.randomUUID(), LocalDate.now().minusMonths(1), LocalDate.now(), LocalDate.now()));
+        var conta = buscar(contaRepository, encontrada -> encontrada.getNome().equals("Conta principal"));
+
+        Assertions.assertDoesNotThrow(() -> lancamentoRepository.marcarDespesasDoCartaoComoPagas(UUID.randomUUID(), LocalDate.now().minusMonths(1), LocalDate.now(), LocalDate.now(), conta));
     }
 
     @Test
@@ -148,5 +164,10 @@ class LancamentoRepositoryTest extends AbstractTest {
     @Test
     void buscarPagosDasContasTest() {
         Assertions.assertDoesNotThrow(() -> lancamentoRepository.buscarPagosDasContas(List.of(UUID.randomUUID()), LocalDate.now().minusYears(1), LocalDate.now()));
+    }
+
+    @Test
+    void buscarPagamentosDeFaturaDasContasTest() {
+        Assertions.assertDoesNotThrow(() -> lancamentoRepository.buscarPagamentosDeFaturaDasContas(List.of(UUID.randomUUID()), LocalDate.now().minusYears(1), LocalDate.now()));
     }
 }
