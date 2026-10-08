@@ -35,7 +35,7 @@ public class SaldoService {
         lancamentoRepository.agruparMovimentoDoTotalPorDia(inicio, fim, hoje)
                 .forEach(movimento -> movimentos.merge(movimento.data(), comSinal(movimento), BigDecimal::add));
 
-        lancamentoRepository.agruparDespesasNoCreditoPorDia(inicio, fim)
+        lancamentoRepository.agruparDespesasNoCreditoPorDia(hoje, fim)
                 .forEach(despesa -> movimentos.merge(despesa.data(), despesa.valor().negate(), BigDecimal::add));
 
         lancamentoRepository.agruparTransferenciasQueSaemDoTotal(inicio, fim, hoje)
@@ -45,7 +45,7 @@ public class SaldoService {
                 .forEach(entrada -> movimentos.merge(entrada.data(), entrada.valor(), BigDecimal::add));
 
         faturaService.parcelasPorDataDePagamento(hoje)
-                .subMap(inicio, false, fim, true)
+                .subMap(hoje, false, fim, true)
                 .forEach((vencimento, valor) -> movimentos.merge(vencimento, valor.negate(), BigDecimal::add));
 
         var saldoDeHoje = contaRepository.somarSaldoDoTotal();
