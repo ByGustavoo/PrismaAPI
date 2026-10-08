@@ -209,8 +209,10 @@ mudar um sem os outros quebra rotas, migrations ou logs:
   `valorRestante`. Desfazer limpa todas as marcas da fatura, também as de parcela feitas uma a uma.
   Fatura sem nada a pagar responde `409`; desfazer sem pagamento registrado, `404`.
 - A linha do saldo (`SaldoService`, usada por dashboard e relatórios) reconstrói o passado só com os
-  `PAGO` e projeta o futuro com os agendados; desconta despesa em cartão de crédito na data da compra e
-  cada parcela na data de vencimento da fatura em que cai.
+  `PAGO` das contas e projeta o futuro com os agendados. Despesa em cartão de crédito (na data da
+  compra) e parcela (na data de `parcelasPorDataDePagamento`) só entram na projeção, depois de hoje:
+  nenhuma das duas mexe em `contas.saldo`, nem quando a fatura é marcada como paga, então descontá-las
+  no passado devolvia ao saldo dos meses anteriores um valor que nunca saiu da conta.
 - O resto do mês da previsão soma os lançamentos não pagos até o fim do mês, inclusive os vencidos.
 - `TipoConta` define a `FinalidadeConta`: `EMERGENCIA`, `POUPANCA` e `PREVIDENCIA` são `RESERVA`. A
   evolução de conta (`EvolucaoContaService`) não tem tabela: sai dos lançamentos `PAGO` da janela de doze
