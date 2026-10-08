@@ -7,6 +7,7 @@ import br.com.prismaapi.model.dto.dashboard.projection.MovimentoDiarioProjecao;
 import br.com.prismaapi.model.dto.dashboard.projection.TotalMensalProjecao;
 import br.com.prismaapi.model.dto.dashboard.projection.ValorPorDataProjecao;
 import br.com.prismaapi.model.dto.relatorio.projection.GastoOrigemProjecao;
+import br.com.prismaapi.model.entity.conta.Conta;
 import br.com.prismaapi.model.entity.lancamento.Lancamento;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -22,15 +23,18 @@ import org.springframework.stereotype.Repository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface LancamentoRepository extends JpaRepository<Lancamento, UUID>, JpaSpecificationExecutor<Lancamento> {
 
-    @EntityGraph(attributePaths = {"categoria", "conta", "cartao", "contaDestino"})
+    @EntityGraph(attributePaths = {"categoria", "conta", "cartao", "contaDestino", "parcelaPaga.compraParcelada"})
     List<Lancamento> findAll(Specification<Lancamento> specification, Sort sort);
 
-    long countByContaIdOrContaDestinoId(UUID contaId, UUID contaDestinoId);
+    Optional<Lancamento> findByParcelaPagaId(UUID parcelaPagaId);
+
+    long countByContaIdOrContaDestinoIdOrContaPagamentoFaturaId(UUID contaId, UUID contaDestinoId, UUID contaPagamentoFaturaId);
 
     long countByCartaoId(UUID cartaoId);
 
@@ -207,6 +211,21 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, UUID>, J
                                                                      @Param("hoje") LocalDate hoje);
 
     @Query("""
+            SELECT new br.com.prismaapi.model.dto.dashboard.projection.ValorPorDataProjecao(
+                       lancamento.dataPagamentoFatura,
+                       SUM(lancamento.valor))
+            FROM Lancamento lancamento
+            JOIN lancamento.contaPagamentoFatura conta
+            WHERE conta.situacao = br.com.prismaapi.enums.Situacao.ATIVO
+              AND conta.incluirNoTotal = TRUE
+              AND lancamento.dataPagamentoFatura > :inicio
+              AND lancamento.dataPagamentoFatura <= :fim
+            GROUP BY lancamento.dataPagamentoFatura
+            """)
+    List<ValorPorDataProjecao> agruparPagamentosDeFaturaDoTotalPorDia(@Param("inicio") LocalDate inicio,
+                                                                      @Param("fim") LocalDate fim);
+
+    @Query("""
             SELECT SUM(lancamento.valor)
             FROM Lancamento lancamento
             WHERE lancamento.tipo = br.com.prismaapi.enums.TipoLancamento.DESPESA
@@ -232,7 +251,8 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, UUID>, J
     @Modifying
     @Query("""
             UPDATE Lancamento lancamento
-            SET lancamento.dataPagamentoFatura = :dataPagamento
+            SET lancamento.dataPagamentoFatura = :dataPagamento,
+                lancamento.contaPagamentoFatura = :contaPagamento
             WHERE lancamento.tipo = br.com.prismaapi.enums.TipoLancamento.DESPESA
               AND lancamento.cartao.id = :cartaoId
               AND lancamento.data BETWEEN :inicio AND :fim
@@ -241,12 +261,14 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, UUID>, J
     void marcarDespesasDoCartaoComoPagas(@Param("cartaoId") UUID cartaoId,
                                          @Param("inicio") LocalDate inicio,
                                          @Param("fim") LocalDate fim,
-                                         @Param("dataPagamento") LocalDate dataPagamento);
+                                         @Param("dataPagamento") LocalDate dataPagamento,
+                                         @Param("contaPagamento") Conta contaPagamento);
 
     @Modifying
     @Query("""
             UPDATE Lancamento lancamento
-            SET lancamento.dataPagamentoFatura = NULL
+            SET lancamento.dataPagamentoFatura = NULL,
+                lancamento.contaPagamentoFatura = NULL
             WHERE lancamento.tipo = br.com.prismaapi.enums.TipoLancamento.DESPESA
               AND lancamento.cartao.id = :cartaoId
               AND lancamento.data BETWEEN :inicio AND :fim
@@ -290,6 +312,8 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, UUID>, J
             LEFT JOIN FETCH lancamento.conta
             LEFT JOIN FETCH lancamento.cartao
             LEFT JOIN FETCH lancamento.contaDestino
+            LEFT JOIN FETCH lancamento.parcelaPaga pagamento
+            LEFT JOIN FETCH pagamento.compraParcelada
             WHERE lancamento.data BETWEEN :inicio AND :fim
             ORDER BY lancamento.data DESC, lancamento.descricao ASC
             """)
@@ -334,4 +358,15 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, UUID>, J
     List<Lancamento> buscarPagosDasContas(@Param("idsContas") List<UUID> idsContas,
                                           @Param("inicio") LocalDate inicio,
                                           @Param("fim") LocalDate fim);
+
+    @Query("""
+            SELECT lancamento
+            FROM Lancamento lancamento
+            JOIN FETCH lancamento.contaPagamentoFatura conta
+            WHERE conta.id IN :idsContas
+              AND lancamento.dataPagamentoFatura BETWEEN :inicio AND :fim
+            """)
+    List<Lancamento> buscarPagamentosDeFaturaDasContas(@Param("idsContas") List<UUID> idsContas,
+                                                       @Param("inicio") LocalDate inicio,
+                                                       @Param("fim") LocalDate fim);
 }

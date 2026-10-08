@@ -262,7 +262,7 @@ public class PrevisaoService {
     }
 
     private static boolean despesaDoTotal(Lancamento lancamento) {
-        return lancamento.getTipo() == TipoLancamento.DESPESA && (pesaNoTotal(lancamento.getConta()) || noCredito(lancamento.getCartao()));
+        return lancamento.getTipo() == TipoLancamento.DESPESA && lancamento.getParcelaPaga() == null && (pesaNoTotal(lancamento.getConta()) || noCredito(lancamento.getCartao()));
     }
 
     private static boolean aporte(Lancamento lancamento) {

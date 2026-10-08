@@ -7,6 +7,7 @@ import br.com.prismaapi.model.entity.cartao.Cartao;
 import br.com.prismaapi.model.entity.compraparcelada.CompraParcelada;
 import br.com.prismaapi.repository.cartao.CartaoRepository;
 import br.com.prismaapi.repository.compraparcelada.CompraParceladaRepository;
+import br.com.prismaapi.repository.conta.ContaRepository;
 import br.com.prismaapi.service.fatura.FaturaService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +22,9 @@ class FaturaControllerTest extends AbstractControllerTest {
 
     @Autowired
     private FaturaService faturaService;
+
+    @Autowired
+    private ContaRepository contaRepository;
 
     @Autowired
     private CartaoRepository cartaoRepository;
@@ -66,6 +70,7 @@ class FaturaControllerTest extends AbstractControllerTest {
         cartao.setLimiteCredito(new BigDecimal("3000.00"));
         cartao.setDiaFechamento((short) 3);
         cartao.setDiaVencimento((short) 10);
+        cartao.setConta(buscar(contaRepository, conta -> conta.getNome().equals("Conta principal")));
 
         var compra = new CompraParcelada();
 

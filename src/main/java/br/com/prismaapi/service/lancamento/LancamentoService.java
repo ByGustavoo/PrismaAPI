@@ -72,6 +72,8 @@ public class LancamentoService {
     public LancamentoDTO atualizar(UUID id, SalvarLancamentoDTO salvarLancamentoDTO) {
         log.info("Atualizando o lançamento... - ID: [{}]", id);
         var lancamento = buscar(id);
+
+        recusarPagamentoDeParcela(lancamento);
         movimentarSaldos(lancamento, BigDecimal.ONE.negate());
 
         lancamentoMapper.updateEntity(salvarLancamentoDTO, lancamento);
@@ -87,6 +89,7 @@ public class LancamentoService {
         log.info("Deletando o lançamento... - ID: [{}]", id);
         var lancamento = buscar(id);
 
+        recusarPagamentoDeParcela(lancamento);
         movimentarSaldos(lancamento, BigDecimal.ONE.negate());
         lancamentoRepository.delete(lancamento);
     }
@@ -119,6 +122,11 @@ public class LancamentoService {
         }
 
         validarForma(lancamento, salvarLancamentoDTO.forma());
+
+        if (lancamento.getCartao() == null || lancamento.getTipo() != TipoLancamento.DESPESA) {
+            lancamento.setDataPagamentoFatura(null);
+            lancamento.setContaPagamentoFatura(null);
+        }
     }
 
     private void vincularOrigem(Lancamento lancamento, UUID idOrigem) {
@@ -186,9 +194,11 @@ public class LancamentoService {
     }
 
     private static void movimentarSaldos(Lancamento lancamento, BigDecimal sentido) {
-        if (lancamento.getSituacao() != SituacaoLancamento.PAGO) return;
-
         var valor = lancamento.getValor().multiply(sentido);
+
+        movimentar(lancamento.getContaPagamentoFatura(), valor.negate());
+
+        if (lancamento.getSituacao() != SituacaoLancamento.PAGO) return;
 
         switch (lancamento.getTipo()) {
             case RECEITA -> movimentar(lancamento.getConta(), valor);
@@ -204,6 +214,13 @@ public class LancamentoService {
         if (conta == null) return;
 
         conta.setSaldo(conta.getSaldo().add(valor));
+    }
+
+    private static void recusarPagamentoDeParcela(Lancamento lancamento) {
+        if (lancamento.getParcelaPaga() != null) {
+            log.error("Este lançamento foi gerado pelo pagamento de uma parcela: desfaça o pagamento na compra parcelada para alterá-lo!");
+            throw new LancamentoDePagamentoDeParcelaException("Este lançamento foi gerado pelo pagamento de uma parcela: desfaça o pagamento na compra parcelada para alterá-lo!");
+        }
     }
 
     private static void validarForma(Lancamento lancamento, FormaLancamento forma) {

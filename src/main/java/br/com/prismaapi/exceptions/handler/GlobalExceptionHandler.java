@@ -407,6 +407,32 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 
+    @ExceptionHandler(CartaoSemContaDePagamentoException.class)
+    public ResponseEntity<ErrorResponseDTO> handleCartaoSemContaDePagamentoException(CartaoSemContaDePagamentoException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.CONFLICT.value(),
+                "Cartão Sem Conta de Pagamento!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/cartao-sem-conta-de-pagamento",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(LancamentoDePagamentoDeParcelaException.class)
+    public ResponseEntity<ErrorResponseDTO> handleLancamentoDePagamentoDeParcelaException(LancamentoDePagamentoDeParcelaException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.CONFLICT.value(),
+                "Lançamento de Pagamento de Parcela!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/lancamento-de-pagamento-de-parcela",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponseDTO> handleDataIntegrityViolationException(DataIntegrityViolationException ex, HttpServletRequest pHttpServletRequest) {
 

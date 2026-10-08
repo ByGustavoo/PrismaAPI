@@ -1,8 +1,14 @@
 package br.com.prismaapi.service.fatura;
 
+import br.com.prismaapi.enums.FormaLancamento;
 import br.com.prismaapi.enums.SituacaoFatura;
+import br.com.prismaapi.enums.SituacaoLancamento;
 import br.com.prismaapi.enums.SituacaoParcela;
 import br.com.prismaapi.enums.TipoCartao;
+import br.com.prismaapi.enums.TipoCategoria;
+import br.com.prismaapi.enums.TipoLancamento;
+import br.com.prismaapi.exceptions.CartaoSemContaDePagamentoException;
+import br.com.prismaapi.exceptions.CategoriaInexistenteException;
 import br.com.prismaapi.exceptions.FaturaJaPagaException;
 import br.com.prismaapi.exceptions.FaturaNaoEncontradaException;
 import br.com.prismaapi.exceptions.PagamentoDeFaturaNaoEncontradoException;
@@ -16,10 +22,14 @@ import br.com.prismaapi.model.dto.fatura.FaturaCartaoDTO;
 import br.com.prismaapi.model.dto.fatura.ItemFaturaDTO;
 import br.com.prismaapi.model.dto.fatura.ParcelaItemFaturaDTO;
 import br.com.prismaapi.model.entity.cartao.Cartao;
+import br.com.prismaapi.model.entity.categoria.Categoria;
 import br.com.prismaapi.model.entity.compraparcelada.CompraParcelada;
+import br.com.prismaapi.model.entity.conta.Conta;
+import br.com.prismaapi.model.entity.lancamento.Lancamento;
 import br.com.prismaapi.model.entity.parcelapaga.ParcelaPaga;
 import br.com.prismaapi.model.mapper.fatura.FaturaMapper;
 import br.com.prismaapi.repository.cartao.CartaoRepository;
+import br.com.prismaapi.repository.categoria.CategoriaRepository;
 import br.com.prismaapi.repository.compraparcelada.CompraParceladaRepository;
 import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import br.com.prismaapi.repository.parcelapaga.ParcelaPagaRepository;
@@ -57,6 +67,7 @@ public class FaturaService {
 
     private final FaturaMapper faturaMapper;
     private final CartaoRepository cartaoRepository;
+    private final CategoriaRepository categoriaRepository;
     private final LancamentoRepository lancamentoRepository;
     private final ParcelaPagaRepository parcelaPagaRepository;
     private final CompraParceladaRepository compraParceladaRepository;
@@ -92,7 +103,7 @@ public class FaturaService {
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "dashboard", "faturas", "previsao", "relatorios"}, allEntries = true)
+    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "contas", "dashboard", "faturas", "lancamentos", "orcamentos", "previsao", "relatorios"}, allEntries = true)
     public FaturaCartaoDTO registrarPagamento(String id) {
         log.info("Registrando o pagamento da fatura... - ID: [{}]", id);
         var hoje = LocalDate.now();
@@ -105,22 +116,27 @@ public class FaturaService {
             throw new FaturaJaPagaException("Essa fatura já está paga!");
         }
 
+        var conta = contaDePagamento(cartao);
         var pagamentos = pagamentosPorCompra();
+        var abertura = aberturaDoCiclo(cartao, mes);
+        var fechamento = diaDoMes(mes, cartao.getDiaFechamento());
 
-        var parcelasEmAberto = comprasDaFatura(cartao, mes)
+        comprasDaFatura(cartao, mes)
                 .stream()
                 .filter(compra -> !pagamentos.getOrDefault(compra.getId(), Map.of()).containsKey(numeroNoMes(compra.getPrimeiroMes(), mes)))
-                .map(compra -> parcelaPaga(compra, numeroNoMes(compra.getPrimeiroMes(), mes), hoje))
-                .toList();
+                .forEach(compra -> pagarParcela(compra, numeroNoMes(compra.getPrimeiroMes(), mes), hoje));
 
-        parcelaPagaRepository.saveAll(parcelasEmAberto);
-        lancamentoRepository.marcarDespesasDoCartaoComoPagas(cartao.getId(), aberturaDoCiclo(cartao, mes), diaDoMes(mes, cartao.getDiaFechamento()), hoje);
+        var despesasEmAberto = zeroSeNulo(lancamentoRepository.somarDespesasDoCartao(cartao.getId(), abertura, fechamento))
+                .subtract(zeroSeNulo(lancamentoRepository.somarDespesasPagasDoCartao(cartao.getId(), abertura, fechamento)));
+
+        lancamentoRepository.marcarDespesasDoCartaoComoPagas(cartao.getId(), abertura, fechamento, hoje, conta);
+        conta.setSaldo(conta.getSaldo().subtract(despesasEmAberto));
 
         return buscarFatura(cartao, mes, hoje, id);
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "dashboard", "faturas", "previsao", "relatorios"}, allEntries = true)
+    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "contas", "dashboard", "faturas", "lancamentos", "orcamentos", "previsao", "relatorios"}, allEntries = true)
     public void deletarPagamento(String id) {
         log.info("Deletando o pagamento da fatura... - ID: [{}]", id);
         var partes = partesDoId(id);
@@ -132,11 +148,57 @@ public class FaturaService {
             throw new PagamentoDeFaturaNaoEncontradoException("Essa fatura não tem pagamento registrado!");
         }
 
+        var abertura = aberturaDoCiclo(cartao, mes);
+        var fechamento = diaDoMes(mes, cartao.getDiaFechamento());
+
         comprasDaFatura(cartao, mes).forEach(compra -> parcelaPagaRepository
                 .findByCompraParceladaIdAndNumero(compra.getId(), (short) numeroNoMes(compra.getPrimeiroMes(), mes))
-                .ifPresent(parcelaPagaRepository::delete));
+                .ifPresent(this::desfazerPagamentoDeParcela));
 
-        lancamentoRepository.desmarcarDespesasDoCartao(cartao.getId(), aberturaDoCiclo(cartao, mes), diaDoMes(mes, cartao.getDiaFechamento()));
+        lancamentoRepository.buscarDespesasDoCartao(cartao.getId(), abertura, fechamento)
+                .stream()
+                .filter(despesa -> despesa.getContaPagamentoFatura() != null)
+                .forEach(despesa -> {
+                    var conta = despesa.getContaPagamentoFatura();
+                    conta.setSaldo(conta.getSaldo().add(despesa.getValor()));
+                });
+
+        lancamentoRepository.desmarcarDespesasDoCartao(cartao.getId(), abertura, fechamento);
+    }
+
+    @Transactional
+    public ParcelaPaga pagarParcela(CompraParcelada compra, int numero, LocalDate hoje) {
+        var conta = contaDePagamento(compra.getCartao());
+        var valor = valorDaParcela(compra.getValorTotal(), compra.getParcelas(), numero - 1L);
+        var pagamento = parcelaPagaRepository.save(parcelaPaga(compra, numero, hoje));
+        var lancamento = new Lancamento();
+
+        lancamento.setData(hoje);
+        lancamento.setValor(valor);
+        lancamento.setConta(conta);
+        lancamento.setParcelaPaga(pagamento);
+        lancamento.setForma(FormaLancamento.CONTA);
+        lancamento.setTipo(TipoLancamento.DESPESA);
+        lancamento.setSituacao(SituacaoLancamento.PAGO);
+        lancamento.setCategoria(categoriaDaDespesa(compra));
+        lancamento.setDescricao(descricaoDaParcela(compra, numero));
+
+        lancamentoRepository.save(lancamento);
+        conta.setSaldo(conta.getSaldo().subtract(valor));
+
+        return pagamento;
+    }
+
+    @Transactional
+    public void desfazerPagamentoDeParcela(ParcelaPaga pagamento) {
+        lancamentoRepository.findByParcelaPagaId(pagamento.getId()).ifPresent(lancamento -> {
+            var conta = lancamento.getConta();
+
+            conta.setSaldo(conta.getSaldo().add(lancamento.getValor()));
+            lancamentoRepository.delete(lancamento);
+        });
+
+        parcelaPagaRepository.delete(pagamento);
     }
 
     @Transactional(readOnly = true)
@@ -386,6 +448,36 @@ public class FaturaService {
         return parcelas.stream()
                 .map(parcela -> valorDaParcela(parcela.valorTotal(), parcela.parcelas(), numeroNoMes(parcela.primeiroMes(), mes) - 1L))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private Categoria categoriaDaDespesa(CompraParcelada compra) {
+        if (compra.getCategoria() != null) return compra.getCategoria();
+
+        return categoriaRepository.findByTipo(TipoCategoria.DESPESA)
+                .stream()
+                .filter(categoria -> categoria.getNome().equals("Outras despesas"))
+                .findFirst()
+                .orElseThrow(() -> {
+                    log.error("A compra parcelada não tem categoria: escolha uma antes de registrar o pagamento!");
+                    return new CategoriaInexistenteException("A compra parcelada não tem categoria: escolha uma antes de registrar o pagamento!");
+                });
+    }
+
+    private static Conta contaDePagamento(Cartao cartao) {
+        if (cartao.getConta() == null) {
+            log.error("O cartão não tem conta de pagamento! - ID: [{}]", cartao.getId());
+            throw new CartaoSemContaDePagamentoException("Escolha a conta de pagamento do cartão %s antes de registrar o pagamento!".formatted(cartao.getNome()));
+        }
+
+        return cartao.getConta();
+    }
+
+    private static String descricaoDaParcela(CompraParcelada compra, int numero) {
+        var sufixo = " (%d/%d)".formatted(numero, compra.getParcelas());
+        var limite = 160 - sufixo.length();
+        var descricao = compra.getDescricao();
+
+        return (descricao.length() > limite ? descricao.substring(0, limite).strip() : descricao) + sufixo;
     }
 
     private static ParcelaPaga parcelaPaga(CompraParcelada compra, int numero, LocalDate dataPagamento) {

@@ -44,8 +44,10 @@ src/main/resources/
   banner.txt       banner do start, com ${build.version} e ${build.data}
   log4j2.xml       console em dev, arquivo rotativo em /app/logs em prod
   db/migration/    V1.0__CreateTables.sql (esquema), V1.1__InsertCategorias.sql (catálogo de categorias),
-                   V1.3__CreateParcelasPagas.sql (pagamento antecipado de parcela) e
-                   V1.5__AddPagamentoFaturaLancamentos.sql (pagamento de fatura na despesa do cartão)
+                   V1.3__CreateParcelasPagas.sql (pagamento antecipado de parcela),
+                   V1.5__AddPagamentoFaturaLancamentos.sql (pagamento de fatura na despesa do cartão) e
+                   V1.6__AddLancamentoDoPagamento.sql (conta de pagamento do cartão de crédito e vínculo
+                   do lançamento com a parcela paga e com a conta que pagou a fatura)
 .run/              run configurations do IntelliJ (ignoradas pelo Git)
 .github/workflows/ workflow.yml (build no PR) e release.yml (imagem, tag e Release no merge para main)
 Dockerfile         build em dois estágios: gradle:jdk25 compila, eclipse-temurin:25-jre executa
@@ -55,8 +57,8 @@ src/test/java/br/com/prismaapi/
   config/          AbstractTest, AbstractControllerTest e TestDataBaseConfig (datasource dos testes)
   repository/      um pacote por repositório, espelhando o main: <Recurso>RepositoryTest
 src/test/resources/
-  db/test/         V1.2__PopularBanco.sql e V1.4__PopularParcelasPagas.sql, dados de exemplo aplicados
-                   só no perfil test
+  db/test/         V1.2__PopularBanco.sql, V1.4__PopularParcelasPagas.sql e
+                   V1.7__PopularContasDePagamento.sql, dados de exemplo aplicados só no perfil test
 ```
 
 São 15 recursos sob `/v1`, com 51 endpoints no total: `avisos`, `cartoes`, `categorias`,
@@ -91,8 +93,8 @@ relatório HTML em `build/reports/jacoco`.
   `DATABASE_*`, com padrão `localhost:5432/prisma`), e o Flyway lê `classpath:db/migration` e
   `classpath:db/test`: a `V1.2__PopularBanco.sql` popula o banco com um ano de dados relativos à data em
   que roda. Aponte as variáveis para um banco próprio, nunca para o de dev, que não conhece a `V1.2`.
-  **As versões de `db/migration` e `db/test` formam uma sequência só**: a `V1.3` e a `V1.5` são de
-  produção e a `V1.4` é carga de teste. O perfil `test` leva `spring.flyway.out-of-order: true`, porque
+  **As versões de `db/migration` e `db/test` formam uma sequência só**: a `V1.3`, a `V1.5` e a `V1.6`
+  são de produção, e a `V1.4` e a `V1.7` são carga de teste. O perfil `test` leva `spring.flyway.out-of-order: true`, porque
   num banco que o `dev` já levou até a `V1.5` a `V1.4` fica pendente abaixo da última aplicada, e sem
   isso o Flyway recusa o banco; por rodar sobre dados que podem já existir, a carga usa `ON CONFLICT`. Migração nova de produção leva o número seguinte ao último
   arquivo das duas pastas, e a carga que depende dela vem num arquivo novo depois — renumerar a
@@ -191,8 +193,28 @@ mudar um sem os outros quebra rotas, migrations ou logs:
   que já tinham as categorias inseridas à mão.
 - Só lançamento `PAGO` mexe em `contas.saldo`, na mesma transação: `POST` aplica o efeito, `PUT` desfaz
   o antigo e aplica o novo, `DELETE` desfaz — cada passo só se o lançamento em questão é `PAGO`.
-  `PENDENTE` e `AGENDADO` não mexem, qualquer que seja a data, e lançamento em cartão não mexe em conta.
-  Como `PAGO` não aceita data futura, não há tarefa agendada.
+  `PENDENTE` e `AGENDADO` não mexem, qualquer que seja a data, e lançamento em cartão só mexe em conta
+  quando a fatura dele é paga (abaixo). Como `PAGO` não aceita data futura, não há tarefa agendada.
+- **Pagar parcela ou fatura debita a conta de pagamento do cartão** (`cartoes.id_conta`, que no crédito
+  é opcional e no débito continua sendo a conta que ele movimenta). Sem ela o pagamento responde `409`
+  (`CartaoSemContaDePagamentoException`). São dois caminhos, porque todo cálculo de saldo parte de que
+  só lançamento mexe em conta:
+  - **Parcela** (`FaturaService.pagarParcela`, usado pelo pagamento de parcela e pelo de fatura): gera
+    uma despesa `PAGO` na conta, com o valor da parcela, a categoria da compra (`Outras despesas` quando
+    ela não tem) e a descrição seguida de `(n/total)`, ligada à linha de `parcelas_pagas` por
+    `lancamentos.id_parcela_paga`. É ela que entra em despesas, gráficos e orçamento, na data do
+    pagamento. `LancamentoDTO.parcela` identifica esse lançamento, e `PUT` e `DELETE` nele respondem
+    `409`: desfazer é pelo pagamento, que apaga a despesa e devolve o saldo. A previsão tira esses
+    lançamentos da média de despesa, porque as parcelas futuras já são projetadas à parte. Apagar a
+    compra, ou reduzir as parcelas dela, só solta o vínculo (`ON DELETE SET NULL`): a despesa fica como
+    lançamento comum, porque o dinheiro saiu. Marcas anteriores à `V1.6` não têm lançamento.
+  - **Despesa lançada direto no cartão**: já conta como despesa na data da compra, então o pagamento da
+    fatura não cria outra. Ela recebe `id_conta_pagamento_fatura` junto de `data_pagamento_fatura`, e o
+    valor sai do saldo da conta. Como não há lançamento na conta, quem reconstrói saldo lê esse
+    pagamento à parte: `SaldoService` (`agruparPagamentosDeFaturaDoTotalPorDia`) e
+    `EvolucaoContaService` (`buscarPagamentosDeFaturaDasContas`, como `RESGATE` na data do pagamento).
+    `LancamentoService.movimentarSaldos` desfaz e reaplica esse débito no `PUT` e no `DELETE` da despesa,
+    e o `PUT` que tira a despesa do cartão limpa as duas colunas.
 - Parcela de compra parcelada pode ser marcada como paga antes de vencer (`parcelas_pagas`, uma linha
   por compra e número, com `ON DELETE CASCADE`). `FaturaService.cronograma` trata como `PAGA` a
   parcela vencida ou marcada, e `pagamentoAntecipado` só é verdadeiro na marcada que ainda não
@@ -211,8 +233,9 @@ mudar um sem os outros quebra rotas, migrations ou logs:
 - A linha do saldo (`SaldoService`, usada por dashboard e relatórios) reconstrói o passado só com os
   `PAGO` das contas e projeta o futuro com os agendados. Despesa em cartão de crédito (na data da
   compra) e parcela (na data de `parcelasPorDataDePagamento`) só entram na projeção, depois de hoje:
-  nenhuma das duas mexe em `contas.saldo`, nem quando a fatura é marcada como paga, então descontá-las
-  no passado devolvia ao saldo dos meses anteriores um valor que nunca saiu da conta.
+  a compra em si não mexe em `contas.saldo`, então descontá-las no passado devolvia ao saldo dos meses
+  anteriores um valor que nunca saiu da conta. O que o pagamento debitou entra no passado pelos
+  lançamentos gerados e pelo pagamento de fatura das despesas do cartão.
 - O resto do mês da previsão soma os lançamentos não pagos até o fim do mês, inclusive os vencidos.
 - `TipoConta` define a `FinalidadeConta`: `EMERGENCIA`, `POUPANCA` e `PREVIDENCIA` são `RESERVA`. A
   evolução de conta (`EvolucaoContaService`) não tem tabela: sai dos lançamentos `PAGO` da janela de doze

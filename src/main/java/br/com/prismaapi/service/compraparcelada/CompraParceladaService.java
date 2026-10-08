@@ -20,7 +20,6 @@ import br.com.prismaapi.model.dto.compraparcelada.SalvarCompraParceladaDTO;
 import br.com.prismaapi.model.entity.cartao.Cartao;
 import br.com.prismaapi.model.entity.categoria.Categoria;
 import br.com.prismaapi.model.entity.compraparcelada.CompraParcelada;
-import br.com.prismaapi.model.entity.parcelapaga.ParcelaPaga;
 import br.com.prismaapi.model.mapper.compraparcelada.CompraParceladaMapper;
 import br.com.prismaapi.repository.cartao.CartaoRepository;
 import br.com.prismaapi.repository.categoria.CategoriaRepository;
@@ -72,7 +71,7 @@ public class CompraParceladaService {
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "dashboard", "faturas", "previsao", "relatorios"}, allEntries = true)
+    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "contas", "dashboard", "faturas", "lancamentos", "orcamentos", "previsao", "relatorios"}, allEntries = true)
     public CompraParceladaDTO salvar(SalvarCompraParceladaDTO salvarCompraParceladaDTO) {
         log.info("Salvando a compra parcelada... - Descrição: {}", salvarCompraParceladaDTO.descricao());
         var compra = compraParceladaMapper.toEntity(salvarCompraParceladaDTO);
@@ -82,7 +81,7 @@ public class CompraParceladaService {
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "dashboard", "faturas", "previsao", "relatorios"}, allEntries = true)
+    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "contas", "dashboard", "faturas", "lancamentos", "orcamentos", "previsao", "relatorios"}, allEntries = true)
     public CompraParceladaDTO atualizar(UUID id, SalvarCompraParceladaDTO salvarCompraParceladaDTO) {
         log.info("Atualizando a compra parcelada... - ID: [{}]", id);
         var compra = buscar(id);
@@ -95,14 +94,14 @@ public class CompraParceladaService {
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "dashboard", "faturas", "previsao", "relatorios"}, allEntries = true)
+    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "contas", "dashboard", "faturas", "lancamentos", "orcamentos", "previsao", "relatorios"}, allEntries = true)
     public void deletar(UUID id) {
         log.info("Deletando a compra parcelada... - ID: [{}]", id);
         compraParceladaRepository.delete(buscar(id));
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "dashboard", "faturas", "previsao", "relatorios"}, allEntries = true)
+    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "contas", "dashboard", "faturas", "lancamentos", "orcamentos", "previsao", "relatorios"}, allEntries = true)
     public PagamentoParcelaDTO registrarPagamento(UUID id, Integer numero) {
         log.info("Registrando o pagamento da parcela... - ID: [{}] - Parcela: {}", id, numero);
         var compra = buscar(id);
@@ -123,17 +122,11 @@ public class CompraParceladaService {
             throw new ParcelaJaPagaException("Essa parcela já está paga!");
         }
 
-        var pagamento = new ParcelaPaga();
-
-        pagamento.setCompraParcelada(compra);
-        pagamento.setNumero(numero.shortValue());
-        pagamento.setDataPagamento(hoje);
-
-        return compraParceladaMapper.toPagamentoDTO(parcelaPagaRepository.save(pagamento));
+        return compraParceladaMapper.toPagamentoDTO(faturaService.pagarParcela(compra, numero, hoje));
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "dashboard", "faturas", "previsao", "relatorios"}, allEntries = true)
+    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "contas", "dashboard", "faturas", "lancamentos", "orcamentos", "previsao", "relatorios"}, allEntries = true)
     public void deletarPagamento(UUID id, Integer numero) {
         log.info("Deletando o pagamento da parcela... - ID: [{}] - Parcela: {}", id, numero);
         var pagamento = parcelaPagaRepository.findByCompraParceladaIdAndNumero(id, numero.shortValue())
@@ -142,7 +135,7 @@ public class CompraParceladaService {
                     return new PagamentoDeParcelaNaoEncontradoException("Essa parcela não tem pagamento registrado!");
                 });
 
-        parcelaPagaRepository.delete(pagamento);
+        faturaService.desfazerPagamentoDeParcela(pagamento);
     }
 
     private CompraParcelada buscar(UUID id) {

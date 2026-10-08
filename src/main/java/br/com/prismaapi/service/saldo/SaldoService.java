@@ -35,6 +35,9 @@ public class SaldoService {
         lancamentoRepository.agruparMovimentoDoTotalPorDia(inicio, fim, hoje)
                 .forEach(movimento -> movimentos.merge(movimento.data(), comSinal(movimento), BigDecimal::add));
 
+        lancamentoRepository.agruparPagamentosDeFaturaDoTotalPorDia(inicio, hoje)
+                .forEach(pagamento -> movimentos.merge(pagamento.data(), pagamento.valor().negate(), BigDecimal::add));
+
         lancamentoRepository.agruparDespesasNoCreditoPorDia(hoje, fim)
                 .forEach(despesa -> movimentos.merge(despesa.data(), despesa.valor().negate(), BigDecimal::add));
 

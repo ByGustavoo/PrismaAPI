@@ -156,10 +156,13 @@ public interface CompraParceladaDocs {
                     Marca como paga, com a data de hoje, uma parcela que ainda não venceu, e devolve o \
                     pagamento registrado. Não há corpo na requisição.
 
+                    O pagamento gera uma despesa PAGA na conta de pagamento do cartão, com o valor da \
+                    parcela, a categoria da compra e a descrição seguida do número da parcela, e debita \
+                    o saldo dessa conta. Sem conta de pagamento definida no cartão, o pagamento é recusado.
+
                     A parcela paga continua na fatura do seu mês, mas sai do que falta pagar nela, do \
-                    limite comprometido do cartão, dos avisos e da previsão; no saldo, ela passa a pesar \
-                    na data do pagamento, e não mais no vencimento. A parcela vencida já conta como paga \
-                    e é recusada, assim como a que já tem pagamento registrado.""")
+                    limite comprometido do cartão, dos avisos e da previsão. A parcela vencida já conta \
+                    como paga e é recusada, assim como a que já tem pagamento registrado.""")
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "201",
@@ -174,7 +177,7 @@ public interface CompraParceladaDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "409",
-                    description = "Parcela já paga!",
+                    description = "Parcela já paga, ou cartão sem conta de pagamento!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "500",
@@ -192,8 +195,9 @@ public interface CompraParceladaDocs {
     @Operation(
             summary = "Desfaz o pagamento antecipado de uma parcela",
             description = """
-                    Remove o pagamento registrado e responde sem corpo. A parcela volta a contar no que \
-                    falta pagar da fatura, no limite comprometido do cartão e na previsão.
+                    Remove o pagamento registrado e a despesa que ele gerou, devolve o valor ao saldo da \
+                    conta e responde sem corpo. A parcela volta a contar no que falta pagar da fatura, no \
+                    limite comprometido do cartão e na previsão.
 
                     A parcela que já venceu continua PAGA depois disso, porque passa a valer a data de \
                     vencimento.""")

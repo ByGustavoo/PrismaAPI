@@ -37,8 +37,9 @@ public interface CartaoDocs {
                     cada tipo, os ativos vêm antes dos inativos, em ordem alfabética pelo nome e, no \
                     empate, pela instituição.
 
-                    Cada cartão traz só os campos do seu tipo: crédito tem limite e datas de fatura, \
-                    débito aponta para a conta que acessa e os vales carregam saldo próprio. O limite \
+                    Cada cartão traz só os campos do seu tipo: crédito tem limite, datas de fatura e, \
+                    quando definida, a conta que paga a fatura, débito aponta para a conta que acessa e \
+                    os vales carregam saldo próprio. O limite \
                     comprometido do crédito é calculado a cada leitura, somando as faturas ainda não \
                     pagas, inclusive as futuras formadas por parcelas já assumidas.""")
     ResponseEntity<List<CartaoDTO>> listarCartoes();
@@ -51,7 +52,8 @@ public interface CartaoDocs {
                     calculado quando ele é de crédito.
 
                     Só os campos do tipo escolhido são gravados: crédito exige limite e dias de \
-                    fechamento e vencimento, débito exige a conta vinculada e os vales exigem o saldo. \
+                    fechamento e vencimento e aceita em idConta a conta que paga a fatura, débito exige \
+                    a conta vinculada e os vales exigem o saldo. \
                     O que vier de outro tipo é descartado. Nome, instituição, bandeira e últimos \
                     dígitos são gravados sem os espaços das pontas.""")
     @ApiResponses(value = {
@@ -64,7 +66,7 @@ public interface CartaoDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "422",
-                    description = "Conta vinculada ao cartão de débito inexistente!",
+                    description = "Conta vinculada ao cartão inexistente!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "500",
@@ -81,7 +83,7 @@ public interface CartaoDocs {
 
                     Os campos do tipo são refeitos a partir do corpo: o que não vier é limpo, e não \
                     preservado. Trocar um cartão de crédito por vale remove limite e dias de fatura, \
-                    e trocar débito por crédito desfaz o vínculo com a conta.""")
+                    e trocar débito por vale desfaz o vínculo com a conta.""")
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
@@ -96,7 +98,7 @@ public interface CartaoDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "422",
-                    description = "Conta vinculada ao cartão de débito inexistente!",
+                    description = "Conta vinculada ao cartão inexistente!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "500",

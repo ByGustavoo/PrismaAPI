@@ -134,7 +134,7 @@ public class ContaService {
     }
 
     private void validarHistorico(UUID id) {
-        var quantidade = lancamentoRepository.countByContaIdOrContaDestinoId(id, id) + despesaRecorrenteRepository.countByContaId(id);
+        var quantidade = lancamentoRepository.countByContaIdOrContaDestinoIdOrContaPagamentoFaturaId(id, id, id) + despesaRecorrenteRepository.countByContaId(id);
 
         if (quantidade > 0) {
             var registros = quantidade == 1 ? "registro" : "registros";
@@ -147,13 +147,13 @@ public class ContaService {
         var quantidade = cartaoRepository.countByContaId(id);
 
         if (quantidade == 1) {
-            log.error("Esta conta está vinculada a um cartão de débito. Troque a conta desse cartão ou exclua-o antes de excluir a conta!");
-            throw new ContaComCartaoVinculadoException("Esta conta está vinculada a um cartão de débito. Troque a conta desse cartão ou exclua-o antes de excluir a conta!");
+            log.error("Esta conta está vinculada a um cartão. Troque a conta desse cartão ou exclua-o antes de excluir a conta!");
+            throw new ContaComCartaoVinculadoException("Esta conta está vinculada a um cartão. Troque a conta desse cartão ou exclua-o antes de excluir a conta!");
         }
 
         if (quantidade > 1) {
-            log.error("Esta conta está vinculada a {} cartões de débito. Troque a conta desses cartões ou exclua-os antes de excluir a conta!", quantidade);
-            throw new ContaComCartaoVinculadoException("Esta conta está vinculada a %d cartões de débito. Troque a conta desses cartões ou exclua-os antes de excluir a conta!".formatted(quantidade));
+            log.error("Esta conta está vinculada a {} cartões. Troque a conta desses cartões ou exclua-os antes de excluir a conta!", quantidade);
+            throw new ContaComCartaoVinculadoException("Esta conta está vinculada a %d cartões. Troque a conta desses cartões ou exclua-os antes de excluir a conta!".formatted(quantidade));
         }
     }
 

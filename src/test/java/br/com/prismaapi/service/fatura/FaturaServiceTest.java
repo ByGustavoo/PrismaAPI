@@ -7,6 +7,7 @@ import br.com.prismaapi.model.entity.cartao.Cartao;
 import br.com.prismaapi.model.entity.compraparcelada.CompraParcelada;
 import br.com.prismaapi.repository.cartao.CartaoRepository;
 import br.com.prismaapi.repository.compraparcelada.CompraParceladaRepository;
+import br.com.prismaapi.repository.conta.ContaRepository;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +23,9 @@ class FaturaServiceTest extends AbstractTest {
 
     @Autowired
     private FaturaService faturaService;
+
+    @Autowired
+    private ContaRepository contaRepository;
 
     @Autowired
     private CartaoRepository cartaoRepository;
@@ -61,6 +65,21 @@ class FaturaServiceTest extends AbstractTest {
     }
 
     @Test
+    void pagarParcelaTest() {
+        var compra = compraEmAberto();
+
+        var pagamento = Assertions.assertDoesNotThrow(() -> faturaService.pagarParcela(compra, 1, LocalDate.now()));
+        Assertions.assertNotNull(pagamento);
+    }
+
+    @Test
+    void desfazerPagamentoDeParcelaTest() {
+        var pagamento = faturaService.pagarParcela(compraEmAberto(), 1, LocalDate.now());
+
+        Assertions.assertDoesNotThrow(() -> faturaService.desfazerPagamentoDeParcela(pagamento));
+    }
+
+    @Test
     void faturaEmDestaqueTest() {
         var fatura = Assertions.assertDoesNotThrow(() -> faturaService.faturaEmDestaque(YearMonth.now(), LocalDate.now()));
         Assertions.assertNotNull(fatura);
@@ -93,6 +112,10 @@ class FaturaServiceTest extends AbstractTest {
     }
 
     private String faturaEmAberto() {
+        return compraEmAberto().getCartao().getId() + "-" + YearMonth.now();
+    }
+
+    private CompraParcelada compraEmAberto() {
         var cartao = new Cartao();
 
         cartao.setNome("Cartão sem pagamento");
@@ -102,6 +125,7 @@ class FaturaServiceTest extends AbstractTest {
         cartao.setLimiteCredito(new BigDecimal("3000.00"));
         cartao.setDiaFechamento((short) 3);
         cartao.setDiaVencimento((short) 10);
+        cartao.setConta(buscar(contaRepository, conta -> conta.getNome().equals("Conta principal")));
 
         var compra = new CompraParcelada();
 
@@ -112,8 +136,6 @@ class FaturaServiceTest extends AbstractTest {
         compra.setPrimeiroMes(YearMonth.now().atDay(1));
         compra.setCartao(cartaoRepository.save(cartao));
 
-        compraParceladaRepository.save(compra);
-
-        return cartao.getId() + "-" + YearMonth.now();
+        return compraParceladaRepository.save(compra);
     }
 }

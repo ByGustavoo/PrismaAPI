@@ -136,6 +136,7 @@ public class CartaoService {
                 cartao.setLimiteCredito(exigir(salvarCartaoDTO.limiteCredito(), "Informe o limite do cartão!"));
                 cartao.setDiaFechamento(exigir(salvarCartaoDTO.diaFechamento(), "Informe um dia de fechamento entre 1 e 31!"));
                 cartao.setDiaVencimento(exigir(salvarCartaoDTO.diaVencimento(), "Informe um dia de vencimento entre 1 e 31!"));
+                cartao.setConta(buscarContaDePagamento(salvarCartaoDTO.idConta()));
             }
             case DEBITO -> cartao.setConta(buscarContaVinculada(salvarCartaoDTO.idConta()));
             case VALE_ALIMENTACAO, VALE_REFEICAO -> cartao.setSaldo(exigir(salvarCartaoDTO.saldo(), "Informe um saldo válido para o cartão!"));
@@ -148,6 +149,16 @@ public class CartaoService {
                 .orElseThrow(() -> {
                     log.error("Escolha a conta vinculada ao cartão de débito!");
                     return new ContaVinculadaInexistenteException("Escolha a conta vinculada ao cartão de débito!");
+                });
+    }
+
+    private Conta buscarContaDePagamento(UUID idConta) {
+        if (idConta == null) return null;
+
+        return contaRepository.findById(idConta)
+                .orElseThrow(() -> {
+                    log.error("A conta de pagamento informada não existe!");
+                    return new ContaVinculadaInexistenteException("A conta de pagamento informada não existe!");
                 });
     }
 

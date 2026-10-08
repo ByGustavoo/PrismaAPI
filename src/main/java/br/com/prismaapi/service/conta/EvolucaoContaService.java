@@ -40,7 +40,7 @@ public class EvolucaoContaService {
     private final ContaService contaService;
     private final ContaRepository contaRepository;
     private final LancamentoRepository lancamentoRepository;
-    private static final Comparator<Lancamento> ORDEM_CRONOLOGICA = Comparator.comparing(Lancamento::getData).thenComparing(Lancamento::getDataCriacao);
+    private static final Comparator<EfeitoNaConta> ORDEM_CRONOLOGICA = Comparator.comparing(EfeitoNaConta::data).thenComparing(efeito -> efeito.lancamento().getDataCriacao());
 
     @Cacheable("contas")
     @Transactional(readOnly = true)
@@ -56,10 +56,12 @@ public class EvolucaoContaService {
         }
 
         var hoje = LocalDate.now();
-        var lancamentos = buscarLancamentos(reservas.stream().map(ContaDTO::id).toList(), hoje);
+        var idsContas = reservas.stream().map(ContaDTO::id).toList();
+        var lancamentos = buscarLancamentos(idsContas, hoje);
+        var pagamentosDeFatura = buscarPagamentosDeFatura(idsContas, hoje);
 
         return reservas.stream()
-                .map(conta -> evoluir(conta, lancamentos, hoje))
+                .map(conta -> evoluir(conta, lancamentos, pagamentosDeFatura, hoje))
                 .toList();
     }
 
@@ -76,20 +78,28 @@ public class EvolucaoContaService {
 
         var hoje = LocalDate.now();
 
-        return evoluir(conta, buscarLancamentos(List.of(id), hoje), hoje);
+        return evoluir(conta, buscarLancamentos(List.of(id), hoje), buscarPagamentosDeFatura(List.of(id), hoje), hoje);
     }
 
     private List<Lancamento> buscarLancamentos(List<UUID> idsContas, LocalDate hoje) {
-        return lancamentoRepository.buscarPagosDasContas(idsContas, inicioDaJanela(hoje).atDay(1), hoje)
-                .stream()
-                .sorted(ORDEM_CRONOLOGICA)
-                .toList();
+        return lancamentoRepository.buscarPagosDasContas(idsContas, inicioDaJanela(hoje).atDay(1), hoje);
     }
 
-    private static EvolucaoContaDTO evoluir(ContaDTO conta, List<Lancamento> lancamentos, LocalDate hoje) {
-        var efeitos = lancamentos.stream()
+    private List<Lancamento> buscarPagamentosDeFatura(List<UUID> idsContas, LocalDate hoje) {
+        return lancamentoRepository.buscarPagamentosDeFaturaDasContas(idsContas, inicioDaJanela(hoje).atDay(1), hoje);
+    }
+
+    private static EvolucaoContaDTO evoluir(ContaDTO conta, List<Lancamento> lancamentos, List<Lancamento> pagamentosDeFatura, LocalDate hoje) {
+        var movimentos = lancamentos.stream()
                 .filter(lancamento -> tocaAConta(lancamento, conta.id()))
-                .map(lancamento -> new EfeitoNaConta(lancamento, tipo(lancamento, conta.id())))
+                .map(lancamento -> new EfeitoNaConta(lancamento, tipo(lancamento, conta.id()), lancamento.getData()));
+
+        var faturasPagas = pagamentosDeFatura.stream()
+                .filter(lancamento -> lancamento.getContaPagamentoFatura().getId().equals(conta.id()))
+                .map(lancamento -> new EfeitoNaConta(lancamento, TipoMovimentacaoConta.RESGATE, lancamento.getDataPagamentoFatura()));
+
+        var efeitos = Stream.concat(movimentos, faturasPagas)
+                .sorted(ORDEM_CRONOLOGICA)
                 .toList();
 
         var aportes = somar(efeitos, TipoMovimentacaoConta.APORTE);
@@ -120,7 +130,7 @@ public class EvolucaoContaService {
         return Stream.iterate(inicioDaJanela(hoje), mes -> !mes.isAfter(mesAtual), mes -> mes.plusMonths(1))
                 .map(mes -> {
                     var fechamento = mes.equals(mesAtual) ? hoje : mes.atEndOfMonth();
-                    var ate = efeitos.stream().filter(efeito -> !efeito.lancamento().getData().isAfter(fechamento)).toList();
+                    var ate = efeitos.stream().filter(efeito -> !efeito.data().isAfter(fechamento)).toList();
                     var aplicado = saldoInicial.add(somar(ate, TipoMovimentacaoConta.APORTE)).subtract(somar(ate, TipoMovimentacaoConta.RESGATE));
 
                     return new PontoEvolucaoDTO(MesDoAno.rotulo(mes), mes, aplicado, aplicado.add(somar(ate, TipoMovimentacaoConta.RENDIMENTO)));
@@ -137,7 +147,7 @@ public class EvolucaoContaService {
             var valor = dinheiro(lancamento.getValor());
 
             saldo = efeito.tipo() == TipoMovimentacaoConta.RESGATE ? saldo.subtract(valor) : saldo.add(valor);
-            movimentacoes.add(new MovimentacaoContaDTO(lancamento.getId(), efeito.tipo(), lancamento.getData(), lancamento.getDescricao(), valor, saldo));
+            movimentacoes.add(new MovimentacaoContaDTO(lancamento.getId(), efeito.tipo(), efeito.data(), lancamento.getDescricao(), valor, saldo));
         }
 
         return movimentacoes.reversed();
