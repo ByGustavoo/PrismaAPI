@@ -135,8 +135,10 @@ relatório HTML em `build/reports/jacoco`.
 - `.github/workflows/release.yml` é o mesmo do PrismaWeb: roda quando um PR é mergeado em `main` (ou
   manualmente, por `workflow_dispatch`, escolhendo o incremento). Parte da última tag `vX.Y.Z` e sobe o
   patch — ou o minor/major, se o PR tiver o rótulo `release:minor`/`release:major` —, publica a imagem
-  multi-arch no Docker Hub nessa versão e em `latest`, e cria a tag e a Release no GitHub com notas
-  geradas. Push direto em `main`, sem PR, não gera release.
+  multi-arch no Docker Hub nessa versão e em `latest`, e cria a tag e a Release no GitHub. As notas
+  da Release são a descrição do PR, seguidas do `docker pull` da versão e da lista que o
+  `--generate-notes` monta com os títulos dos PRs; a descrição entra por variável de ambiente, nunca
+  interpolada no script, e a execução manual sai sem ela. Push direto em `main`, sem PR, não gera release.
 - A versão vem da tag, não do arquivo: o `build.gradle.kts` declara
   `version = providers.gradleProperty("versao").getOrElse("1.0.0")`, e o workflow passa a versão
   calculada como `-Pversao`, então o que `GET /v1/sistema/versao` devolve é a versão da Release. O
