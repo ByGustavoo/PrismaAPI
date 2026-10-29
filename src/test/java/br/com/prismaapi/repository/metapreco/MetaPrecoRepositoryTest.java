@@ -31,4 +31,9 @@ class MetaPrecoRepositoryTest extends AbstractTest {
     void findByMetaIdInOrderByDataAscDataCriacaoAscTest() {
         Assertions.assertDoesNotThrow(() -> metaPrecoRepository.findByMetaIdInOrderByDataAscDataCriacaoAsc(List.of(UUID.randomUUID())));
     }
+
+    @Test
+    void buscarAcompanhadasSemPrecoDesdeTest() {
+        Assertions.assertDoesNotThrow(() -> metaPrecoRepository.buscarAcompanhadasSemPrecoDesde(LocalDate.now().minusDays(30)));
+    }
 }
