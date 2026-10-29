@@ -95,7 +95,7 @@ relatório HTML em `build/reports/jacoco`.
   `classpath:db/test`: a `V1.2__PopularBanco.sql` popula o banco com um ano de dados relativos à data em
   que roda. Aponte as variáveis para um banco próprio, nunca para o de dev, que não conhece a `V1.2`.
   **As versões de `db/migration` e `db/test` formam uma sequência só**: a `V1.3`, a `V1.5`, a `V1.6`, a `V1.8`,
-  a `V1.9`, a `V2.0` e a `V2.2` são de produção, e a `V1.4`, a `V1.7` e a `V2.1` são carga de teste. O perfil `test` leva `spring.flyway.out-of-order: true`, porque
+  a `V1.9`, a `V2.0`, a `V2.2` e a `V2.3` são de produção, e a `V1.4`, a `V1.7` e a `V2.1` são carga de teste. O perfil `test` leva `spring.flyway.out-of-order: true`, porque
   num banco que o `dev` já levou até a `V1.5` a `V1.4` fica pendente abaixo da última aplicada, e sem
   isso o Flyway recusa o banco; por rodar sobre dados que podem já existir, a carga usa `ON CONFLICT`. Migração nova de produção leva o número seguinte ao último
   arquivo das duas pastas, e a carga que depende dela vem num arquivo novo depois — renumerar a
@@ -240,6 +240,15 @@ mudar um sem os outros quebra rotas, migrations ou logs:
   anteriores um valor que nunca saiu da conta. O que o pagamento debitou entra no passado pelos
   lançamentos gerados e pelo pagamento de fatura das despesas do cartão.
 - O resto do mês da previsão soma os lançamentos não pagos até o fim do mês, inclusive os vencidos.
+- **Índice só onde a tabela cresce.** Contas, cartões, categorias, investimentos, metas, orçamentos,
+  recorrentes e as tabelas de avisos e telas guardam dezenas de linhas, e nelas ler a tabela inteira
+  é mais barato que passar por um índice; toda chave estrangeira já tem um índice que começa por ela,
+  e `UNIQUE` e chave primária já criam o seu. Quem cresce é `lancamentos`, e ali o `buscarNaoPagosAte`
+  dos avisos usava `lancamentos_data_idx`, lia o histórico inteiro até a data limite e descartava os
+  pagos depois. A `V2.3` cria `lancamentos_nao_pagos_data_idx`, parcial em `situacao <> 'PAGO'`: o
+  índice tem só o que ainda não foi pago, e continua pequeno enquanto o histórico cresce. Ele depende
+  de a consulta escrever o enum como literal no JPQL; passado como parâmetro, o planejador não
+  consegue provar a condição do índice e volta ao de data.
 - **Conta é só dinheiro do dia a dia** (`TipoConta`: `CORRENTE`, `SALARIO`, `OUTRA`). Reserva de
   emergência, poupança e previdência eram tipos de conta e passaram a ser investimento (`V2.0` e
   `V2.2`): a previdência existia nos dois cadastros e era contada duas vezes. Com isso saíram
