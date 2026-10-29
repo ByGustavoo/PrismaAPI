@@ -47,7 +47,8 @@ src/main/resources/
                    V1.3__CreateParcelasPagas.sql (pagamento antecipado de parcela),
                    V1.5__AddPagamentoFaturaLancamentos.sql (pagamento de fatura na despesa do cartão) e
                    V1.6__AddLancamentoDoPagamento.sql (conta de pagamento do cartão de crédito e vínculo
-                   do lançamento com a parcela paga e com a conta que pagou a fatura)
+                   do lançamento com a parcela paga e com a conta que pagou a fatura) e
+                   V1.8__CreateAvisos.sql (preferências dos avisos, tipos desligados e leituras)
 .run/              run configurations do IntelliJ (ignoradas pelo Git)
 .github/workflows/ workflow.yml (build no PR) e release.yml (imagem, tag e Release no merge para main)
 Dockerfile         build em dois estágios: gradle:jdk25 compila, eclipse-temurin:25-jre executa
@@ -61,9 +62,9 @@ src/test/resources/
                    V1.7__PopularContasDePagamento.sql, dados de exemplo aplicados só no perfil test
 ```
 
-São 15 recursos sob `/v1`, com 51 endpoints no total: `avisos`, `cartoes`, `categorias`,
+São 15 recursos sob `/v1`, com 58 endpoints no total: `avisos`, `cartoes`, `categorias`,
 `compras-parceladas`, `contas`, `dashboard`, `despesas-recorrentes`, `faturas`, `investimentos`,
-`lancamentos`, `metas`, `orcamentos`, `previsao`, `relatorios` e `sistema`. O esquema tem 12
+`lancamentos`, `metas`, `orcamentos`, `previsao`, `relatorios` e `sistema`. O esquema tem 15
 tabelas, todas em `prisma`.
 
 ## Comandos
@@ -93,7 +94,7 @@ relatório HTML em `build/reports/jacoco`.
   `DATABASE_*`, com padrão `localhost:5432/prisma`), e o Flyway lê `classpath:db/migration` e
   `classpath:db/test`: a `V1.2__PopularBanco.sql` popula o banco com um ano de dados relativos à data em
   que roda. Aponte as variáveis para um banco próprio, nunca para o de dev, que não conhece a `V1.2`.
-  **As versões de `db/migration` e `db/test` formam uma sequência só**: a `V1.3`, a `V1.5` e a `V1.6`
+  **As versões de `db/migration` e `db/test` formam uma sequência só**: a `V1.3`, a `V1.5`, a `V1.6` e a `V1.8`
   são de produção, e a `V1.4` e a `V1.7` são carga de teste. O perfil `test` leva `spring.flyway.out-of-order: true`, porque
   num banco que o `dev` já levou até a `V1.5` a `V1.4` fica pendente abaixo da última aplicada, e sem
   isso o Flyway recusa o banco; por rodar sobre dados que podem já existir, a carga usa `ON CONFLICT`. Migração nova de produção leva o número seguinte ao último
@@ -245,11 +246,38 @@ mudar um sem os outros quebra rotas, migrations ou logs:
 - Investimento tem série em `movimentacoes_investimento` (`APORTE` soma valor, `RENDIMENTO` guarda o
   saldo informado). `aportado`, `valor_atual`, `data_inicio` e `data_ultima_movimentacao` de
   `investimentos` são o resumo dessa série, regravado a cada movimentação; o `PUT` não mexe em valores.
-- Investimento sem movimentação há 30 dias ou mais vira aviso (`INVESTIMENTO_DESATUALIZADO`, sempre
-  `ATENCAO`, sem `valor`), lido de `data_ultima_movimentacao`: é o lembrete de conferir o saldo na
-  instituição, e some quando um aporte ou um saldo é registrado. A `rota` leva o id
-  (`/investimentos?investimento=<id>`), que o PrismaWeb usa para abrir o registro de saldo. Por isso
-  toda escrita do `InvestimentoService` limpa também o cache `avisos`.
+- Investimento sem movimentação há mais tempo que o lembrete escolhido (30 dias por padrão) vira aviso
+  (`INVESTIMENTO_DESATUALIZADO`, sempre `ATENCAO`, sem `valor`), lido de `data_ultima_movimentacao`: é o
+  lembrete de conferir o saldo na instituição, e some quando um aporte ou um saldo é registrado. A
+  `rota` leva o id (`/investimentos?investimento=<id>`), que o PrismaWeb usa para abrir o registro de
+  saldo. Por isso toda escrita do `InvestimentoService` limpa também o cache `avisos`.
+- Os avisos têm três fontes novas, todas derivadas: `ORCAMENTO_NO_LIMITE` lê a visão geral do mês do
+  `OrcamentoService` (`ALERTA` vira `ATENCAO`, `ESTOURADO` vira `CRITICO`, e o id leva o mês, para a
+  leitura não atravessar a virada); `SALDO_NEGATIVO_PREVISTO` é o primeiro mês da `PrevisaoService`
+  (o resto do mês corrente incluído) com `saldoFinal` negativo, `CRITICO` no mês atual e no seguinte;
+  `META_SEM_PRECO` vem de `MetaPrecoRepository.buscarAcompanhadasSemPrecoDesde`, com a rota
+  `/planejamento/metas?meta=<id>`. A rota da fatura passou a ser `/faturas?fatura=<id>`. Por lerem
+  orçamento e metas, as escritas do `OrcamentoService` e do `MetaService` limpam também o cache `avisos`.
+- **Preferências e leituras dos avisos** (`V1.8`). `preferencias_avisos` tem uma linha só, criada pela
+  migração, com a antecedência (3, 7, 15 ou 30 dias, usada por faturas, lançamentos e recorrentes), o
+  percentual do limite do cartão (70, 80 ou 90) e os lembretes de investimento e de meta (15, 30, 60 ou
+  90 dias); os `CHECK` repetem as opções, e o `PreferenciasAvisosService` recusa outro valor com `400`
+  antes de chegar a eles. Os tipos desligados ficam em `tipos_aviso_desligados` (`@ElementCollection`) e
+  não são nem calculados. `leituras_avisos` guarda, por id de aviso, a assinatura da situação lida —
+  severidade, data e valor, sem a data nos avisos datados de hoje — e, no adiamento, `data_fim_adiamento`.
+  O `AvisoService` devolve cada aviso com `estado` `NOVO`, `LIDO` ou `ADIADO`: a marca só vale enquanto
+  a assinatura bate, então o aviso volta sozinho quando a situação muda, e o adiado volta no dia
+  marcado. Ler um aviso que já não existe responde `404` (`AvisoNaoEncontradoException`); devolver aos
+  novos um aviso sem marca não faz nada. "Ler todos" apaga as marcas de avisos que deixaram de existir,
+  para a tabela não crescer sem limite. As preferências passam pelo cache `preferencias-avisos`, e
+  gravá-las limpa também `avisos`.
+- **Telas ocultas** (`V1.9`, `GET` e `PUT /telas/ocultas`). `telas_ocultas` guarda uma linha por tela
+  que o usuário tirou do menu em Configurações, com `tela` única e um `CHECK` das quatorze opções do enum
+  `Tela` — Dashboard e Configurações não entram, porque nunca ficam ocultos. O `PUT` substitui a lista
+  inteira (repetidas contam uma vez) e o `GET` devolve na ordem do enum, que é a ordem do menu; o cache é
+  `telas-ocultas`. É só preferência de navegação: o servidor não esconde nada por causa dela. Quem tira
+  do sino o aviso que leva a uma tela oculta é o frontend, pela `rota` do aviso — o `AvisoService` e o
+  cache `avisos` não dependem das telas ocultas.
 - `PrevisaoService` projeta o resto do mês corrente e os meses cheios a partir das médias dos três meses
   fechados, contando recorrentes para trás e para frente de `proximoVencimento`
   (`Frequencia.ocorrenciaAnterior`).

@@ -1,0 +1,7 @@
+{
+  "tiposDesligados": ["RECEITA_PREVISTA"],
+  "diasAntecedencia": 7,
+  "percentualLimiteCartao": 80,
+  "diasLembreteInvestimento": 60,
+  "diasLembreteMeta": 30
+}

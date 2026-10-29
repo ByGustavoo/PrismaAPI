@@ -1,5 +1,6 @@
 package br.com.prismaapi.model.dto.aviso;
 
+import br.com.prismaapi.enums.EstadoAviso;
 import br.com.prismaapi.enums.SeveridadeAviso;
 import br.com.prismaapi.enums.TipoAviso;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -10,7 +11,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@Schema(description = "Representa um aviso derivado de faturas, lançamentos e limites de cartão.")
+@Schema(description = "Representa um aviso derivado de faturas, lançamentos, limites, orçamentos, previsão, investimentos e metas.")
 public record AvisoDTO(
 
         String id,
@@ -28,6 +29,11 @@ public record AvisoDTO(
 
         BigDecimal valor,
 
-        String rota
+        String rota,
+
+        EstadoAviso estado,
+
+        @JsonFormat(pattern = "yyyy-MM-dd")
+        LocalDate adiadoAte
 
 ) {}

@@ -91,7 +91,7 @@ public class MetaService {
     }
 
     @Transactional
-    @CacheEvict(value = "metas", allEntries = true)
+    @CacheEvict(value = {"avisos", "metas"}, allEntries = true)
     public MetaDTO salvar(SalvarMetaDTO salvarMetaDTO) {
         log.info("Salvando a meta... - Nome: {}", salvarMetaDTO.nome());
         var meta = metaMapper.toEntity(salvarMetaDTO);
@@ -104,7 +104,7 @@ public class MetaService {
     }
 
     @Transactional
-    @CacheEvict(value = "metas", allEntries = true)
+    @CacheEvict(value = {"avisos", "metas"}, allEntries = true)
     public MetaDTO atualizar(UUID id, AtualizarMetaDTO atualizarMetaDTO) {
         log.info("Atualizando a meta... - ID: [{}]", id);
         var meta = buscar(id);
@@ -116,7 +116,7 @@ public class MetaService {
     }
 
     @Transactional
-    @CacheEvict(value = "metas", allEntries = true)
+    @CacheEvict(value = {"avisos", "metas"}, allEntries = true)
     public MetaDTO registrarPreco(UUID id, SalvarMetaPrecoDTO salvarMetaPrecoDTO) {
         log.info("Registrando o preço da meta... - ID: [{}] - Data: {}", id, salvarMetaPrecoDTO.data());
         var meta = buscar(id);
@@ -139,7 +139,7 @@ public class MetaService {
     }
 
     @Transactional
-    @CacheEvict(value = "metas", allEntries = true)
+    @CacheEvict(value = {"avisos", "metas"}, allEntries = true)
     public void deletar(UUID id) {
         log.info("Deletando a meta... - ID: [{}]", id);
         metaRepository.delete(buscar(id));

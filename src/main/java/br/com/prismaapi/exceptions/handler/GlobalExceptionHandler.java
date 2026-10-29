@@ -264,6 +264,19 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
+    @ExceptionHandler(AvisoNaoEncontradoException.class)
+    public ResponseEntity<ErrorResponseDTO> handleAvisoNaoEncontradoException(AvisoNaoEncontradoException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.NOT_FOUND.value(),
+                "Aviso não encontrado!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/aviso-nao-encontrado",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<ErrorResponseDTO> handleEntityNotFoundException(EntityNotFoundException ex, HttpServletRequest pHttpServletRequest) {
 
