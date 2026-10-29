@@ -1,6 +1,7 @@
 package br.com.prismaapi.model.entity.movimentacaoinvestimento;
 
 import br.com.prismaapi.enums.TipoMovimentacaoInvestimento;
+import br.com.prismaapi.model.entity.conta.Conta;
 import br.com.prismaapi.model.entity.investimento.Investimento;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -25,6 +26,10 @@ public class MovimentacaoInvestimento {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_investimento", nullable = false)
     private Investimento investimento;
+
+    @JoinColumn(name = "id_conta")
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Conta conta;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)

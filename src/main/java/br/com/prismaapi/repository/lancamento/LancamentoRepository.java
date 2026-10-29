@@ -29,10 +29,12 @@ import java.util.UUID;
 @Repository
 public interface LancamentoRepository extends JpaRepository<Lancamento, UUID>, JpaSpecificationExecutor<Lancamento> {
 
-    @EntityGraph(attributePaths = {"categoria", "conta", "cartao", "contaDestino", "parcelaPaga.compraParcelada"})
+    @EntityGraph(attributePaths = {"categoria", "conta", "cartao", "contaDestino", "parcelaPaga.compraParcelada", "movimentacaoInvestimento.investimento"})
     List<Lancamento> findAll(Specification<Lancamento> specification, Sort sort);
 
     Optional<Lancamento> findByParcelaPagaId(UUID parcelaPagaId);
+
+    List<Lancamento> findByMovimentacaoInvestimentoInvestimentoId(UUID investimentoId);
 
     long countByContaIdOrContaDestinoIdOrContaPagamentoFaturaId(UUID contaId, UUID contaDestinoId, UUID contaPagamentoFaturaId);
 
@@ -176,11 +178,11 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, UUID>, J
                        SUM(lancamento.valor))
             FROM Lancamento lancamento
             JOIN lancamento.conta origem
-            JOIN lancamento.contaDestino destino
+            LEFT JOIN lancamento.contaDestino destino
             WHERE lancamento.tipo = br.com.prismaapi.enums.TipoLancamento.TRANSFERENCIA
               AND origem.situacao = br.com.prismaapi.enums.Situacao.ATIVO
               AND origem.incluirNoTotal = TRUE
-              AND (destino.situacao <> br.com.prismaapi.enums.Situacao.ATIVO OR destino.incluirNoTotal = FALSE)
+              AND (destino IS NULL OR destino.situacao <> br.com.prismaapi.enums.Situacao.ATIVO OR destino.incluirNoTotal = FALSE)
               AND lancamento.data > :inicio
               AND lancamento.data <= :fim
               AND (lancamento.situacao = br.com.prismaapi.enums.SituacaoLancamento.PAGO OR lancamento.data > :hoje)
@@ -195,12 +197,12 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, UUID>, J
                        lancamento.data,
                        SUM(lancamento.valor))
             FROM Lancamento lancamento
-            JOIN lancamento.conta origem
+            LEFT JOIN lancamento.conta origem
             JOIN lancamento.contaDestino destino
             WHERE lancamento.tipo = br.com.prismaapi.enums.TipoLancamento.TRANSFERENCIA
               AND destino.situacao = br.com.prismaapi.enums.Situacao.ATIVO
               AND destino.incluirNoTotal = TRUE
-              AND (origem.situacao <> br.com.prismaapi.enums.Situacao.ATIVO OR origem.incluirNoTotal = FALSE)
+              AND (origem IS NULL OR origem.situacao <> br.com.prismaapi.enums.Situacao.ATIVO OR origem.incluirNoTotal = FALSE)
               AND lancamento.data > :inicio
               AND lancamento.data <= :fim
               AND (lancamento.situacao = br.com.prismaapi.enums.SituacaoLancamento.PAGO OR lancamento.data > :hoje)
@@ -314,6 +316,8 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, UUID>, J
             LEFT JOIN FETCH lancamento.contaDestino
             LEFT JOIN FETCH lancamento.parcelaPaga pagamento
             LEFT JOIN FETCH pagamento.compraParcelada
+            LEFT JOIN FETCH lancamento.movimentacaoInvestimento movimentacao
+            LEFT JOIN FETCH movimentacao.investimento
             WHERE lancamento.data BETWEEN :inicio AND :fim
             ORDER BY lancamento.data DESC, lancamento.descricao ASC
             """)
@@ -344,29 +348,4 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, UUID>, J
             """)
     List<Lancamento> buscarComOrigemEntre(@Param("inicio") LocalDate inicio,
                                           @Param("fim") LocalDate fim);
-
-    @Query("""
-            SELECT lancamento
-            FROM Lancamento lancamento
-            LEFT JOIN FETCH lancamento.categoria
-            LEFT JOIN FETCH lancamento.conta origem
-            LEFT JOIN FETCH lancamento.contaDestino destino
-            WHERE lancamento.situacao = br.com.prismaapi.enums.SituacaoLancamento.PAGO
-              AND (origem.id IN :idsContas OR destino.id IN :idsContas)
-              AND lancamento.data BETWEEN :inicio AND :fim
-            """)
-    List<Lancamento> buscarPagosDasContas(@Param("idsContas") List<UUID> idsContas,
-                                          @Param("inicio") LocalDate inicio,
-                                          @Param("fim") LocalDate fim);
-
-    @Query("""
-            SELECT lancamento
-            FROM Lancamento lancamento
-            JOIN FETCH lancamento.contaPagamentoFatura conta
-            WHERE conta.id IN :idsContas
-              AND lancamento.dataPagamentoFatura BETWEEN :inicio AND :fim
-            """)
-    List<Lancamento> buscarPagamentosDeFaturaDasContas(@Param("idsContas") List<UUID> idsContas,
-                                                       @Param("inicio") LocalDate inicio,
-                                                       @Param("fim") LocalDate fim);
 }

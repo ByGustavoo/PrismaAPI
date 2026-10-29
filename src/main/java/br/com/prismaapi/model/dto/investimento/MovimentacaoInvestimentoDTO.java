@@ -26,6 +26,12 @@ public record MovimentacaoInvestimentoDTO(
         BigDecimal aportadoApos,
 
         @JsonInclude(JsonInclude.Include.NON_NULL)
+        UUID idConta,
+
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        String nomeConta,
+
+        @JsonInclude(JsonInclude.Include.NON_NULL)
         String descricao
 
 ) {}

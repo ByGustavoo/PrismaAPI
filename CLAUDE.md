@@ -94,8 +94,8 @@ relatório HTML em `build/reports/jacoco`.
   `DATABASE_*`, com padrão `localhost:5432/prisma`), e o Flyway lê `classpath:db/migration` e
   `classpath:db/test`: a `V1.2__PopularBanco.sql` popula o banco com um ano de dados relativos à data em
   que roda. Aponte as variáveis para um banco próprio, nunca para o de dev, que não conhece a `V1.2`.
-  **As versões de `db/migration` e `db/test` formam uma sequência só**: a `V1.3`, a `V1.5`, a `V1.6` e a `V1.8`
-  são de produção, e a `V1.4` e a `V1.7` são carga de teste. O perfil `test` leva `spring.flyway.out-of-order: true`, porque
+  **As versões de `db/migration` e `db/test` formam uma sequência só**: a `V1.3`, a `V1.5`, a `V1.6`, a `V1.8`,
+  a `V1.9`, a `V2.0` e a `V2.2` são de produção, e a `V1.4`, a `V1.7` e a `V2.1` são carga de teste. O perfil `test` leva `spring.flyway.out-of-order: true`, porque
   num banco que o `dev` já levou até a `V1.5` a `V1.4` fica pendente abaixo da última aplicada, e sem
   isso o Flyway recusa o banco; por rodar sobre dados que podem já existir, a carga usa `ON CONFLICT`. Migração nova de produção leva o número seguinte ao último
   arquivo das duas pastas, e a carga que depende dela vem num arquivo novo depois — renumerar a
@@ -240,12 +240,35 @@ mudar um sem os outros quebra rotas, migrations ou logs:
   anteriores um valor que nunca saiu da conta. O que o pagamento debitou entra no passado pelos
   lançamentos gerados e pelo pagamento de fatura das despesas do cartão.
 - O resto do mês da previsão soma os lançamentos não pagos até o fim do mês, inclusive os vencidos.
-- `TipoConta` define a `FinalidadeConta`: `EMERGENCIA`, `POUPANCA` e `PREVIDENCIA` são `RESERVA`. A
-  evolução de conta (`EvolucaoContaService`) não tem tabela: sai dos lançamentos `PAGO` da janela de doze
-  meses, e o saldo inicial é o saldo de hoje menos o efeito deles.
-- Investimento tem série em `movimentacoes_investimento` (`APORTE` soma valor, `RENDIMENTO` guarda o
-  saldo informado). `aportado`, `valor_atual`, `data_inicio` e `data_ultima_movimentacao` de
-  `investimentos` são o resumo dessa série, regravado a cada movimentação; o `PUT` não mexe em valores.
+- **Conta é só dinheiro do dia a dia** (`TipoConta`: `CORRENTE`, `SALARIO`, `OUTRA`). Reserva de
+  emergência, poupança e previdência eram tipos de conta e passaram a ser investimento (`V2.0` e
+  `V2.2`): a previdência existia nos dois cadastros e era contada duas vezes. Com isso saíram
+  `FinalidadeConta`, `EvolucaoContaService` e as rotas `/v1/contas/reservas` e `/v1/contas/{id}/evolucao`.
+  A `V2.2` não apaga nada: ela só troca o `CHECK` de `contas.tipo`, e falha se ainda houver conta de
+  reserva, em vez de sumir com dado real. A carga de teste tira as contas de reserva da `V1.2` na
+  `V2.1`, que vem entre as duas de produção, e num banco de dev que não roda a carga elas precisam
+  sair à mão antes da `V2.2`.
+- Investimento tem série em `movimentacoes_investimento` (`APORTE` soma valor, `RESGATE` tira valor,
+  `RENDIMENTO` guarda o saldo informado). `aportado`, `valor_atual`, `data_inicio` e
+  `data_ultima_movimentacao` de `investimentos` são o resumo dessa série, regravado a cada
+  movimentação; o `PUT` não mexe em valores. **O resgate tira do aportado na mesma proporção do saldo**
+  (`aportadoDepoisDoResgate`): resgatar metade deixa metade do aportado e a rentabilidade igual. Abater
+  o valor inteiro do aportado inventaria rendimento. Ele não passa do saldo atual
+  (`ResgateMaiorQueSaldoException`, `422`), e por isso o `CHECK` do aportado é `>= 0`.
+- **Aporte e resgate podem mexer numa conta** (`movimentacoes_investimento.id_conta`, opcional, também
+  na aplicação inicial do cadastro). Com ela, o `InvestimentoService` grava uma transferência `PAGO` ligada
+  à movimentação por `lancamentos.id_movimentacao_investimento`, no mesmo arranjo da despesa do
+  pagamento de parcela: no aporte ela sai da conta e não tem destino, no resgate ela entra na conta e
+  não tem origem, e o saldo da conta muda na hora. Os `CHECK` de origem e de transferência aceitam o
+  lado vazio só nesse caso. `agruparTransferenciasQueSaemDoTotal` e `...QueEntramNoTotal` usam
+  `LEFT JOIN` no lado do investimento, e a previsão já conta como aporte a transferência que sai do
+  total sem destino. `LancamentoDTO.investimento` identifica esse lançamento, o nome do investimento vai
+  em `nomeOrigem` ou `nomeContaDestino`, e `PUT` e `DELETE` nele respondem `409`. Excluir o investimento
+  apaga essas transferências e devolve o saldo das contas antes de apagar as movimentações.
+- `investimentos.reserva_emergencia` marca o investimento como parte da reserva de emergência, em qualquer
+  classe: a reserva é finalidade, não produto. `CarteiraDTO.reserva` soma os marcados.
+- `DashboardDTO.patrimonio` é o saldo do total no corte mais a carteira no mesmo mês
+  (`InvestimentoService.evolucaoNosMeses`), com variação contra o corte anterior.
 - Investimento sem movimentação há mais tempo que o lembrete escolhido (30 dias por padrão) vira aviso
   (`INVESTIMENTO_DESATUALIZADO`, sempre `ATENCAO`, sem `valor`), lido de `data_ultima_movimentacao`: é o
   lembrete de conferir o saldo na instituição, e some quando um aporte ou um saldo é registrado. A
@@ -318,7 +341,7 @@ mudar um sem os outros quebra rotas, migrations ou logs:
   `ArrayList`, porque a view de `.reversed()` não tem como ser reconstruída. Campo de DTO precisa voltar
   do JSON como saiu: um `LocalDate` com `@JsonFormat(pattern = "yyyy-MM")` quebra a leitura do cache,
   e o tipo certo é `YearMonth`.
-- Os testes cobrem só os repositórios: um teste por método próprio, com `assertDoesNotThrow`, rodando
-  sobre o banco populado pela `V1.2`. Eles pegaram a falta da extensão `unaccent`, usada pelas buscas
-  de lançamentos e metas e criada no topo da `V1.0`. O `AbstractControllerTest` já existe, com os
-  atalhos de `MockMvc` por status, mas ainda não tem nenhum teste de controller em cima dele.
+- Os testes cobrem controllers, services e repositórios: um teste por endpoint, por método público de
+  service e por método próprio de repositório, rodando sobre o banco populado pela carga de teste. Eles
+  pegaram a falta da extensão `unaccent`, usada pelas buscas de lançamentos e metas e criada no topo da
+  `V1.0`.

@@ -1,6 +1,7 @@
 package br.com.prismaapi.controller.investimento;
 
 import br.com.prismaapi.config.AbstractControllerTest;
+import br.com.prismaapi.repository.conta.ContaRepository;
 import br.com.prismaapi.repository.investimento.InvestimentoRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,8 +18,12 @@ class InvestimentoControllerTest extends AbstractControllerTest {
 
     private String registrarSaldoRequest;
     private String registrarAporteRequest;
+    private String registrarResgateRequest;
     private String salvarInvestimentoRequest;
     private String atualizarInvestimentoRequest;
+
+    @Autowired
+    private ContaRepository contaRepository;
 
     @Autowired
     private InvestimentoRepository investimentoRepository;
@@ -35,6 +40,10 @@ class InvestimentoControllerTest extends AbstractControllerTest {
 
         if (registrarAporteRequest == null) {
             registrarAporteRequest = new String(Files.readAllBytes(Paths.get("src/test/resources/requests/investimento/registrarAporteRequest.json")));
+        }
+
+        if (registrarResgateRequest == null) {
+            registrarResgateRequest = new String(Files.readAllBytes(Paths.get("src/test/resources/requests/investimento/registrarResgateRequest.json")));
         }
 
         if (registrarSaldoRequest == null) {
@@ -71,6 +80,14 @@ class InvestimentoControllerTest extends AbstractControllerTest {
         var idInvestimento = buscar(investimentoRepository, investimento -> investimento.getNome().equals("Tesouro Selic 2029")).getId();
 
         testPost("/v1/investimentos/" + idInvestimento + "/aportes", registrarAporteRequest.formatted(LocalDate.now()));
+    }
+
+    @Test
+    void registrarResgateTest() throws Exception {
+        var idConta = buscar(contaRepository, conta -> conta.getNome().equals("Conta principal")).getId();
+        var idInvestimento = buscar(investimentoRepository, investimento -> investimento.getNome().equals("Tesouro Selic 2029")).getId();
+
+        testPost("/v1/investimentos/" + idInvestimento + "/resgates", registrarResgateRequest.formatted(LocalDate.now(), idConta));
     }
 
     @Test

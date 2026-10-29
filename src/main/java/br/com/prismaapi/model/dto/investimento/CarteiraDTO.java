@@ -19,6 +19,8 @@ public record CarteiraDTO(
 
         VariacaoDTO variacaoValorAtual,
 
+        ReservaEmergenciaDTO reserva,
+
         List<AlocacaoDTO> alocacao,
 
         List<PontoEvolucaoDTO> historico,

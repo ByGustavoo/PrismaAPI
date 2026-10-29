@@ -42,7 +42,10 @@ public interface DashboardDocs {
                     Sem os dois parâmetros, responde pelo mês corrente. Eles andam juntos: enviar \
                     apenas um é requisição inválida. Num recorte de mês único as séries de histórico \
                     de saldo, fluxo de caixa e gasto diário abrem para seis meses, porque um mês \
-                    sozinho não desenha linha nenhuma.""")
+                    sozinho não desenha linha nenhuma.
+
+                    O patrimônio é o saldo do total somado ao valor da carteira de investimentos no \
+                    mesmo corte, e a variação dele compara com o corte da janela anterior.""")
     ResponseEntity<DashboardDTO> buscarResumo(
             @Parameter(description = "Primeiro mês do recorte", example = "2026-09")
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM") YearMonth dataInicial,

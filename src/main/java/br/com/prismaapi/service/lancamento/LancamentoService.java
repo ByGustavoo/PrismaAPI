@@ -73,7 +73,7 @@ public class LancamentoService {
         log.info("Atualizando o lançamento... - ID: [{}]", id);
         var lancamento = buscar(id);
 
-        recusarPagamentoDeParcela(lancamento);
+        recusarLancamentoGerado(lancamento);
         movimentarSaldos(lancamento, BigDecimal.ONE.negate());
 
         lancamentoMapper.updateEntity(salvarLancamentoDTO, lancamento);
@@ -89,7 +89,7 @@ public class LancamentoService {
         log.info("Deletando o lançamento... - ID: [{}]", id);
         var lancamento = buscar(id);
 
-        recusarPagamentoDeParcela(lancamento);
+        recusarLancamentoGerado(lancamento);
         movimentarSaldos(lancamento, BigDecimal.ONE.negate());
         lancamentoRepository.delete(lancamento);
     }
@@ -216,10 +216,15 @@ public class LancamentoService {
         conta.setSaldo(conta.getSaldo().add(valor));
     }
 
-    private static void recusarPagamentoDeParcela(Lancamento lancamento) {
+    private static void recusarLancamentoGerado(Lancamento lancamento) {
         if (lancamento.getParcelaPaga() != null) {
             log.error("Este lançamento foi gerado pelo pagamento de uma parcela: desfaça o pagamento na compra parcelada para alterá-lo!");
             throw new LancamentoDePagamentoDeParcelaException("Este lançamento foi gerado pelo pagamento de uma parcela: desfaça o pagamento na compra parcelada para alterá-lo!");
+        }
+
+        if (lancamento.getMovimentacaoInvestimento() != null) {
+            log.error("Este lançamento foi gerado por um aporte ou resgate de investimento e não pode ser alterado aqui!");
+            throw new LancamentoDeMovimentacaoDeInvestimentoException("Este lançamento foi gerado por um aporte ou resgate de investimento e não pode ser alterado aqui!");
         }
     }
 

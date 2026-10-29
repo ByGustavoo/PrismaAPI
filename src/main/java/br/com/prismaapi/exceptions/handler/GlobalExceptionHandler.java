@@ -446,6 +446,19 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 
+    @ExceptionHandler(LancamentoDeMovimentacaoDeInvestimentoException.class)
+    public ResponseEntity<ErrorResponseDTO> handleLancamentoDeMovimentacaoDeInvestimentoException(LancamentoDeMovimentacaoDeInvestimentoException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.CONFLICT.value(),
+                "Lançamento de Movimentação de Investimento!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/lancamento-de-movimentacao-de-investimento",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponseDTO> handleDataIntegrityViolationException(DataIntegrityViolationException ex, HttpServletRequest pHttpServletRequest) {
 
@@ -664,6 +677,19 @@ public class GlobalExceptionHandler {
                 "Data Anterior à Última Atualização!",
                 pHttpServletRequest.getRequestURI(),
                 "/PrismaAPI/problems/data-anterior-a-ultima-atualizacao",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(response);
+    }
+
+    @ExceptionHandler(ResgateMaiorQueSaldoException.class)
+    public ResponseEntity<ErrorResponseDTO> handleResgateMaiorQueSaldoException(ResgateMaiorQueSaldoException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.UNPROCESSABLE_CONTENT.value(),
+                "Resgate Maior que o Saldo!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/resgate-maior-que-saldo",
                 ex.getMessage());
 
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(response);

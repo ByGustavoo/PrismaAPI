@@ -1,5 +1,6 @@
 package br.com.prismaapi.model.mapper.lancamento;
 
+import br.com.prismaapi.model.dto.lancamento.InvestimentoLancamentoDTO;
 import br.com.prismaapi.model.dto.lancamento.LancamentoDTO;
 import br.com.prismaapi.model.dto.lancamento.ParcelaLancamentoDTO;
 import br.com.prismaapi.model.dto.lancamento.SalvarLancamentoDTO;
@@ -15,10 +16,11 @@ import java.util.UUID;
 public interface LancamentoMapper {
 
     @Mapping(target = "idContaDestino", source = "contaDestino.id")
-    @Mapping(target = "nomeContaDestino", source = "contaDestino.nome")
     @Mapping(target = "parcela", expression = "java(parcela(lancamento))")
     @Mapping(target = "idOrigem", expression = "java(idOrigem(lancamento))")
     @Mapping(target = "nomeOrigem", expression = "java(nomeOrigem(lancamento))")
+    @Mapping(target = "investimento", expression = "java(investimento(lancamento))")
+    @Mapping(target = "nomeContaDestino", expression = "java(nomeContaDestino(lancamento))")
     LancamentoDTO toDTO(Lancamento lancamento);
 
     @Mapping(target = "id", ignore = true)
@@ -31,6 +33,7 @@ public interface LancamentoMapper {
     @Mapping(target = "dataAtualizacao", ignore = true)
     @Mapping(target = "dataPagamentoFatura", ignore = true)
     @Mapping(target = "contaPagamentoFatura", ignore = true)
+    @Mapping(target = "movimentacaoInvestimento", ignore = true)
     Lancamento toEntity(SalvarLancamentoDTO salvarLancamentoDTO);
 
     @Mapping(target = "id", ignore = true)
@@ -43,16 +46,32 @@ public interface LancamentoMapper {
     @Mapping(target = "dataAtualizacao", ignore = true)
     @Mapping(target = "dataPagamentoFatura", ignore = true)
     @Mapping(target = "contaPagamentoFatura", ignore = true)
+    @Mapping(target = "movimentacaoInvestimento", ignore = true)
     void updateEntity(SalvarLancamentoDTO salvarLancamentoDTO, @MappingTarget Lancamento lancamento);
 
     default UUID idOrigem(Lancamento lancamento) {
         if (lancamento.getConta() != null) return lancamento.getConta().getId();
-        return lancamento.getCartao() != null ? lancamento.getCartao().getId() : null;
+        if (lancamento.getCartao() != null) return lancamento.getCartao().getId();
+        return lancamento.getMovimentacaoInvestimento() != null ? lancamento.getMovimentacaoInvestimento().getInvestimento().getId() : null;
     }
 
     default String nomeOrigem(Lancamento lancamento) {
         if (lancamento.getConta() != null) return lancamento.getConta().getNome();
-        return lancamento.getCartao() != null ? lancamento.getCartao().getNome() : null;
+        if (lancamento.getCartao() != null) return lancamento.getCartao().getNome();
+        return lancamento.getMovimentacaoInvestimento() != null ? lancamento.getMovimentacaoInvestimento().getInvestimento().getNome() : null;
+    }
+
+    default String nomeContaDestino(Lancamento lancamento) {
+        if (lancamento.getContaDestino() != null) return lancamento.getContaDestino().getNome();
+        return lancamento.getMovimentacaoInvestimento() != null && lancamento.getConta() != null ? lancamento.getMovimentacaoInvestimento().getInvestimento().getNome() : null;
+    }
+
+    default InvestimentoLancamentoDTO investimento(Lancamento lancamento) {
+        var movimentacao = lancamento.getMovimentacaoInvestimento();
+
+        if (movimentacao == null) return null;
+
+        return new InvestimentoLancamentoDTO(movimentacao.getInvestimento().getId(), movimentacao.getTipo());
     }
 
     default ParcelaLancamentoDTO parcela(Lancamento lancamento) {

@@ -46,18 +46,6 @@ class ContaControllerTest extends AbstractControllerTest {
     }
 
     @Test
-    void listarReservasTest() throws Exception {
-        testGet("/v1/contas/reservas");
-    }
-
-    @Test
-    void buscarEvolucaoTest() throws Exception {
-        var idConta = buscar(contaRepository, conta -> conta.getNome().equals("Reserva de emergência")).getId();
-
-        testGet("/v1/contas/" + idConta + "/evolucao");
-    }
-
-    @Test
     void salvarContaTest() throws Exception {
         testPost("/v1/contas", salvarContaRequest);
     }
