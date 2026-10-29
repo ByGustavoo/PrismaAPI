@@ -6,6 +6,7 @@ import br.com.prismaapi.model.dto.investimento.ExtratoInvestimentoDTO;
 import br.com.prismaapi.model.dto.investimento.InvestimentoDTO;
 import br.com.prismaapi.model.dto.investimento.SalvarAporteInvestimentoDTO;
 import br.com.prismaapi.model.dto.investimento.SalvarInvestimentoDTO;
+import br.com.prismaapi.model.dto.investimento.SalvarResgateInvestimentoDTO;
 import br.com.prismaapi.model.dto.investimento.SalvarSaldoInvestimentoDTO;
 import br.com.prismaapi.service.investimento.InvestimentoService;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +47,11 @@ public class InvestimentoController implements InvestimentoDocs {
     @Override
     public ResponseEntity<InvestimentoDTO> registrarAporte(UUID id, SalvarAporteInvestimentoDTO salvarAporteInvestimentoDTO) {
         return ResponseEntity.status(HttpStatus.CREATED).body(investimentoService.registrarAporte(id, salvarAporteInvestimentoDTO));
+    }
+
+    @Override
+    public ResponseEntity<InvestimentoDTO> registrarResgate(UUID id, SalvarResgateInvestimentoDTO salvarResgateInvestimentoDTO) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(investimentoService.registrarResgate(id, salvarResgateInvestimentoDTO));
     }
 
     @Override

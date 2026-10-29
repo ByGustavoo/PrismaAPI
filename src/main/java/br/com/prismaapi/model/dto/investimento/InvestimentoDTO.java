@@ -20,6 +20,8 @@ public record InvestimentoDTO(
 
         String instituicao,
 
+        Boolean reservaEmergencia,
+
         BigDecimal aportado,
 
         BigDecimal valorAtual,

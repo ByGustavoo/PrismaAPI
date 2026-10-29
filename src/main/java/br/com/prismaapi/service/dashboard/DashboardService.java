@@ -20,6 +20,7 @@ import br.com.prismaapi.repository.categoria.CategoriaRepository;
 import br.com.prismaapi.repository.investimento.InvestimentoRepository;
 import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import br.com.prismaapi.service.fatura.FaturaService;
+import br.com.prismaapi.service.investimento.InvestimentoService;
 import br.com.prismaapi.service.saldo.SaldoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,6 +48,7 @@ public class DashboardService {
     private final LancamentoMapper lancamentoMapper;
     private static final int CASAS_DA_PARTICIPACAO = 4;
     private final CategoriaRepository categoriaRepository;
+    private final InvestimentoService investimentoService;
     private final LancamentoRepository lancamentoRepository;
     private final InvestimentoRepository investimentoRepository;
     private static final String PERIODO_INVALIDO = "O período informado é inválido!";
@@ -70,6 +72,9 @@ public class DashboardService {
         var despesasAnteriores = somar(TipoLancamento.DESPESA, anterior);
 
         var carteira = investimentoRepository.resumirCarteira();
+        var carteiraNosCortes = investimentoService.evolucaoNosMeses(List.of(YearMonth.from(periodo.dataDeCorte()), YearMonth.from(anterior.dataDeCorte())));
+        var patrimonio = saldoAtual.add(carteiraNosCortes.getFirst().valor());
+        var patrimonioAnterior = saldoAnterior.add(carteiraNosCortes.getLast().valor());
 
         return new DashboardDTO(
                 periodo.dataInicial().toString(),
@@ -82,6 +87,8 @@ public class DashboardService {
                 VariacaoDTO.entre(despesas, despesasAnteriores),
                 dinheiro(totalInvestido(carteira)),
                 rentabilidade(carteira),
+                dinheiro(patrimonio),
+                VariacaoDTO.entre(patrimonio, patrimonioAnterior),
                 faturaService.faturaEmDestaque(periodo.dataFinal(), periodo.hoje()),
                 historicoSaldo(periodo, linhaDoSaldo),
                 fluxoCaixa(periodo),

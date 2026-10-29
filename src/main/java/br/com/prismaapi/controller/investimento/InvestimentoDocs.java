@@ -7,6 +7,7 @@ import br.com.prismaapi.model.dto.investimento.ExtratoInvestimentoDTO;
 import br.com.prismaapi.model.dto.investimento.InvestimentoDTO;
 import br.com.prismaapi.model.dto.investimento.SalvarAporteInvestimentoDTO;
 import br.com.prismaapi.model.dto.investimento.SalvarInvestimentoDTO;
+import br.com.prismaapi.model.dto.investimento.SalvarResgateInvestimentoDTO;
 import br.com.prismaapi.model.dto.investimento.SalvarSaldoInvestimentoDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -46,7 +47,10 @@ public interface InvestimentoDocs {
                     posição vale o saldo depois da última movimentação até ali. Ela começa no mês da \
                     primeira movimentação da carteira, com no mínimo dois e no máximo doze pontos. A \
                     alocação traz só as classes com posição e, como as posições, vem do maior valor atual \
-                    para o menor.""")
+                    para o menor.
+
+                    A reserva soma os investimentos marcados como reserva de emergência, de qualquer \
+                    classe de ativo, e vem zerada quando nenhum está marcado.""")
     ResponseEntity<CarteiraDTO> buscarCarteira();
 
     @GetMapping("/{id}/extrato")
@@ -56,8 +60,11 @@ public interface InvestimentoDocs {
                     Retorna a posição do investimento, as movimentações da mais recente para a mais \
                     antiga e a evolução mensal.
 
-                    Um aporte soma ao saldo e ao aportado. Um saldo informado substitui o saldo, e o \
-                    valor exibido dele é a diferença para o saldo anterior, que pode ser negativa. \
+                    Um aporte soma ao saldo e ao aportado. Um resgate tira do saldo, com valor exibido \
+                    negativo, e tira do aportado na mesma proporção do saldo que saiu, para a \
+                    rentabilidade da posição não mudar com a retirada. Um saldo informado substitui o \
+                    saldo, e o valor exibido dele é a diferença para o saldo anterior, que pode ser \
+                    negativa. Aporte e resgate ligados a uma conta trazem idConta e nomeConta. \
                     saldoApos e aportadoApos são calculados na ordem da série: data e, no empate, \
                     ordem de registro. A evolução tem um ponto por mês desde o mês da primeira \
                     movimentação, com no mínimo dois e no máximo doze pontos.""")
@@ -104,6 +111,11 @@ public interface InvestimentoDocs {
                     início, com a descrição "Aplicação inicial", e, se o valor atual for diferente, um \
                     saldo informado na data de hoje, com a descrição "Saldo informado no cadastro".
 
+                    Com idConta, a aplicação inicial sai dessa conta: o servidor grava uma transferência \
+                    paga da conta para o investimento, na data de início, e o saldo da conta baixa. Sem \
+                    ele, o dinheiro já estava investido e nenhuma conta muda. reservaEmergencia marca o \
+                    investimento como parte da reserva de emergência, em qualquer classe.
+
                     Valor atual abaixo do aportado é aceito, porque posição no prejuízo existe. A data \
                     da aplicação inicial não pode estar no futuro. Nome, instituição e observações são \
                     gravados sem os espaços das pontas.""")
@@ -113,7 +125,8 @@ public interface InvestimentoDocs {
     @Operation(
             summary = "Atualiza um investimento",
             description = """
-                    Substitui nome, classe, instituição e observações. Os valores não são editáveis: \
+                    Substitui nome, classe, instituição, a marca de reserva de emergência e observações. \
+                    Os valores não são editáveis: \
                     aportado, valor atual e datas saem das movimentações, e mudá-los à mão apagaria a \
                     história da série. Para mexer neles, registre um aporte ou um saldo.
 
@@ -149,7 +162,11 @@ public interface InvestimentoDocs {
                     ao saldo e ao aportado.
 
                     A data não pode estar no futuro nem ser anterior à data da última movimentação, \
-                    porque um aporte anterior ao último saldo informado seria engolido por ele.""")
+                    porque um aporte anterior ao último saldo informado seria engolido por ele.
+
+                    Com idConta, o dinheiro sai dessa conta: o servidor grava uma transferência paga \
+                    da conta para o investimento, com a descrição "Aporte — <nome>", e o saldo da conta \
+                    baixa. Essa transferência não se edita nem se exclui pelos lançamentos.""")
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "201",
@@ -164,7 +181,7 @@ public interface InvestimentoDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "422",
-                    description = "Data anterior à última atualização!",
+                    description = "Data anterior à última atualização ou conta inexistente!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "500",
@@ -176,6 +193,45 @@ public interface InvestimentoDocs {
             @PathVariable UUID id,
 
             @RequestBody @Valid SalvarAporteInvestimentoDTO salvarAporteInvestimentoDTO);
+
+    @PostMapping("/{id}/resgates")
+    @Operation(
+            summary = "Registra um resgate num investimento",
+            description = """
+                    Grava um resgate, dinheiro que sai do investimento, e devolve o investimento já \
+                    atualizado: o valor sai do saldo, e o aportado diminui na mesma proporção, então \
+                    resgatar metade do saldo deixa metade do aportado e a rentabilidade igual.
+
+                    O resgate não pode passar do saldo atual, e a data segue a mesma regra do aporte. \
+                    Com idConta, o dinheiro volta para essa conta: o servidor grava uma transferência \
+                    paga do investimento para a conta, com a descrição "Resgate — <nome>", e o saldo da \
+                    conta sobe.""")
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "Resgate registrado com sucesso!"),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Corpo da requisição ou id inválido!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Investimento não encontrado!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(
+                    responseCode = "422",
+                    description = "Resgate maior que o saldo, data anterior à última atualização ou conta inexistente!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Erro interno do servidor!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
+    })
+    ResponseEntity<InvestimentoDTO> registrarResgate(
+            @Parameter(description = "Id do investimento")
+            @PathVariable UUID id,
+
+            @RequestBody @Valid SalvarResgateInvestimentoDTO salvarResgateInvestimentoDTO);
 
     @PostMapping("/{id}/saldos")
     @Operation(
@@ -218,8 +274,9 @@ public interface InvestimentoDocs {
             description = """
                     Remove o investimento e as movimentações dele de forma definitiva e responde sem corpo.
 
-                    Nenhum outro registro aponta para um investimento, então a exclusão não é recusada \
-                    por histórico: a posição sai da carteira, da alocação e da evolução na próxima leitura.""")
+                    As transferências que aportes e resgates gravaram nas contas saem junto, e o saldo \
+                    dessas contas é recalculado como se elas nunca tivessem existido. A posição sai da \
+                    carteira, da alocação e da evolução na próxima leitura.""")
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "204",

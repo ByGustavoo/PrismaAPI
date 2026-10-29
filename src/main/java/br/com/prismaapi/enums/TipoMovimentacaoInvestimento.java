@@ -8,6 +8,7 @@ import lombok.Getter;
 public enum TipoMovimentacaoInvestimento {
 
     APORTE("APORTE"),
+    RESGATE("RESGATE"),
     RENDIMENTO("RENDIMENTO");
 
     private final String descricao;

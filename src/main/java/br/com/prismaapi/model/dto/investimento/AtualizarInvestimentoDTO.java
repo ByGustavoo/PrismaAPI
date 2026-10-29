@@ -20,6 +20,9 @@ public record AtualizarInvestimentoDTO(
         @Size(min = 2, max = 80, message = "O campo 'instituicao' deve ter entre 2 e 80 caracteres!")
         String instituicao,
 
+        @NotNull(message = "O campo 'reservaEmergencia' é obrigatório!")
+        Boolean reservaEmergencia,
+
         @Size(max = 500, message = "O campo 'observacoes' deve ter no máximo 500 caracteres!")
         String observacoes
 

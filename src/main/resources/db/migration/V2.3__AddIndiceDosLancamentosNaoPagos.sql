@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS lancamentos_nao_pagos_data_idx ON prisma.lancamentos (data) WHERE situacao <> 'PAGO';

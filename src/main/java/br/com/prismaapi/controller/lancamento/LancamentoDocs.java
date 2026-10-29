@@ -107,7 +107,9 @@ public interface LancamentoDocs {
                     é limpo, e não preservado. Trocar uma despesa por transferência remove a categoria.
 
                     O lançamento gerado pelo pagamento de uma parcela, que vem com o campo parcela, não \
-                    pode ser alterado nem excluído por aqui: o pagamento é desfeito na compra parcelada.""")
+                    pode ser alterado nem excluído por aqui: o pagamento é desfeito na compra parcelada. \
+                    O mesmo vale para a transferência gerada por aporte ou resgate de investimento, que \
+                    vem com o campo investimento: ela só sai junto com o investimento.""")
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
@@ -122,7 +124,7 @@ public interface LancamentoDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "409",
-                    description = "Lançamento gerado pelo pagamento de uma parcela!",
+                    description = "Lançamento gerado pelo pagamento de uma parcela ou por um investimento!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "422",
@@ -142,7 +144,9 @@ public interface LancamentoDocs {
     @DeleteMapping("/{id}")
     @Operation(
             summary = "Exclui um lançamento",
-            description = "Remove o lançamento de forma definitiva e responde sem corpo.")
+            description = """
+                    Remove o lançamento de forma definitiva e responde sem corpo. O lançamento gerado \
+                    pelo pagamento de uma parcela ou por aporte e resgate de investimento responde 409.""")
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "204",
@@ -157,7 +161,7 @@ public interface LancamentoDocs {
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "409",
-                    description = "Lançamento gerado pelo pagamento de uma parcela!",
+                    description = "Lançamento gerado pelo pagamento de uma parcela ou por um investimento!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "500",

@@ -32,6 +32,9 @@ public class Investimento {
     @Column(nullable = false, length = 80)
     private String instituicao;
 
+    @Column(name = "reserva_emergencia", nullable = false)
+    private Boolean reservaEmergencia;
+
     @Column(nullable = false, precision = 14, scale = 2)
     private BigDecimal aportado;
 

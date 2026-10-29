@@ -33,6 +33,10 @@ public record DashboardDTO(
 
         VariacaoDTO variacaoInvestimentos,
 
+        BigDecimal patrimonio,
+
+        VariacaoDTO variacaoPatrimonio,
+
         FaturaDTO faturaAtual,
 
         List<SaldoDTO> historicoSaldo,

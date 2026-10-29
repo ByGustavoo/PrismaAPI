@@ -5,7 +5,9 @@ import br.com.prismaapi.enums.ClasseAtivo;
 import br.com.prismaapi.model.dto.investimento.AtualizarInvestimentoDTO;
 import br.com.prismaapi.model.dto.investimento.SalvarAporteInvestimentoDTO;
 import br.com.prismaapi.model.dto.investimento.SalvarInvestimentoDTO;
+import br.com.prismaapi.model.dto.investimento.SalvarResgateInvestimentoDTO;
 import br.com.prismaapi.model.dto.investimento.SalvarSaldoInvestimentoDTO;
+import br.com.prismaapi.repository.conta.ContaRepository;
 import br.com.prismaapi.repository.investimento.InvestimentoRepository;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -19,6 +21,9 @@ import java.util.List;
 
 @SpringBootTest
 class InvestimentoServiceTest extends AbstractTest {
+
+    @Autowired
+    private ContaRepository contaRepository;
 
     @Autowired
     private InvestimentoService investimentoService;
@@ -55,6 +60,8 @@ class InvestimentoServiceTest extends AbstractTest {
                 new BigDecimal("3000.00"),
                 new BigDecimal("3000.00"),
                 LocalDate.of(2026, 9, 1),
+                false,
+                null,
                 "Aposentadoria.");
 
         var investimento = Assertions.assertDoesNotThrow(() -> investimentoService.salvar(salvarInvestimentoDTO));
@@ -69,6 +76,7 @@ class InvestimentoServiceTest extends AbstractTest {
                 "Bitcoin",
                 ClasseAtivo.CRIPTO,
                 "Corretora Cripto Norte",
+                false,
                 "Posição de longo prazo.");
 
         var investimento = Assertions.assertDoesNotThrow(() -> investimentoService.atualizar(idInvestimento, atualizarInvestimentoDTO));
@@ -79,12 +87,30 @@ class InvestimentoServiceTest extends AbstractTest {
     void registrarAporteTest() {
         var idInvestimento = buscar(investimentoRepository, investimento -> investimento.getNome().equals("Tesouro Selic 2029")).getId();
 
+        var idConta = buscar(contaRepository, conta -> conta.getNome().equals("Conta principal")).getId();
+
         var salvarAporteInvestimentoDTO = new SalvarAporteInvestimentoDTO(
                 new BigDecimal("500.00"),
                 LocalDate.now(),
+                idConta,
                 "Aporte mensal");
 
         var investimento = Assertions.assertDoesNotThrow(() -> investimentoService.registrarAporte(idInvestimento, salvarAporteInvestimentoDTO));
+        Assertions.assertNotNull(investimento);
+    }
+
+    @Test
+    void registrarResgateTest() {
+        var idConta = buscar(contaRepository, conta -> conta.getNome().equals("Conta principal")).getId();
+        var idInvestimento = buscar(investimentoRepository, investimento -> investimento.getNome().equals("Tesouro Selic 2029")).getId();
+
+        var salvarResgateInvestimentoDTO = new SalvarResgateInvestimentoDTO(
+                new BigDecimal("1000.00"),
+                LocalDate.now(),
+                idConta,
+                "Conserto do carro");
+
+        var investimento = Assertions.assertDoesNotThrow(() -> investimentoService.registrarResgate(idInvestimento, salvarResgateInvestimentoDTO));
         Assertions.assertNotNull(investimento);
     }
 

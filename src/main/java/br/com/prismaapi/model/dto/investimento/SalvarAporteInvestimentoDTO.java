@@ -10,6 +10,7 @@ import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.UUID;
 
 @Schema(description = "Representa o modelo de requisição para registrar um aporte num Investimento.")
 public record SalvarAporteInvestimentoDTO(
@@ -23,6 +24,8 @@ public record SalvarAporteInvestimentoDTO(
         @NotNull(message = "O campo 'data' é obrigatório!")
         @PastOrPresent(message = "O campo 'data' não pode estar no futuro!")
         LocalDate data,
+
+        UUID idConta,
 
         @Size(max = 160, message = "O campo 'descricao' deve ter no máximo 160 caracteres!")
         String descricao

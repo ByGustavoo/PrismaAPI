@@ -7,13 +7,9 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum TipoConta {
 
-    OUTRA("OUTRA", FinalidadeConta.MOVIMENTACAO),
-    POUPANCA("POUPANÇA", FinalidadeConta.RESERVA),
-    SALARIO("CONTA SALÁRIO", FinalidadeConta.MOVIMENTACAO),
-    PREVIDENCIA("PREVIDÊNCIA", FinalidadeConta.RESERVA),
-    CORRENTE("CONTA CORRENTE", FinalidadeConta.MOVIMENTACAO),
-    EMERGENCIA("RESERVA DE EMERGÊNCIA", FinalidadeConta.RESERVA);
+    OUTRA("OUTRA"),
+    SALARIO("CONTA SALÁRIO"),
+    CORRENTE("CONTA CORRENTE");
 
     private final String descricao;
-    private final FinalidadeConta finalidade;
 }

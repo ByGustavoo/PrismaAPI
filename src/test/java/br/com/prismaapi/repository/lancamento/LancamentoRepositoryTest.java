@@ -162,12 +162,7 @@ class LancamentoRepositoryTest extends AbstractTest {
     }
 
     @Test
-    void buscarPagosDasContasTest() {
-        Assertions.assertDoesNotThrow(() -> lancamentoRepository.buscarPagosDasContas(List.of(UUID.randomUUID()), LocalDate.now().minusYears(1), LocalDate.now()));
-    }
-
-    @Test
-    void buscarPagamentosDeFaturaDasContasTest() {
-        Assertions.assertDoesNotThrow(() -> lancamentoRepository.buscarPagamentosDeFaturaDasContas(List.of(UUID.randomUUID()), LocalDate.now().minusYears(1), LocalDate.now()));
+    void findByMovimentacaoInvestimentoInvestimentoIdTest() {
+        Assertions.assertDoesNotThrow(() -> lancamentoRepository.findByMovimentacaoInvestimentoInvestimentoId(UUID.randomUUID()));
     }
 }

@@ -2,5 +2,6 @@
   "nome": "Bitcoin",
   "classeAtivo": "CRIPTO",
   "instituicao": "Corretora Cripto Norte",
+  "reservaEmergencia": false,
   "observacoes": "Posição de longo prazo."
 }
