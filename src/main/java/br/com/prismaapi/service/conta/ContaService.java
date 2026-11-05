@@ -14,7 +14,7 @@ import br.com.prismaapi.model.mapper.cartao.CartaoMapper;
 import br.com.prismaapi.model.mapper.conta.ContaMapper;
 import br.com.prismaapi.repository.cartao.CartaoRepository;
 import br.com.prismaapi.repository.conta.ContaRepository;
-import br.com.prismaapi.repository.despesarecorrente.DespesaRecorrenteRepository;
+import br.com.prismaapi.repository.recorrente.RecorrenteRepository;
 import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,7 +40,7 @@ public class ContaService {
     private final ContaRepository contaRepository;
     private final CartaoRepository cartaoRepository;
     private final LancamentoRepository lancamentoRepository;
-    private final DespesaRecorrenteRepository despesaRecorrenteRepository;
+    private final RecorrenteRepository recorrenteRepository;
     private static final Collator ORDEM_ALFABETICA = Collator.getInstance(Locale.forLanguageTag("pt-BR"));
 
     @Cacheable("contas")
@@ -74,7 +74,7 @@ public class ContaService {
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "contas", "dashboard", "despesas-recorrentes", "lancamentos", "previsao", "relatorios"}, allEntries = true)
+    @CacheEvict(value = {"avisos", "cartoes", "contas", "dashboard", "recorrentes", "lancamentos", "previsao", "relatorios"}, allEntries = true)
     public ContaDTO salvar(SalvarContaDTO salvarContaDTO) {
         log.info("Salvando a conta... - Nome: {} - Instituição: {}", salvarContaDTO.nome(), salvarContaDTO.instituicao());
         validarDuplicidade(salvarContaDTO, null);
@@ -86,7 +86,7 @@ public class ContaService {
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "contas", "dashboard", "despesas-recorrentes", "lancamentos", "previsao", "relatorios"}, allEntries = true)
+    @CacheEvict(value = {"avisos", "cartoes", "contas", "dashboard", "recorrentes", "lancamentos", "previsao", "relatorios"}, allEntries = true)
     public ContaDTO atualizar(UUID id, SalvarContaDTO salvarContaDTO) {
         log.info("Atualizando a conta... - ID: [{}]", id);
         var conta = buscar(id);
@@ -100,7 +100,7 @@ public class ContaService {
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "contas", "dashboard", "despesas-recorrentes", "lancamentos", "previsao", "relatorios"}, allEntries = true)
+    @CacheEvict(value = {"avisos", "cartoes", "contas", "dashboard", "recorrentes", "lancamentos", "previsao", "relatorios"}, allEntries = true)
     public void deletar(UUID id) {
         log.info("Deletando a conta... - ID: [{}]", id);
         var conta = buscar(id);
@@ -134,7 +134,7 @@ public class ContaService {
     }
 
     private void validarHistorico(UUID id) {
-        var quantidade = lancamentoRepository.countByContaIdOrContaDestinoIdOrContaPagamentoFaturaId(id, id, id) + despesaRecorrenteRepository.countByContaId(id);
+        var quantidade = lancamentoRepository.countByContaIdOrContaDestinoIdOrContaPagamentoFaturaId(id, id, id) + recorrenteRepository.countByContaId(id);
 
         if (quantidade > 0) {
             var registros = quantidade == 1 ? "registro" : "registros";

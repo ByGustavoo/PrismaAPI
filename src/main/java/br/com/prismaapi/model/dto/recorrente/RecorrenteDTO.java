@@ -1,7 +1,8 @@
-package br.com.prismaapi.model.dto.despesarecorrente;
+package br.com.prismaapi.model.dto.recorrente;
 
 import br.com.prismaapi.enums.Frequencia;
-import br.com.prismaapi.enums.SituacaoDespesaRecorrente;
+import br.com.prismaapi.enums.SituacaoRecorrente;
+import br.com.prismaapi.enums.TipoRecorrente;
 import br.com.prismaapi.model.dto.categoria.CategoriaDTO;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -11,10 +12,12 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
-@Schema(description = "Representa o modelo de dados de uma Despesa Recorrente.")
-public record DespesaRecorrenteDTO(
+@Schema(description = "Representa o modelo de dados de uma Recorrente.")
+public record RecorrenteDTO(
 
         UUID id,
+
+        TipoRecorrente tipo,
 
         String descricao,
 
@@ -31,7 +34,9 @@ public record DespesaRecorrenteDTO(
 
         String nomeOrigem,
 
-        SituacaoDespesaRecorrente situacao,
+        SituacaoRecorrente situacao,
+
+        Boolean lancarAutomaticamente,
 
         @JsonInclude(JsonInclude.Include.NON_NULL)
         String observacoes

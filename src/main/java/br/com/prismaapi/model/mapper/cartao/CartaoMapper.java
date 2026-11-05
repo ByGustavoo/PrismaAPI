@@ -19,6 +19,7 @@ public interface CartaoMapper {
     CartaoDTO toDTO(Cartao cartao, BigDecimal limiteComprometido);
 
     @Mapping(target = "grupo", constant = "CARTAO")
+    @Mapping(target = "tipoCartao", source = "tipo")
     OrigemDTO toOrigemDTO(Cartao cartao);
 
     @Mapping(target = "id", ignore = true)

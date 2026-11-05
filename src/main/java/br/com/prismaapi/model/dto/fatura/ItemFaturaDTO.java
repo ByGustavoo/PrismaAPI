@@ -7,9 +7,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.UUID;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@Schema(description = "Representa um item de fatura: uma despesa lançada no cartão ou a parcela de uma compra parcelada.")
+@Schema(description = "Representa um item de fatura: uma despesa lançada no cartão, inclusive a lançada por uma despesa recorrente, ou a parcela de uma compra parcelada.")
 public record ItemFaturaDTO(
 
         String id,
@@ -25,6 +26,8 @@ public record ItemFaturaDTO(
         CategoriaDTO categoria,
 
         ParcelaItemFaturaDTO parcela,
+
+        UUID idRecorrente,
 
         Boolean paga
 

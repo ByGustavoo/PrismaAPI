@@ -14,6 +14,7 @@ public interface ContaMapper {
     ContaDTO toDTO(Conta conta);
 
     @Mapping(target = "grupo", constant = "CONTA")
+    @Mapping(target = "tipoCartao", ignore = true)
     OrigemDTO toOrigemDTO(Conta conta);
 
     @Mapping(target = "id", ignore = true)

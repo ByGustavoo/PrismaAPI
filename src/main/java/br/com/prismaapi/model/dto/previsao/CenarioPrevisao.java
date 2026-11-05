@@ -1,6 +1,6 @@
 package br.com.prismaapi.model.dto.previsao;
 
-import br.com.prismaapi.model.entity.despesarecorrente.DespesaRecorrente;
+import br.com.prismaapi.model.entity.recorrente.Recorrente;
 import br.com.prismaapi.model.entity.lancamento.Lancamento;
 
 import java.math.BigDecimal;
@@ -13,7 +13,7 @@ public record CenarioPrevisao(
 
         List<Lancamento> lancamentos,
 
-        List<DespesaRecorrente> recorrentes,
+        List<Recorrente> recorrentes,
 
         NavigableMap<LocalDate, BigDecimal> parcelas,
 

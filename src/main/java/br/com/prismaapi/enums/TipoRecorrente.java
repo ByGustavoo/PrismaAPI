@@ -5,10 +5,10 @@ import lombok.Getter;
 
 @Getter
 @AllArgsConstructor
-public enum SituacaoDespesaRecorrente {
+public enum TipoRecorrente {
 
-    ATIVO("ATIVO"),
-    PAUSADO("PAUSADO");
+    RECEITA("RECEITA"),
+    DESPESA("DESPESA");
 
     private final String descricao;
 

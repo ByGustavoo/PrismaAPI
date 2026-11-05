@@ -2,6 +2,7 @@ package br.com.prismaapi.service.lancamento;
 
 import br.com.prismaapi.config.AbstractTest;
 import br.com.prismaapi.enums.FormaLancamento;
+import br.com.prismaapi.enums.Frequencia;
 import br.com.prismaapi.enums.SituacaoLancamento;
 import br.com.prismaapi.enums.TipoLancamento;
 import br.com.prismaapi.model.dto.lancamento.FiltroLancamentoDTO;
@@ -62,6 +63,7 @@ class LancamentoServiceTest extends AbstractTest {
                 idCategoria,
                 idOrigem,
                 null,
+                Frequencia.MENSAL,
                 "Compra do mês.");
 
         var lancamento = Assertions.assertDoesNotThrow(() -> lancamentoService.salvar(salvarLancamentoDTO));
@@ -83,6 +85,7 @@ class LancamentoServiceTest extends AbstractTest {
                 LocalDate.of(2026, 9, 10),
                 idCategoria,
                 idOrigem,
+                null,
                 null,
                 "Reajuste anual pelo IPCA.");
 

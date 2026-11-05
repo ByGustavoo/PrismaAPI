@@ -1,6 +1,7 @@
 package br.com.prismaapi.service.lancamento;
 
 import br.com.prismaapi.enums.FormaLancamento;
+import br.com.prismaapi.enums.Frequencia;
 import br.com.prismaapi.enums.SituacaoLancamento;
 import br.com.prismaapi.enums.TipoCartao;
 import br.com.prismaapi.enums.TipoCategoria;
@@ -9,6 +10,7 @@ import br.com.prismaapi.exceptions.*;
 import br.com.prismaapi.model.dto.lancamento.FiltroLancamentoDTO;
 import br.com.prismaapi.model.dto.lancamento.LancamentoDTO;
 import br.com.prismaapi.model.dto.lancamento.SalvarLancamentoDTO;
+import br.com.prismaapi.model.entity.cartao.Cartao;
 import br.com.prismaapi.model.entity.conta.Conta;
 import br.com.prismaapi.model.entity.lancamento.Lancamento;
 import br.com.prismaapi.model.mapper.lancamento.LancamentoMapper;
@@ -17,6 +19,7 @@ import br.com.prismaapi.repository.categoria.CategoriaRepository;
 import br.com.prismaapi.repository.conta.ContaRepository;
 import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import br.com.prismaapi.repository.lancamento.LancamentoSpecification;
+import br.com.prismaapi.service.recorrente.RecorrenteService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -39,6 +42,7 @@ public class LancamentoService {
     private final ContaRepository contaRepository;
     private final CartaoRepository cartaoRepository;
     private final LancamentoMapper lancamentoMapper;
+    private final RecorrenteService recorrenteService;
     private final CategoriaRepository categoriaRepository;
     private final LancamentoRepository lancamentoRepository;
 
@@ -57,18 +61,21 @@ public class LancamentoService {
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "contas", "dashboard", "faturas", "lancamentos", "orcamentos", "previsao", "relatorios"}, allEntries = true)
+    @CacheEvict(value = {"avisos", "cartoes", "contas", "dashboard", "faturas", "lancamentos", "orcamentos", "previsao", "recorrentes", "relatorios"}, allEntries = true)
     public LancamentoDTO salvar(SalvarLancamentoDTO salvarLancamentoDTO) {
         log.info("Salvando o lançamento... - Descrição: {} - Tipo: {}", salvarLancamentoDTO.descricao(), salvarLancamentoDTO.tipo());
         var lancamento = lancamentoMapper.toEntity(salvarLancamentoDTO);
         preencher(lancamento, salvarLancamentoDTO);
         movimentarSaldos(lancamento, BigDecimal.ONE);
 
-        return lancamentoMapper.toDTO(lancamentoRepository.save(lancamento));
+        lancamentoRepository.save(lancamento);
+        repetir(lancamento, salvarLancamentoDTO.repeticao());
+
+        return lancamentoMapper.toDTO(lancamento);
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "contas", "dashboard", "faturas", "lancamentos", "orcamentos", "previsao", "relatorios"}, allEntries = true)
+    @CacheEvict(value = {"avisos", "cartoes", "contas", "dashboard", "faturas", "lancamentos", "orcamentos", "previsao", "recorrentes", "relatorios"}, allEntries = true)
     public LancamentoDTO atualizar(UUID id, SalvarLancamentoDTO salvarLancamentoDTO) {
         log.info("Atualizando o lançamento... - ID: [{}]", id);
         var lancamento = buscar(id);
@@ -79,12 +86,13 @@ public class LancamentoService {
         lancamentoMapper.updateEntity(salvarLancamentoDTO, lancamento);
         preencher(lancamento, salvarLancamentoDTO);
         movimentarSaldos(lancamento, BigDecimal.ONE);
+        repetir(lancamento, salvarLancamentoDTO.repeticao());
 
         return lancamentoMapper.toDTO(lancamento);
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "contas", "dashboard", "faturas", "lancamentos", "orcamentos", "previsao", "relatorios"}, allEntries = true)
+    @CacheEvict(value = {"avisos", "cartoes", "contas", "dashboard", "faturas", "lancamentos", "orcamentos", "previsao", "recorrentes", "relatorios"}, allEntries = true)
     public void deletar(UUID id) {
         log.info("Deletando o lançamento... - ID: [{}]", id);
         var lancamento = buscar(id);
@@ -92,6 +100,17 @@ public class LancamentoService {
         recusarLancamentoGerado(lancamento);
         movimentarSaldos(lancamento, BigDecimal.ONE.negate());
         lancamentoRepository.delete(lancamento);
+    }
+
+    private void repetir(Lancamento lancamento, Frequencia repeticao) {
+        if (repeticao == null || lancamento.getRecorrente() != null) return;
+
+        if (lancamento.getTipo() == TipoLancamento.TRANSFERENCIA) {
+            log.error("Uma transferência não pode se repetir!");
+            throw new RequisicaoInvalidaException("Uma transferência não pode se repetir!");
+        }
+
+        recorrenteService.repetir(lancamento, repeticao);
     }
 
     private Lancamento buscar(UUID id) {
@@ -148,6 +167,11 @@ public class LancamentoService {
             throw new OrigemCartaoDeDebitoException("O cartão de débito não é origem de lançamento: escolha a conta que ele movimenta!");
         }
 
+        if (lancamento.getTipo() == TipoLancamento.RECEITA && cartao.getTipo() == TipoCartao.CREDITO) {
+            log.error("Uma receita só entra em conta ou em cartão de vale!");
+            throw new OrigemDeReceitaInvalidaException("Uma receita só entra em conta ou em cartão de vale!");
+        }
+
         lancamento.setCartao(cartao);
     }
 
@@ -201,8 +225,14 @@ public class LancamentoService {
         if (lancamento.getSituacao() != SituacaoLancamento.PAGO) return;
 
         switch (lancamento.getTipo()) {
-            case RECEITA -> movimentar(lancamento.getConta(), valor);
-            case DESPESA -> movimentar(lancamento.getConta(), valor.negate());
+            case RECEITA -> {
+                movimentar(lancamento.getConta(), valor);
+                movimentarVale(lancamento.getCartao(), valor);
+            }
+            case DESPESA -> {
+                movimentar(lancamento.getConta(), valor.negate());
+                movimentarVale(lancamento.getCartao(), valor.negate());
+            }
             case TRANSFERENCIA -> {
                 movimentar(lancamento.getConta(), valor.negate());
                 movimentar(lancamento.getContaDestino(), valor);
@@ -214,6 +244,12 @@ public class LancamentoService {
         if (conta == null) return;
 
         conta.setSaldo(conta.getSaldo().add(valor));
+    }
+
+    private static void movimentarVale(Cartao cartao, BigDecimal valor) {
+        if (cartao == null || cartao.getSaldo() == null) return;
+
+        cartao.setSaldo(cartao.getSaldo().add(valor));
     }
 
     private static void recusarLancamentoGerado(Lancamento lancamento) {

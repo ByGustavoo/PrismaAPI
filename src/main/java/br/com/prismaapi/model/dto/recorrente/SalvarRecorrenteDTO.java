@@ -1,7 +1,8 @@
-package br.com.prismaapi.model.dto.despesarecorrente;
+package br.com.prismaapi.model.dto.recorrente;
 
 import br.com.prismaapi.enums.Frequencia;
-import br.com.prismaapi.enums.SituacaoDespesaRecorrente;
+import br.com.prismaapi.enums.SituacaoRecorrente;
+import br.com.prismaapi.enums.TipoRecorrente;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Digits;
@@ -14,8 +15,11 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
-@Schema(description = "Representa o modelo de requisição para salvar uma Despesa Recorrente.")
-public record SalvarDespesaRecorrenteDTO(
+@Schema(description = "Representa o modelo de requisição para salvar uma Recorrente.")
+public record SalvarRecorrenteDTO(
+
+        @NotNull(message = "O campo 'tipo' é obrigatório!")
+        TipoRecorrente tipo,
 
         @NotBlank(message = "O campo 'descricao' é obrigatório!")
         @Size(min = 2, max = 160, message = "O campo 'descricao' deve ter entre 2 e 160 caracteres!")
@@ -39,7 +43,10 @@ public record SalvarDespesaRecorrenteDTO(
         UUID idOrigem,
 
         @NotNull(message = "O campo 'situacao' é obrigatório!")
-        SituacaoDespesaRecorrente situacao,
+        SituacaoRecorrente situacao,
+
+        @NotNull(message = "O campo 'lancarAutomaticamente' é obrigatório!")
+        Boolean lancarAutomaticamente,
 
         @Size(max = 500, message = "O campo 'observacoes' deve ter no máximo 500 caracteres!")
         String observacoes

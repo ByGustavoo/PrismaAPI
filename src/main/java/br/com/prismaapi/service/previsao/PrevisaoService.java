@@ -2,7 +2,8 @@ package br.com.prismaapi.service.previsao;
 
 import br.com.prismaapi.enums.MesDoAno;
 import br.com.prismaapi.enums.Situacao;
-import br.com.prismaapi.enums.SituacaoDespesaRecorrente;
+import br.com.prismaapi.enums.SituacaoRecorrente;
+import br.com.prismaapi.enums.TipoRecorrente;
 import br.com.prismaapi.enums.SituacaoLancamento;
 import br.com.prismaapi.enums.TipoCartao;
 import br.com.prismaapi.enums.TipoLancamento;
@@ -14,10 +15,10 @@ import br.com.prismaapi.model.dto.previsao.MesPrevisaoDTO;
 import br.com.prismaapi.model.dto.previsao.PrevisaoDTO;
 import br.com.prismaapi.model.entity.cartao.Cartao;
 import br.com.prismaapi.model.entity.conta.Conta;
-import br.com.prismaapi.model.entity.despesarecorrente.DespesaRecorrente;
+import br.com.prismaapi.model.entity.recorrente.Recorrente;
 import br.com.prismaapi.model.entity.lancamento.Lancamento;
 import br.com.prismaapi.repository.conta.ContaRepository;
-import br.com.prismaapi.repository.despesarecorrente.DespesaRecorrenteRepository;
+import br.com.prismaapi.repository.recorrente.RecorrenteRepository;
 import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import br.com.prismaapi.service.fatura.FaturaService;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +36,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -49,7 +51,7 @@ public class PrevisaoService {
     private static final int MESES_DA_BASE = 3;
     private final ContaRepository contaRepository;
     private final LancamentoRepository lancamentoRepository;
-    private final DespesaRecorrenteRepository despesaRecorrenteRepository;
+    private final RecorrenteRepository recorrenteRepository;
 
     @Cacheable("previsao")
     @Transactional(readOnly = true)
@@ -69,9 +71,10 @@ public class PrevisaoService {
         var mesesDaBase = Stream.iterate(inicioDaBase, mes -> mes.isBefore(mesAtual), mes -> mes.plusMonths(1)).toList();
 
         var lancamentos = lancamentoRepository.buscarComOrigemEntre(inicioDaBase.atDay(1), ultimoMes.atEndOfMonth());
-        var recorrentes = despesaRecorrenteRepository.buscarComOrigemECategoria()
+        var recorrentes = recorrenteRepository.buscarComOrigemECategoria()
                 .stream()
-                .filter(despesa -> despesa.getSituacao() == SituacaoDespesaRecorrente.ATIVO)
+                .filter(despesa -> despesa.getTipo() == TipoRecorrente.DESPESA)
+                .filter(despesa -> despesa.getSituacao() == SituacaoRecorrente.ATIVO)
                 .filter(despesa -> pesaNoTotal(despesa.getConta()) || noCredito(despesa.getCartao()))
                 .toList();
 
@@ -117,7 +120,7 @@ public class PrevisaoService {
                 base);
     }
 
-    private static BaseCalculoPrevisaoDTO base(List<YearMonth> mesesDaBase, List<Lancamento> lancamentos, List<DespesaRecorrente> recorrentes) {
+    private static BaseCalculoPrevisaoDTO base(List<YearMonth> mesesDaBase, List<Lancamento> lancamentos, List<Recorrente> recorrentes) {
         var inicio = mesesDaBase.getFirst().atDay(1);
         var fim = mesesDaBase.getLast().atEndOfMonth();
         var daBase = lancamentos.stream().filter(lancamento -> entre(lancamento.getData(), inicio, fim)).toList();
@@ -197,11 +200,21 @@ public class PrevisaoService {
         var lancadasNoMes = cenario.lancamentos().stream()
                 .filter(lancamento -> lancamento.getTipo() == TipoLancamento.DESPESA)
                 .filter(lancamento -> YearMonth.from(lancamento.getData()).equals(mes))
+                .toList();
+
+        var descricoesLancadas = lancadasNoMes.stream()
                 .map(lancamento -> normalizar(lancamento.getDescricao()))
                 .collect(Collectors.toSet());
 
+        var recorrentesLancadas = lancadasNoMes.stream()
+                .map(Lancamento::getRecorrente)
+                .filter(Objects::nonNull)
+                .map(Recorrente::getId)
+                .collect(Collectors.toSet());
+
         var semLancamento = cenario.recorrentes().stream()
-                .filter(despesa -> !lancadasNoMes.contains(normalizar(despesa.getDescricao())))
+                .filter(despesa -> !recorrentesLancadas.contains(despesa.getId()))
+                .filter(despesa -> !descricoesLancadas.contains(normalizar(despesa.getDescricao())))
                 .toList();
 
         return somarRecorrentes(semLancamento, inicio, fim);
@@ -231,12 +244,12 @@ public class PrevisaoService {
         return somar(cenario.parcelas().subMap(inicio, true, fim, true).values().stream());
     }
 
-    private static BigDecimal somarRecorrentes(Collection<DespesaRecorrente> recorrentes, LocalDate inicio, LocalDate fim) {
+    private static BigDecimal somarRecorrentes(Collection<Recorrente> recorrentes, LocalDate inicio, LocalDate fim) {
         return somar(recorrentes.stream()
                 .map(despesa -> despesa.getValor().multiply(BigDecimal.valueOf(ocorrenciasEntre(despesa, inicio, fim)))));
     }
 
-    private static long ocorrenciasEntre(DespesaRecorrente despesa, LocalDate inicio, LocalDate fim) {
+    private static long ocorrenciasEntre(Recorrente despesa, LocalDate inicio, LocalDate fim) {
         var frequencia = despesa.getFrequencia();
         var ocorrencias = 0L;
 

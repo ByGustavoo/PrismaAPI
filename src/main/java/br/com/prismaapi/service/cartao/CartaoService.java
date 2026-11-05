@@ -14,7 +14,7 @@ import br.com.prismaapi.model.mapper.cartao.CartaoMapper;
 import br.com.prismaapi.repository.cartao.CartaoRepository;
 import br.com.prismaapi.repository.compraparcelada.CompraParceladaRepository;
 import br.com.prismaapi.repository.conta.ContaRepository;
-import br.com.prismaapi.repository.despesarecorrente.DespesaRecorrenteRepository;
+import br.com.prismaapi.repository.recorrente.RecorrenteRepository;
 import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import br.com.prismaapi.service.fatura.FaturaService;
 import lombok.RequiredArgsConstructor;
@@ -42,8 +42,8 @@ public class CartaoService {
     private final ContaRepository contaRepository;
     private final CartaoRepository cartaoRepository;
     private final LancamentoRepository lancamentoRepository;
+    private final RecorrenteRepository recorrenteRepository;
     private final CompraParceladaRepository compraParceladaRepository;
-    private final DespesaRecorrenteRepository despesaRecorrenteRepository;
     private static final Collator ORDEM_ALFABETICA = Collator.getInstance(Locale.forLanguageTag("pt-BR"));
     private static final List<TipoCartao> ORDEM_DOS_TIPOS = List.of(TipoCartao.CREDITO, TipoCartao.DEBITO, TipoCartao.VALE_ALIMENTACAO, TipoCartao.VALE_REFEICAO);
 
@@ -64,7 +64,7 @@ public class CartaoService {
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "contas", "dashboard", "despesas-recorrentes", "faturas", "lancamentos", "previsao", "relatorios"}, allEntries = true)
+    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "contas", "dashboard", "recorrentes", "faturas", "lancamentos", "previsao", "relatorios"}, allEntries = true)
     public CartaoDTO salvar(SalvarCartaoDTO salvarCartaoDTO) {
         log.info("Salvando o cartão... - Nome: {} - Tipo: {}", salvarCartaoDTO.nome(), salvarCartaoDTO.tipo());
         var cartao = cartaoMapper.toEntity(salvarCartaoDTO);
@@ -74,7 +74,7 @@ public class CartaoService {
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "contas", "dashboard", "despesas-recorrentes", "faturas", "lancamentos", "previsao", "relatorios"}, allEntries = true)
+    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "contas", "dashboard", "recorrentes", "faturas", "lancamentos", "previsao", "relatorios"}, allEntries = true)
     public CartaoDTO atualizar(UUID id, SalvarCartaoDTO salvarCartaoDTO) {
         log.info("Atualizando o cartão... - ID: [{}]", id);
         var cartao = buscar(id);
@@ -86,7 +86,7 @@ public class CartaoService {
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "contas", "dashboard", "despesas-recorrentes", "faturas", "lancamentos", "previsao", "relatorios"}, allEntries = true)
+    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "contas", "dashboard", "recorrentes", "faturas", "lancamentos", "previsao", "relatorios"}, allEntries = true)
     public void deletar(UUID id) {
         log.info("Deletando o cartão... - ID: [{}]", id);
         var cartao = buscar(id);
@@ -105,7 +105,7 @@ public class CartaoService {
     }
 
     private void validarHistorico(UUID id) {
-        var quantidade = lancamentoRepository.countByCartaoId(id) + compraParceladaRepository.countByCartaoId(id) + despesaRecorrenteRepository.countByCartaoId(id);
+        var quantidade = lancamentoRepository.countByCartaoId(id) + compraParceladaRepository.countByCartaoId(id) + recorrenteRepository.countByCartaoId(id);
 
         if (quantidade > 0) {
             var registros = quantidade == 1 ? "registro" : "registros";

@@ -1,4 +1,5 @@
 {
+  "tipo": "DESPESA",
   "descricao": "Seguro de vida",
   "valor": 89.90,
   "idCategoria": "%s",
@@ -6,5 +7,6 @@
   "proximoVencimento": "2026-10-05",
   "idOrigem": "%s",
   "situacao": "ATIVO",
+  "lancarAutomaticamente": true,
   "observacoes": "Débito automático."
 }
