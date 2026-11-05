@@ -46,6 +46,8 @@ public record LancamentoDTO(
 
         InvestimentoLancamentoDTO investimento,
 
+        RecorrenteLancamentoDTO recorrente,
+
         String observacoes
 
 ) {}

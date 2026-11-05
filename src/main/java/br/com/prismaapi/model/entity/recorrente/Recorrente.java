@@ -1,7 +1,8 @@
-package br.com.prismaapi.model.entity.despesarecorrente;
+package br.com.prismaapi.model.entity.recorrente;
 
 import br.com.prismaapi.enums.Frequencia;
-import br.com.prismaapi.enums.SituacaoDespesaRecorrente;
+import br.com.prismaapi.enums.SituacaoRecorrente;
+import br.com.prismaapi.enums.TipoRecorrente;
 import br.com.prismaapi.model.entity.cartao.Cartao;
 import br.com.prismaapi.model.entity.categoria.Categoria;
 import br.com.prismaapi.model.entity.conta.Conta;
@@ -19,12 +20,16 @@ import java.util.UUID;
 @Getter
 @Setter
 @Entity
-@Table(name = "despesas_recorrentes", schema = "prisma")
-public class DespesaRecorrente {
+@Table(name = "recorrentes", schema = "prisma")
+public class Recorrente {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
+    private TipoRecorrente tipo;
 
     @Column(nullable = false, length = 160)
     private String descricao;
@@ -41,7 +46,10 @@ public class DespesaRecorrente {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
-    private SituacaoDespesaRecorrente situacao;
+    private SituacaoRecorrente situacao;
+
+    @Column(name = "lancar_automaticamente", nullable = false)
+    private Boolean lancarAutomaticamente;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_categoria")

@@ -1,4 +1,5 @@
 {
+  "tipo": "DESPESA",
   "descricao": "Aluguel",
   "valor": 2350.00,
   "idCategoria": "%s",
@@ -6,5 +7,6 @@
   "proximoVencimento": "2026-10-10",
   "idOrigem": "%s",
   "situacao": "ATIVO",
+  "lancarAutomaticamente": false,
   "observacoes": "Reajuste anual pelo IPCA."
 }

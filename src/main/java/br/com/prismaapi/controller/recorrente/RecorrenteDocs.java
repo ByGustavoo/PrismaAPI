@@ -1,9 +1,9 @@
-package br.com.prismaapi.controller.despesarecorrente;
+package br.com.prismaapi.controller.recorrente;
 
 import br.com.prismaapi.exceptions.dto.ErrorResponseDTO;
-import br.com.prismaapi.model.dto.despesarecorrente.DespesaRecorrenteDTO;
-import br.com.prismaapi.model.dto.despesarecorrente.ResumoDespesasRecorrentesDTO;
-import br.com.prismaapi.model.dto.despesarecorrente.SalvarDespesaRecorrenteDTO;
+import br.com.prismaapi.model.dto.recorrente.RecorrenteDTO;
+import br.com.prismaapi.model.dto.recorrente.ResumoRecorrentesDTO;
+import br.com.prismaapi.model.dto.recorrente.SalvarRecorrenteDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -17,21 +17,21 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
-@Tag(name = "Despesa Recorrente", description = "Endpoints relacionados às despesas fixas que se repetem")
-public interface DespesaRecorrenteDocs {
+@Tag(name = "Recorrente", description = "Endpoints relacionados às receitas e despesas que se repetem")
+public interface RecorrenteDocs {
 
     @GetMapping
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
-                    description = "Despesas recorrentes retornadas com sucesso!"),
+                    description = "Recorrentes retornadas com sucesso!"),
             @ApiResponse(
                     responseCode = "500",
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     @Operation(
-            summary = "Lista as despesas recorrentes",
+            summary = "Lista as receitas e despesas recorrentes",
             description = """
                     Retorna as despesas já consolidadas: a lista completa, o custo mensal e anual \
                     equivalentes e as que vencem nos próximos sete dias. A lista vem pelo próximo \
@@ -41,11 +41,11 @@ public interface DespesaRecorrenteDocs {
                     4,3452, a média real de semanas num mês, a quinzenal por 2,1726, e as demais são \
                     divididas pelo número de meses entre uma ocorrência e outra. O custo anual é o \
                     mensal vezes doze. Os dois contam só as despesas ativas.""")
-    ResponseEntity<ResumoDespesasRecorrentesDTO> listarDespesasRecorrentes();
+    ResponseEntity<ResumoRecorrentesDTO> listarRecorrentes();
 
     @PostMapping
     @Operation(
-            summary = "Cadastra uma despesa recorrente",
+            summary = "Cadastra uma receita ou despesa recorrente",
             description = """
                     Cadastra a despesa e devolve o registro salvo, com a origem e a categoria resolvidas \
                     pelo servidor. A origem pode ser uma conta ou um cartão.
@@ -55,7 +55,7 @@ public interface DespesaRecorrenteDocs {
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "201",
-                    description = "Despesa recorrente cadastrada com sucesso!"),
+                    description = "Recorrente cadastrada com sucesso!"),
             @ApiResponse(
                     responseCode = "400",
                     description = "Corpo da requisição inválido!",
@@ -69,11 +69,11 @@ public interface DespesaRecorrenteDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    ResponseEntity<DespesaRecorrenteDTO> salvarDespesaRecorrente(@RequestBody @Valid SalvarDespesaRecorrenteDTO salvarDespesaRecorrenteDTO);
+    ResponseEntity<RecorrenteDTO> salvarRecorrente(@RequestBody @Valid SalvarRecorrenteDTO salvarRecorrenteDTO);
 
     @PutMapping("/{id}")
     @Operation(
-            summary = "Atualiza uma despesa recorrente",
+            summary = "Atualiza uma receita ou despesa recorrente",
             description = """
                     Substitui a despesa inteira pelo corpo enviado, com as mesmas regras do cadastro.
 
@@ -83,14 +83,14 @@ public interface DespesaRecorrenteDocs {
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
-                    description = "Despesa recorrente atualizada com sucesso!"),
+                    description = "Recorrente atualizada com sucesso!"),
             @ApiResponse(
                     responseCode = "400",
                     description = "Corpo da requisição ou id inválido!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "404",
-                    description = "Despesa recorrente não encontrada!",
+                    description = "Recorrente não encontrada!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "422",
@@ -101,15 +101,15 @@ public interface DespesaRecorrenteDocs {
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    ResponseEntity<DespesaRecorrenteDTO> atualizarDespesaRecorrente(
-            @Parameter(description = "Id da despesa recorrente")
+    ResponseEntity<RecorrenteDTO> atualizarRecorrente(
+            @Parameter(description = "Id da recorrente")
             @PathVariable UUID id,
 
-            @RequestBody @Valid SalvarDespesaRecorrenteDTO salvarDespesaRecorrenteDTO);
+            @RequestBody @Valid SalvarRecorrenteDTO salvarRecorrenteDTO);
 
     @DeleteMapping("/{id}")
     @Operation(
-            summary = "Exclui uma despesa recorrente",
+            summary = "Exclui uma receita ou despesa recorrente",
             description = """
                     Remove a despesa de forma definitiva e responde sem corpo.
 
@@ -118,21 +118,21 @@ public interface DespesaRecorrenteDocs {
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "204",
-                    description = "Despesa recorrente excluída com sucesso!"),
+                    description = "Recorrente excluída com sucesso!"),
             @ApiResponse(
                     responseCode = "400",
                     description = "Id inválido!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "404",
-                    description = "Despesa recorrente não encontrada!",
+                    description = "Recorrente não encontrada!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "500",
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    ResponseEntity<Void> deletarDespesaRecorrente(
-            @Parameter(description = "Id da despesa recorrente")
+    ResponseEntity<Void> deletarRecorrente(
+            @Parameter(description = "Id da recorrente")
             @PathVariable UUID id);
 }

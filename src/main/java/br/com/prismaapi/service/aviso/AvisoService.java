@@ -2,7 +2,8 @@ package br.com.prismaapi.service.aviso;
 
 import br.com.prismaapi.enums.EstadoAviso;
 import br.com.prismaapi.enums.SeveridadeAviso;
-import br.com.prismaapi.enums.SituacaoDespesaRecorrente;
+import br.com.prismaapi.enums.SituacaoRecorrente;
+import br.com.prismaapi.enums.TipoRecorrente;
 import br.com.prismaapi.enums.SituacaoFatura;
 import br.com.prismaapi.enums.SituacaoLancamento;
 import br.com.prismaapi.enums.SituacaoOrcamento;
@@ -16,10 +17,10 @@ import br.com.prismaapi.model.dto.aviso.PreferenciasAvisosDTO;
 import br.com.prismaapi.model.dto.cartao.CartaoDTO;
 import br.com.prismaapi.model.dto.fatura.FaturaCartaoDTO;
 import br.com.prismaapi.model.dto.orcamento.ConsumoOrcamentoDTO;
-import br.com.prismaapi.model.entity.despesarecorrente.DespesaRecorrente;
+import br.com.prismaapi.model.entity.recorrente.Recorrente;
 import br.com.prismaapi.model.entity.lancamento.Lancamento;
 import br.com.prismaapi.model.entity.leituraaviso.LeituraAviso;
-import br.com.prismaapi.repository.despesarecorrente.DespesaRecorrenteRepository;
+import br.com.prismaapi.repository.recorrente.RecorrenteRepository;
 import br.com.prismaapi.repository.investimento.InvestimentoRepository;
 import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import br.com.prismaapi.repository.leituraaviso.LeituraAvisoRepository;
@@ -65,11 +66,11 @@ public class AvisoService {
     private final OrcamentoService orcamentoService;
     private final MetaPrecoRepository metaPrecoRepository;
     private final LancamentoRepository lancamentoRepository;
+    private final RecorrenteRepository recorrenteRepository;
     private final LeituraAvisoRepository leituraAvisoRepository;
     private final InvestimentoRepository investimentoRepository;
     private static final Locale PT_BR = Locale.forLanguageTag("pt-BR");
     private final PreferenciasAvisosService preferenciasAvisosService;
-    private final DespesaRecorrenteRepository despesaRecorrenteRepository;
     private static final BigDecimal LIMITE_CRITICO = new BigDecimal("0.9");
     private static final Collator ORDEM_ALFABETICA = Collator.getInstance(PT_BR);
     private static final DateTimeFormatter NOME_DO_MES = DateTimeFormatter.ofPattern("MMMM", PT_BR);
@@ -226,8 +227,10 @@ public class AvisoService {
         var limite = hoje.plusDays(preferencias.diasAntecedencia());
         var lancamentos = lancamentoRepository.buscarComOrigemEntre(YearMonth.from(hoje).atDay(1), YearMonth.from(limite).atEndOfMonth());
 
-        return despesaRecorrenteRepository.findBySituacao(SituacaoDespesaRecorrente.ATIVO)
+        return recorrenteRepository.findBySituacao(SituacaoRecorrente.ATIVO)
                 .stream()
+                .filter(despesa -> despesa.getTipo() == TipoRecorrente.DESPESA)
+                .filter(despesa -> !Boolean.TRUE.equals(despesa.getLancarAutomaticamente()))
                 .map(despesa -> avisoDaRecorrente(despesa, proximoVencimento(despesa, hoje), lancamentos, hoje))
                 .flatMap(Optional::stream)
                 .filter(aviso -> !aviso.data().isAfter(limite))
@@ -321,12 +324,14 @@ public class AvisoService {
                 .toList();
     }
 
-    private static Optional<AvisoDTO> avisoDaRecorrente(DespesaRecorrente despesa, LocalDate vencimento, List<Lancamento> lancamentos, LocalDate hoje) {
+    private static Optional<AvisoDTO> avisoDaRecorrente(Recorrente despesa, LocalDate vencimento, List<Lancamento> lancamentos, LocalDate hoje) {
         var descricao = normalizar(despesa.getDescricao());
         var jaLancada = lancamentos.stream()
                 .filter(lancamento -> lancamento.getTipo() == TipoLancamento.DESPESA)
                 .filter(lancamento -> YearMonth.from(lancamento.getData()).equals(YearMonth.from(vencimento)))
-                .anyMatch(lancamento -> normalizar(lancamento.getDescricao()).equals(descricao));
+                .anyMatch(lancamento -> lancamento.getRecorrente() != null
+                        ? lancamento.getRecorrente().getId().equals(despesa.getId())
+                        : normalizar(lancamento.getDescricao()).equals(descricao));
 
         if (jaLancada) return Optional.empty();
 
@@ -445,7 +450,7 @@ public class AvisoService {
         return "R$ " + formato.format(valor);
     }
 
-    private static LocalDate proximoVencimento(DespesaRecorrente despesa, LocalDate hoje) {
+    private static LocalDate proximoVencimento(Recorrente despesa, LocalDate hoje) {
         var vencimento = despesa.getProximoVencimento();
 
         while (vencimento.isBefore(hoje)) {

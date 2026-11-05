@@ -20,10 +20,12 @@ public interface FaturaMapper {
     DetalheFaturaDTO toDetalheDTO(FaturaCartaoDTO fatura, List<ItemFaturaDTO> itens);
 
     @Mapping(target = "parcela", ignore = true)
+    @Mapping(target = "idRecorrente", source = "recorrente.id")
     @Mapping(target = "paga", expression = "java(lancamento.getDataPagamentoFatura() != null)")
     ItemFaturaDTO toItemDTO(Lancamento lancamento);
 
     @Mapping(target = "paga", source = "paga")
+    @Mapping(target = "idRecorrente", ignore = true)
     @Mapping(target = "valor", source = "valor")
     @Mapping(target = "parcela", source = "parcela")
     @Mapping(target = "data", source = "compraParcelada.dataCompra")

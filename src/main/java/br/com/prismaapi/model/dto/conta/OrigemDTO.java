@@ -1,6 +1,8 @@
 package br.com.prismaapi.model.dto.conta;
 
 import br.com.prismaapi.enums.GrupoOrigem;
+import br.com.prismaapi.enums.TipoCartao;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.UUID;
@@ -12,6 +14,9 @@ public record OrigemDTO(
 
         String nome,
 
-        GrupoOrigem grupo
+        GrupoOrigem grupo,
+
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        TipoCartao tipoCartao
 
 ) {}

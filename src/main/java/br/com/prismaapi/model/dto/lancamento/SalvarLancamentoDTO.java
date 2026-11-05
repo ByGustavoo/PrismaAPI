@@ -1,6 +1,7 @@
 package br.com.prismaapi.model.dto.lancamento;
 
 import br.com.prismaapi.enums.FormaLancamento;
+import br.com.prismaapi.enums.Frequencia;
 import br.com.prismaapi.enums.SituacaoLancamento;
 import br.com.prismaapi.enums.TipoLancamento;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -46,6 +47,8 @@ public record SalvarLancamentoDTO(
         UUID idOrigem,
 
         UUID idContaDestino,
+
+        Frequencia repeticao,
 
         @Size(max = 500, message = "O campo 'observacoes' deve ter no máximo 500 caracteres!")
         String observacoes

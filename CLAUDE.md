@@ -63,8 +63,8 @@ src/test/resources/
 ```
 
 São 15 recursos sob `/v1`, com 58 endpoints no total: `avisos`, `cartoes`, `categorias`,
-`compras-parceladas`, `contas`, `dashboard`, `despesas-recorrentes`, `faturas`, `investimentos`,
-`lancamentos`, `metas`, `orcamentos`, `previsao`, `relatorios` e `sistema`. O esquema tem 15
+`compras-parceladas`, `contas`, `dashboard`, `faturas`, `investimentos`,
+`lancamentos`, `metas`, `orcamentos`, `previsao`, `recorrentes`, `relatorios` e `sistema`. O esquema tem 15
 tabelas, todas em `prisma`.
 
 ## Comandos
@@ -151,7 +151,7 @@ relatório HTML em `build/reports/jacoco`.
 - `spring.jpa.open-in-view: false` — carregue o que a resposta precisa dentro da
   transação; não conte com lazy loading no controller
 - Rotas em português, em kebab-case sem acento (`/v1/contas/origens`,
-  `/v1/despesas-recorrentes`, `/v1/metas/{id}/precos`). Rota é contrato com o PrismaWeb: mudou
+  `/v1/recorrentes`, `/v1/metas/{id}/precos`). Rota é contrato com o PrismaWeb: mudou
   aqui, muda no `src/api/rotasApi.ts` e no `API_CONTRACT.md` de lá no mesmo trabalho
 - Métodos de controller e de `*Docs` levam o nome da ação, não do verbo HTTP: `listarCartoes`,
   `buscarFatura`, `salvarCartao`, `atualizarCartao`, `deletarCartao`
@@ -191,13 +191,18 @@ mudar um sem os outros quebra rotas, migrations ou logs:
 ## Estado atual
 
 - Todos os endpoints do `API_CONTRACT.md` estão implementados, com o esquema em `V1.0` e o catálogo
-  fixo de 17 categorias em `V1.1` (`token_cor` de 1 a 16, sem cor repetida dentro do mesmo tipo). A
-  migração de categorias usa `ON CONFLICT (nome, tipo) DO UPDATE SET token_cor` para rodar sobre bancos
-  que já tinham as categorias inseridas à mão.
-- Só lançamento `PAGO` mexe em `contas.saldo`, na mesma transação: `POST` aplica o efeito, `PUT` desfaz
+  fixo de 18 categorias: 17 em `V1.1` e "Benefícios" (receita) em `V2.6` (`token_cor` de 1 a 16, sem
+  cor repetida dentro do mesmo tipo). A migração de categorias usa
+  `ON CONFLICT (nome, tipo) DO UPDATE SET token_cor` para rodar sobre bancos que já tinham as
+  categorias inseridas à mão. "Benefícios" existe para vale e auxílio, que caíam em "Outras receitas";
+  ela usa o token 4 porque, entre os livres nas receitas (13 a 16 já usados), é o mais distante delas
+  sem ser o 6: menor distância OKLab de 0,203 no claro e 0,226 no escuro. O 6 é o vermelho, parente do
+  `--negative`, e numa receita seria lido como perda.
+- Só lançamento `PAGO` mexe em `contas.saldo` (e em `cartoes.saldo`, no vale), na mesma transação: `POST` aplica o efeito, `PUT` desfaz
   o antigo e aplica o novo, `DELETE` desfaz — cada passo só se o lançamento em questão é `PAGO`.
   `PENDENTE` e `AGENDADO` não mexem, qualquer que seja a data, e lançamento em cartão só mexe em conta
-  quando a fatura dele é paga (abaixo). Como `PAGO` não aceita data futura, não há tarefa agendada.
+  quando a fatura dele é paga (abaixo). Como `PAGO` não aceita data futura, nenhum lançamento comum
+  precisa de tarefa agendada; a única é a das recorrentes que lançam sozinhas (abaixo).
 - **Pagar parcela ou fatura debita a conta de pagamento do cartão** (`cartoes.id_conta`, que no crédito
   é opcional e no débito continua sendo a conta que ele movimenta). Sem ela o pagamento responde `409`
   (`CartaoSemContaDePagamentoException`). São dois caminhos, porque todo cálculo de saldo parte de que
@@ -317,8 +322,47 @@ mudar um sem os outros quebra rotas, migrations ou logs:
   compatível com a origem (cartão exige `CARTAO_CREDITO`, conta recusa), cartão de débito não é
   origem e `PAGO` não pode ter data futura. Compra parcelada recusa categoria de receita e primeira
   parcela antes do mês da compra.
-- `DespesaRecorrenteService` devolve `proximoVencimento` avançado pela frequência até hoje
+- **Recorrente é um cadastro só, de receita ou de despesa** (`V2.4`, tabela `recorrentes`, rota
+  `/v1/recorrentes`, `TipoRecorrente`). A tabela era `despesas_recorrentes`; a `V2.4` a renomeia junto
+  com restrições e índices e cria `tipo` com `DESPESA` como padrão, então as linhas antigas continuam
+  despesas. O usuário quis salário, vale e auxílio entrando sozinhos e escolheu um cadastro único em vez
+  de dois iguais. A categoria precisa ser do lado do tipo (as mesmas exceções do lançamento) e a
+  receita só entra em conta ou em cartão de vale (`OrigemDeReceitaInvalidaException`, `422`). O resumo
+  devolve `custoMensal` e `custoAnual` só das despesas e `receitaMensal` das receitas;
+  `vencendoEmBreve`, o aviso `RECORRENTE_VENCENDO` e a previsão olham só despesas — a previsão projeta a
+  receita pela média dos meses fechados, e somar as recorrentes contaria o salário duas vezes.
+- `RecorrenteService` devolve `proximoVencimento` avançado pela frequência até hoje
   (`Frequencia.proximaOcorrencia`, a mesma conta da previsão); o banco guarda a data informada.
+- **Recorrente que lança sozinha** (`lancarAutomaticamente`). Ligada e ativa, ela vira uma receita ou
+  despesa `PAGO` de verdade em cada data, na conta ou no cartão dela, com a categoria e o valor da
+  recorrente e `lancamentos.id_recorrente` apontando para ela (`LancamentoDTO.recorrente`, com `id` e
+  `frequencia`, e `ItemFaturaDTO.idRecorrente`). Quem lança é o `LancamentoRecorrenteService`: o
+  `LancamentoRecorrenteAgendador` o chama às 00:01 e ao subir a aplicação (fora do perfil `test`, para a
+  suíte não gravar fora da transação), e salvar ou editar a recorrente o chama na hora, para a data de
+  hoje entrar sem esperar a madrugada. No cartão de crédito a despesa entra na fatura pelo mesmo caminho
+  de qualquer compra no cartão, sem regra nova; no cartão de débito ela sai da conta dele; em conta, o
+  saldo muda na hora; no vale, muda o saldo do vale. A recorrente pausada não lança, e ligar a opção
+  exige categoria (`CategoriaObrigatoriaException`, `422`, e o `CHECK`
+  `recorrentes_lancamento_automatico_categoria_check`), porque todo lançamento tem categoria. Depois de
+  lançar, o banco guarda em `proximo_vencimento` a data seguinte à última lançada, e é isso que impede
+  lançar duas vezes. Ao ligar ou retomar, a data é avançada até hoje antes de lançar: data que já passou
+  não é lançada para trás. Também não lança quando já existe, na mesma origem, do mesmo tipo e na mesma
+  ocorrência (mesmo mês, ou três dias para semanal e quinzenal), um lançamento ligado à recorrente ou
+  com a mesma descrição — é o caso de quem lançava à mão e ligou a opção. O lançamento gerado se edita e
+  se exclui como qualquer outro (um aumento de preço num mês só se corrige nele), e excluir a
+  recorrente mantém os lançamentos (`ON DELETE SET NULL`). A recorrente que lança sozinha não gera o
+  aviso, porque não há nada a lançar à mão, e o aviso e a previsão reconhecem o lançamento pelo vínculo
+  antes de comparar a descrição. `OrigemDTO.tipoCartao` existe para o formulário saber quando a origem é
+  cartão de crédito ou vale.
+- **`SalvarLancamentoDTO.repeticao` transforma o lançamento no primeiro de uma série.** Com uma
+  `Frequencia`, o `LancamentoService` grava o lançamento e chama `RecorrenteService.repetir`, que cria a
+  recorrente ativa e automática com os dados dele, a próxima data a partir da do lançamento (avançada
+  até hoje) e liga os dois. Vale ao criar e ao editar um lançamento solto; num lançamento que já tem
+  recorrente o campo é ignorado, e numa transferência é recusado (`400`).
+- **Lançamento em cartão de vale move o saldo do vale.** Receita `PAGO` soma e despesa `PAGO` tira de
+  `cartoes.saldo`, ao criar, editar e excluir, do mesmo jeito que a conta. Receita aceita vale como
+  origem, e não cartão de crédito. Lançamentos de vale gravados antes disso não foram recalculados: o
+  saldo digitado no cadastro do cartão continua valendo como ponto de partida.
 - `faturaAtual` do dashboard vem `null` quando nenhum cartão teve movimento no mês.
 - `GET /v1/sistema/versao` lê o `BuildProperties` gerado pelo `buildInfo()` do `build.gradle.kts`, que
   grava `build.time` já truncado em segundos e um `build.data` extra, a mesma data em

@@ -3,6 +3,7 @@ package br.com.prismaapi.model.mapper.lancamento;
 import br.com.prismaapi.model.dto.lancamento.InvestimentoLancamentoDTO;
 import br.com.prismaapi.model.dto.lancamento.LancamentoDTO;
 import br.com.prismaapi.model.dto.lancamento.ParcelaLancamentoDTO;
+import br.com.prismaapi.model.dto.lancamento.RecorrenteLancamentoDTO;
 import br.com.prismaapi.model.dto.lancamento.SalvarLancamentoDTO;
 import br.com.prismaapi.model.entity.lancamento.Lancamento;
 import br.com.prismaapi.model.mapper.categoria.CategoriaMapper;
@@ -16,6 +17,7 @@ import java.util.UUID;
 public interface LancamentoMapper {
 
     @Mapping(target = "idContaDestino", source = "contaDestino.id")
+    @Mapping(target = "recorrente", expression = "java(recorrente(lancamento))")
     @Mapping(target = "parcela", expression = "java(parcela(lancamento))")
     @Mapping(target = "idOrigem", expression = "java(idOrigem(lancamento))")
     @Mapping(target = "nomeOrigem", expression = "java(nomeOrigem(lancamento))")
@@ -33,6 +35,7 @@ public interface LancamentoMapper {
     @Mapping(target = "dataAtualizacao", ignore = true)
     @Mapping(target = "dataPagamentoFatura", ignore = true)
     @Mapping(target = "contaPagamentoFatura", ignore = true)
+    @Mapping(target = "recorrente", ignore = true)
     @Mapping(target = "movimentacaoInvestimento", ignore = true)
     Lancamento toEntity(SalvarLancamentoDTO salvarLancamentoDTO);
 
@@ -46,6 +49,7 @@ public interface LancamentoMapper {
     @Mapping(target = "dataAtualizacao", ignore = true)
     @Mapping(target = "dataPagamentoFatura", ignore = true)
     @Mapping(target = "contaPagamentoFatura", ignore = true)
+    @Mapping(target = "recorrente", ignore = true)
     @Mapping(target = "movimentacaoInvestimento", ignore = true)
     void updateEntity(SalvarLancamentoDTO salvarLancamentoDTO, @MappingTarget Lancamento lancamento);
 
@@ -72,6 +76,14 @@ public interface LancamentoMapper {
         if (movimentacao == null) return null;
 
         return new InvestimentoLancamentoDTO(movimentacao.getInvestimento().getId(), movimentacao.getTipo());
+    }
+
+    default RecorrenteLancamentoDTO recorrente(Lancamento lancamento) {
+        var recorrente = lancamento.getRecorrente();
+
+        if (recorrente == null) return null;
+
+        return new RecorrenteLancamentoDTO(recorrente.getId(), recorrente.getFrequencia());
     }
 
     default ParcelaLancamentoDTO parcela(Lancamento lancamento) {

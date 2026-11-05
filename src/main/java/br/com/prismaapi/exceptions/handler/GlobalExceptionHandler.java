@@ -238,14 +238,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
-    @ExceptionHandler(DespesaRecorrenteNaoEncontradaException.class)
-    public ResponseEntity<ErrorResponseDTO> handleDespesaRecorrenteNaoEncontradaException(DespesaRecorrenteNaoEncontradaException ex, HttpServletRequest pHttpServletRequest) {
+    @ExceptionHandler(RecorrenteNaoEncontradaException.class)
+    public ResponseEntity<ErrorResponseDTO> handleRecorrenteNaoEncontradaException(RecorrenteNaoEncontradaException ex, HttpServletRequest pHttpServletRequest) {
 
         var response = new ErrorResponseDTO(
                 HttpStatus.NOT_FOUND.value(),
-                "Despesa recorrente não encontrada!",
+                "Recorrente Não Encontrada!",
                 pHttpServletRequest.getRequestURI(),
-                "/PrismaAPI/problems/despesa-recorrente-nao-encontrada",
+                "/PrismaAPI/problems/recorrente-nao-encontrada",
                 ex.getMessage());
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
@@ -500,6 +500,19 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(response);
     }
 
+    @ExceptionHandler(OrigemDeReceitaInvalidaException.class)
+    public ResponseEntity<ErrorResponseDTO> handleOrigemDeReceitaInvalidaException(OrigemDeReceitaInvalidaException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.UNPROCESSABLE_CONTENT.value(),
+                "Origem de Receita Inválida!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/origem-de-receita-invalida",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(response);
+    }
+
     @ExceptionHandler(FormaIncompativelComOrigemException.class)
     public ResponseEntity<ErrorResponseDTO> handleFormaIncompativelComOrigemException(FormaIncompativelComOrigemException ex, HttpServletRequest pHttpServletRequest) {
 
@@ -638,6 +651,19 @@ public class GlobalExceptionHandler {
                 "Categoria de Receita!",
                 pHttpServletRequest.getRequestURI(),
                 "/PrismaAPI/problems/categoria-de-receita",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(response);
+    }
+
+    @ExceptionHandler(CategoriaObrigatoriaException.class)
+    public ResponseEntity<ErrorResponseDTO> handleCategoriaObrigatoriaException(CategoriaObrigatoriaException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.UNPROCESSABLE_CONTENT.value(),
+                "Categoria Obrigatória!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/categoria-obrigatoria",
                 ex.getMessage());
 
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(response);
