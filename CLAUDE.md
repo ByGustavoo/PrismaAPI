@@ -244,6 +244,11 @@ mudar um sem os outros quebra rotas, migrations ou logs:
   a compra em si não mexe em `contas.saldo`, então descontá-las no passado devolvia ao saldo dos meses
   anteriores um valor que nunca saiu da conta. O que o pagamento debitou entra no passado pelos
   lançamentos gerados e pelo pagamento de fatura das despesas do cartão.
+- `VariacaoDTO.entre` devolve sempre a `diferenca` em reais e omite o `percentual` (`NON_NULL`) quando
+  a janela anterior é zero ou quando ele passaria de 999% — com R$ 2,74 de receita na janela anterior,
+  o relatório de produção mostrava "+175257,3%", e com a base zero a variação saía "estável", como se
+  nada tivesse mudado. Sem percentual, a tendência vem do sinal da diferença, e o PrismaWeb mostra a
+  diferença em reais no lugar do número. Com os dois totais zerados, continua `ESTAVEL` com `0.0`.
 - O resto do mês da previsão soma os lançamentos não pagos até o fim do mês, inclusive os vencidos.
 - **Índice só onde a tabela cresce.** Contas, cartões, categorias, investimentos, metas, orçamentos,
   recorrentes e as tabelas de avisos e telas guardam dezenas de linhas, e nelas ler a tabela inteira
