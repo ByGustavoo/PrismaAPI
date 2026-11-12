@@ -44,6 +44,15 @@ public class MovimentacaoInvestimento {
     @Column(name = "saldo_informado", precision = 14, scale = 2)
     private BigDecimal saldoInformado;
 
+    @Column(precision = 18, scale = 8)
+    private BigDecimal quantidade;
+
+    @Column(name = "preco_unitario", precision = 14, scale = 2)
+    private BigDecimal precoUnitario;
+
+    @Column(precision = 14, scale = 2)
+    private BigDecimal taxas;
+
     @Column(length = 160)
     private String descricao;
 

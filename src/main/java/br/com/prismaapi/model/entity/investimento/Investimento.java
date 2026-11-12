@@ -25,6 +25,9 @@ public class Investimento {
     @Column(nullable = false, length = 120)
     private String nome;
 
+    @Column(length = 12)
+    private String codigo;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "classe_ativo", nullable = false, length = 16)
     private ClasseAtivo classeAtivo;
@@ -40,6 +43,12 @@ public class Investimento {
 
     @Column(name = "valor_atual", nullable = false, precision = 14, scale = 2)
     private BigDecimal valorAtual;
+
+    @Column(precision = 18, scale = 8)
+    private BigDecimal quantidade;
+
+    @Column(precision = 14, scale = 2)
+    private BigDecimal cotacao;
 
     @Column(name = "data_inicio", nullable = false)
     private LocalDate dataInicio;

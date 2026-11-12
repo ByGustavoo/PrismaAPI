@@ -16,6 +16,9 @@ public record InvestimentoDTO(
 
         String nome,
 
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        String codigo,
+
         ClasseAtivo classeAtivo,
 
         String instituicao,
@@ -25,6 +28,15 @@ public record InvestimentoDTO(
         BigDecimal aportado,
 
         BigDecimal valorAtual,
+
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        BigDecimal quantidade,
+
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        BigDecimal precoMedio,
+
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        BigDecimal cotacao,
 
         @JsonFormat(pattern = "yyyy-MM-dd")
         LocalDate dataInicio,

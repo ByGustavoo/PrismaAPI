@@ -62,7 +62,7 @@ src/test/resources/
                    V1.7__PopularContasDePagamento.sql, dados de exemplo aplicados só no perfil test
 ```
 
-São 15 recursos sob `/v1`, com 58 endpoints no total: `avisos`, `cartoes`, `categorias`,
+São 15 recursos sob `/v1`, com 62 endpoints no total: `avisos`, `cartoes`, `categorias`,
 `compras-parceladas`, `contas`, `dashboard`, `faturas`, `investimentos`,
 `lancamentos`, `metas`, `orcamentos`, `previsao`, `recorrentes`, `relatorios` e `sistema`. O esquema tem 15
 tabelas, todas em `prisma`.
@@ -95,7 +95,8 @@ relatório HTML em `build/reports/jacoco`.
   `classpath:db/test`: a `V1.2__PopularBanco.sql` popula o banco com um ano de dados relativos à data em
   que roda. Aponte as variáveis para um banco próprio, nunca para o de dev, que não conhece a `V1.2`.
   **As versões de `db/migration` e `db/test` formam uma sequência só**: a `V1.3`, a `V1.5`, a `V1.6`, a `V1.8`,
-  a `V1.9`, a `V2.0`, a `V2.2` e a `V2.3` são de produção, e a `V1.4`, a `V1.7` e a `V2.1` são carga de teste. O perfil `test` leva `spring.flyway.out-of-order: true`, porque
+  a `V1.9`, a `V2.0`, a `V2.2`, a `V2.3`, a `V2.4`, a `V2.6` e a `V2.7` são de produção, e a `V1.4`, a `V1.7`, a `V2.1`,
+  a `V2.5` e a `V2.8` são carga de teste. O perfil `test` leva `spring.flyway.out-of-order: true`, porque
   num banco que o `dev` já levou até a `V1.5` a `V1.4` fica pendente abaixo da última aplicada, e sem
   isso o Flyway recusa o banco; por rodar sobre dados que podem já existir, a carga usa `ON CONFLICT`. Migração nova de produção leva o número seguinte ao último
   arquivo das duas pastas, e a carga que depende dela vem num arquivo novo depois — renumerar a
@@ -267,6 +268,26 @@ mudar um sem os outros quebra rotas, migrations ou logs:
   reserva, em vez de sumir com dado real. A carga de teste tira as contas de reserva da `V1.2` na
   `V2.1`, que vem entre as duas de produção, e num banco de dev que não roda a carga elas precisam
   sair à mão antes da `V2.2`.
+- **Ações são acompanhadas pela quantidade** (`V2.7`). `investimentos` ganhou `codigo`, `quantidade` e
+  `cotacao`, só preenchidos em `ACOES` (`investimentos_posicao_so_em_acoes_check`), e
+  `movimentacoes_investimento` ganhou `quantidade`, `preco_unitario` e `taxas`. Não há tipo novo:
+  compra é `APORTE` com quantidade (valor = quantidade × preço + taxas), venda é `RESGATE` com quantidade
+  (valor recebido = quantidade × preço − taxas) e cotação é `RENDIMENTO` com `preco_unitario` e
+  `saldo_informado` = quantidade × cotação, gravado na hora. Na `serie`, o preço de uma compra ou venda
+  vira a cotação e o saldo passa a ser quantidade × cotação; a venda tira do aportado o custo médio das
+  vendidas (`aportadoDepoisDaVenda`), o mesmo "na mesma proporção" do resgate aplicado à quantidade.
+  `quantidade` e `cotacao` de `investimentos` são resumo da série, como o aportado, e `precoMedio`
+  (aportado ÷ quantidade) é calculado no `paraDTO`. As rotas são `POST /investimentos/acoes`,
+  `/{id}/compras`, `/{id}/vendas` e `/{id}/cotacoes`; `POST /investimentos` recusa ação
+  (`CadastroDeAcaoPorValorException`), aporte, resgate e saldo recusam ação com quantidade, e compra,
+  venda e cotação recusam o resto (`MovimentacaoIncompativelComInvestimentoException`), todos `422`.
+  A venda não passa da quantidade (`VendaMaiorQueQuantidadeException`) nem tem taxas acima do valor
+  (`TaxasMaioresQueVendaException`), e ação não troca de classe no `PUT` (`TrocaDeClasseDeAcaoException`).
+  A ação cadastrada por valor antes da `V2.7` converte no `PUT`, que exige `codigo` e `quantidade`: o
+  serviço grava um `RENDIMENTO` de hoje com a quantidade, o saldo atual e a cotação saldo ÷ quantidade,
+  e o histórico por valor fica como estava. A transferência gerada diz "Compra — <código>" e
+  "Venda — <código>", e o aviso de investimento desatualizado de uma ação diz "Confira a cotação de
+  <código>". A carga de teste `V2.8` cria a ação Petrobras (PETR4) com quantidade.
 - Investimento tem série em `movimentacoes_investimento` (`APORTE` soma valor, `RESGATE` tira valor,
   `RENDIMENTO` guarda o saldo informado). `aportado`, `valor_atual`, `data_inicio` e
   `data_ultima_movimentacao` de `investimentos` são o resumo dessa série, regravado a cada

@@ -1,0 +1,12 @@
+{
+  "codigo": "ITUB4",
+  "nome": "Itaú Unibanco",
+  "instituicao": "Corretora Prisma",
+  "quantidade": 50,
+  "precoUnitario": 34.80,
+  "taxas": 2.50,
+  "cotacao": 35.10,
+  "dataInicio": "%s",
+  "reservaEmergencia": false,
+  "observacoes": "Bancos pagam bons dividendos."
+}

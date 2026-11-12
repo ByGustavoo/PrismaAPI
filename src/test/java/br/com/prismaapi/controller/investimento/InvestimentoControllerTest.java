@@ -16,8 +16,12 @@ import java.time.LocalDate;
 @SpringBootTest
 class InvestimentoControllerTest extends AbstractControllerTest {
 
+    private String salvarAcaoRequest;
     private String registrarSaldoRequest;
+    private String registrarVendaRequest;
+    private String registrarCompraRequest;
     private String registrarAporteRequest;
+    private String registrarCotacaoRequest;
     private String registrarResgateRequest;
     private String salvarInvestimentoRequest;
     private String atualizarInvestimentoRequest;
@@ -49,6 +53,22 @@ class InvestimentoControllerTest extends AbstractControllerTest {
         if (registrarSaldoRequest == null) {
             registrarSaldoRequest = new String(Files.readAllBytes(Paths.get("src/test/resources/requests/investimento/registrarSaldoRequest.json")));
         }
+
+        if (salvarAcaoRequest == null) {
+            salvarAcaoRequest = new String(Files.readAllBytes(Paths.get("src/test/resources/requests/investimento/salvarAcaoRequest.json")));
+        }
+
+        if (registrarCompraRequest == null) {
+            registrarCompraRequest = new String(Files.readAllBytes(Paths.get("src/test/resources/requests/investimento/registrarCompraRequest.json")));
+        }
+
+        if (registrarVendaRequest == null) {
+            registrarVendaRequest = new String(Files.readAllBytes(Paths.get("src/test/resources/requests/investimento/registrarVendaRequest.json")));
+        }
+
+        if (registrarCotacaoRequest == null) {
+            registrarCotacaoRequest = new String(Files.readAllBytes(Paths.get("src/test/resources/requests/investimento/registrarCotacaoRequest.json")));
+        }
     }
 
     @Test
@@ -66,6 +86,11 @@ class InvestimentoControllerTest extends AbstractControllerTest {
     @Test
     void salvarInvestimentoTest() throws Exception {
         testPost("/v1/investimentos", salvarInvestimentoRequest);
+    }
+
+    @Test
+    void salvarAcaoTest() throws Exception {
+        testPost("/v1/investimentos/acoes", salvarAcaoRequest.formatted(LocalDate.now()));
     }
 
     @Test
@@ -95,6 +120,29 @@ class InvestimentoControllerTest extends AbstractControllerTest {
         var idInvestimento = buscar(investimentoRepository, investimento -> investimento.getNome().equals("Tesouro Selic 2029")).getId();
 
         testPost("/v1/investimentos/" + idInvestimento + "/saldos", registrarSaldoRequest.formatted(LocalDate.now()));
+    }
+
+    @Test
+    void registrarCompraTest() throws Exception {
+        var idConta = buscar(contaRepository, conta -> conta.getNome().equals("Conta principal")).getId();
+        var idInvestimento = buscar(investimentoRepository, investimento -> investimento.getNome().equals("Petrobras")).getId();
+
+        testPost("/v1/investimentos/" + idInvestimento + "/compras", registrarCompraRequest.formatted(LocalDate.now(), idConta));
+    }
+
+    @Test
+    void registrarVendaTest() throws Exception {
+        var idConta = buscar(contaRepository, conta -> conta.getNome().equals("Conta principal")).getId();
+        var idInvestimento = buscar(investimentoRepository, investimento -> investimento.getNome().equals("Petrobras")).getId();
+
+        testPost("/v1/investimentos/" + idInvestimento + "/vendas", registrarVendaRequest.formatted(LocalDate.now(), idConta));
+    }
+
+    @Test
+    void registrarCotacaoTest() throws Exception {
+        var idInvestimento = buscar(investimentoRepository, investimento -> investimento.getNome().equals("Petrobras")).getId();
+
+        testPost("/v1/investimentos/" + idInvestimento + "/cotacoes", registrarCotacaoRequest.formatted(LocalDate.now()));
     }
 
     @Test
