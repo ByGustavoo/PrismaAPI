@@ -302,7 +302,7 @@ public class AvisoService {
                         TipoAviso.INVESTIMENTO_DESATUALIZADO,
                         SeveridadeAviso.ATENCAO,
                         investimento.getNome(),
-                        "Sem atualização " + prazo(hoje, investimento.getDataUltimaMovimentacao()) + " — Confira o saldo em " + investimento.getInstituicao(),
+                        "Sem atualização " + prazo(hoje, investimento.getDataUltimaMovimentacao()) + (investimento.getQuantidade() == null ? " — Confira o saldo em " + investimento.getInstituicao() : " — Confira a cotação de " + investimento.getCodigo()),
                         investimento.getDataUltimaMovimentacao(),
                         null,
                         "/investimentos?investimento=" + investimento.getId()))

@@ -4,10 +4,14 @@ import br.com.prismaapi.model.dto.investimento.AtualizarInvestimentoDTO;
 import br.com.prismaapi.model.dto.investimento.CarteiraDTO;
 import br.com.prismaapi.model.dto.investimento.ExtratoInvestimentoDTO;
 import br.com.prismaapi.model.dto.investimento.InvestimentoDTO;
+import br.com.prismaapi.model.dto.investimento.SalvarAcaoDTO;
 import br.com.prismaapi.model.dto.investimento.SalvarAporteInvestimentoDTO;
+import br.com.prismaapi.model.dto.investimento.SalvarCompraAcaoDTO;
+import br.com.prismaapi.model.dto.investimento.SalvarCotacaoAcaoDTO;
 import br.com.prismaapi.model.dto.investimento.SalvarInvestimentoDTO;
 import br.com.prismaapi.model.dto.investimento.SalvarResgateInvestimentoDTO;
 import br.com.prismaapi.model.dto.investimento.SalvarSaldoInvestimentoDTO;
+import br.com.prismaapi.model.dto.investimento.SalvarVendaAcaoDTO;
 import br.com.prismaapi.service.investimento.InvestimentoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -40,6 +44,11 @@ public class InvestimentoController implements InvestimentoDocs {
     }
 
     @Override
+    public ResponseEntity<InvestimentoDTO> salvarAcao(SalvarAcaoDTO salvarAcaoDTO) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(investimentoService.salvarAcao(salvarAcaoDTO));
+    }
+
+    @Override
     public ResponseEntity<InvestimentoDTO> atualizarInvestimento(UUID id, AtualizarInvestimentoDTO atualizarInvestimentoDTO) {
         return ResponseEntity.ok(investimentoService.atualizar(id, atualizarInvestimentoDTO));
     }
@@ -57,6 +66,21 @@ public class InvestimentoController implements InvestimentoDocs {
     @Override
     public ResponseEntity<InvestimentoDTO> registrarSaldo(UUID id, SalvarSaldoInvestimentoDTO salvarSaldoInvestimentoDTO) {
         return ResponseEntity.status(HttpStatus.CREATED).body(investimentoService.registrarSaldo(id, salvarSaldoInvestimentoDTO));
+    }
+
+    @Override
+    public ResponseEntity<InvestimentoDTO> registrarCompra(UUID id, SalvarCompraAcaoDTO salvarCompraAcaoDTO) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(investimentoService.registrarCompra(id, salvarCompraAcaoDTO));
+    }
+
+    @Override
+    public ResponseEntity<InvestimentoDTO> registrarVenda(UUID id, SalvarVendaAcaoDTO salvarVendaAcaoDTO) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(investimentoService.registrarVenda(id, salvarVendaAcaoDTO));
+    }
+
+    @Override
+    public ResponseEntity<InvestimentoDTO> registrarCotacao(UUID id, SalvarCotacaoAcaoDTO salvarCotacaoAcaoDTO) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(investimentoService.registrarCotacao(id, salvarCotacaoAcaoDTO));
     }
 
     @Override

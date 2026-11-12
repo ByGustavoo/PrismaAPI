@@ -2,8 +2,11 @@ package br.com.prismaapi.model.mapper.movimentacaoinvestimento;
 
 import br.com.prismaapi.model.dto.investimento.MovimentacaoInvestimentoDTO;
 import br.com.prismaapi.model.dto.investimento.SalvarAporteInvestimentoDTO;
+import br.com.prismaapi.model.dto.investimento.SalvarCompraAcaoDTO;
+import br.com.prismaapi.model.dto.investimento.SalvarCotacaoAcaoDTO;
 import br.com.prismaapi.model.dto.investimento.SalvarResgateInvestimentoDTO;
 import br.com.prismaapi.model.dto.investimento.SalvarSaldoInvestimentoDTO;
+import br.com.prismaapi.model.dto.investimento.SalvarVendaAcaoDTO;
 import br.com.prismaapi.model.entity.movimentacaoinvestimento.MovimentacaoInvestimento;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -19,33 +22,76 @@ public interface MovimentacaoInvestimentoMapper {
     @Mapping(target = "tipo", source = "movimentacao.tipo")
     @Mapping(target = "data", source = "movimentacao.data")
     @Mapping(target = "aportadoApos", source = "aportadoApos")
+    @Mapping(target = "taxas", source = "movimentacao.taxas")
     @Mapping(target = "idConta", source = "movimentacao.conta.id")
+    @Mapping(target = "quantidadeApos", source = "quantidadeApos")
     @Mapping(target = "nomeConta", source = "movimentacao.conta.nome")
     @Mapping(target = "descricao", source = "movimentacao.descricao")
-    MovimentacaoInvestimentoDTO toDTO(MovimentacaoInvestimento movimentacao, BigDecimal valorExibido, BigDecimal saldoApos, BigDecimal aportadoApos);
+    @Mapping(target = "quantidade", source = "movimentacao.quantidade")
+    @Mapping(target = "precoUnitario", source = "movimentacao.precoUnitario")
+    MovimentacaoInvestimentoDTO toDTO(MovimentacaoInvestimento movimentacao, BigDecimal valorExibido, BigDecimal saldoApos, BigDecimal aportadoApos, BigDecimal quantidadeApos);
 
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "taxas", ignore = true)
     @Mapping(target = "conta", ignore = true)
     @Mapping(target = "tipo", constant = "APORTE")
+    @Mapping(target = "quantidade", ignore = true)
     @Mapping(target = "dataCriacao", ignore = true)
     @Mapping(target = "investimento", ignore = true)
+    @Mapping(target = "precoUnitario", ignore = true)
     @Mapping(target = "saldoInformado", ignore = true)
     MovimentacaoInvestimento toEntity(SalvarAporteInvestimentoDTO salvarAporteInvestimentoDTO);
 
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "taxas", ignore = true)
     @Mapping(target = "conta", ignore = true)
     @Mapping(target = "tipo", constant = "RESGATE")
+    @Mapping(target = "quantidade", ignore = true)
     @Mapping(target = "dataCriacao", ignore = true)
     @Mapping(target = "investimento", ignore = true)
+    @Mapping(target = "precoUnitario", ignore = true)
     @Mapping(target = "saldoInformado", ignore = true)
     MovimentacaoInvestimento toEntity(SalvarResgateInvestimentoDTO salvarResgateInvestimentoDTO);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "valor", ignore = true)
+    @Mapping(target = "taxas", ignore = true)
     @Mapping(target = "conta", ignore = true)
+    @Mapping(target = "quantidade", ignore = true)
     @Mapping(target = "dataCriacao", ignore = true)
     @Mapping(target = "investimento", ignore = true)
+    @Mapping(target = "precoUnitario", ignore = true)
     @Mapping(target = "tipo", constant = "RENDIMENTO")
     @Mapping(target = "saldoInformado", source = "valorAtual")
     MovimentacaoInvestimento toEntity(SalvarSaldoInvestimentoDTO salvarSaldoInvestimentoDTO);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "valor", ignore = true)
+    @Mapping(target = "conta", ignore = true)
+    @Mapping(target = "tipo", constant = "APORTE")
+    @Mapping(target = "dataCriacao", ignore = true)
+    @Mapping(target = "investimento", ignore = true)
+    @Mapping(target = "saldoInformado", ignore = true)
+    MovimentacaoInvestimento toEntity(SalvarCompraAcaoDTO salvarCompraAcaoDTO);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "valor", ignore = true)
+    @Mapping(target = "conta", ignore = true)
+    @Mapping(target = "tipo", constant = "RESGATE")
+    @Mapping(target = "dataCriacao", ignore = true)
+    @Mapping(target = "investimento", ignore = true)
+    @Mapping(target = "saldoInformado", ignore = true)
+    MovimentacaoInvestimento toEntity(SalvarVendaAcaoDTO salvarVendaAcaoDTO);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "valor", ignore = true)
+    @Mapping(target = "taxas", ignore = true)
+    @Mapping(target = "conta", ignore = true)
+    @Mapping(target = "quantidade", ignore = true)
+    @Mapping(target = "dataCriacao", ignore = true)
+    @Mapping(target = "investimento", ignore = true)
+    @Mapping(target = "saldoInformado", ignore = true)
+    @Mapping(target = "tipo", constant = "RENDIMENTO")
+    @Mapping(target = "precoUnitario", source = "cotacao")
+    MovimentacaoInvestimento toEntity(SalvarCotacaoAcaoDTO salvarCotacaoAcaoDTO);
 }

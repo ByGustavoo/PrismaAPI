@@ -6,10 +6,17 @@ import br.com.prismaapi.enums.MesDoAno;
 import br.com.prismaapi.enums.SituacaoLancamento;
 import br.com.prismaapi.enums.TipoLancamento;
 import br.com.prismaapi.enums.TipoMovimentacaoInvestimento;
+import br.com.prismaapi.exceptions.CadastroDeAcaoPorValorException;
+import br.com.prismaapi.exceptions.CodigoDaAcaoObrigatorioException;
 import br.com.prismaapi.exceptions.ContaVinculadaInexistenteException;
 import br.com.prismaapi.exceptions.DataAnteriorAUltimaAtualizacaoException;
 import br.com.prismaapi.exceptions.InvestimentoNaoEncontradoException;
+import br.com.prismaapi.exceptions.MovimentacaoIncompativelComInvestimentoException;
+import br.com.prismaapi.exceptions.QuantidadeDeAcoesObrigatoriaException;
 import br.com.prismaapi.exceptions.ResgateMaiorQueSaldoException;
+import br.com.prismaapi.exceptions.TaxasMaioresQueVendaException;
+import br.com.prismaapi.exceptions.TrocaDeClasseDeAcaoException;
+import br.com.prismaapi.exceptions.VendaMaiorQueQuantidadeException;
 import br.com.prismaapi.model.dto.dashboard.variacao.VariacaoDTO;
 import br.com.prismaapi.model.dto.investimento.AlocacaoDTO;
 import br.com.prismaapi.model.dto.investimento.AtualizarInvestimentoDTO;
@@ -20,10 +27,14 @@ import br.com.prismaapi.model.dto.investimento.MovimentacaoInvestimentoDTO;
 import br.com.prismaapi.model.dto.investimento.PontoEvolucaoDTO;
 import br.com.prismaapi.model.dto.investimento.PosicaoDTO;
 import br.com.prismaapi.model.dto.investimento.ReservaEmergenciaDTO;
+import br.com.prismaapi.model.dto.investimento.SalvarAcaoDTO;
 import br.com.prismaapi.model.dto.investimento.SalvarAporteInvestimentoDTO;
+import br.com.prismaapi.model.dto.investimento.SalvarCompraAcaoDTO;
+import br.com.prismaapi.model.dto.investimento.SalvarCotacaoAcaoDTO;
 import br.com.prismaapi.model.dto.investimento.SalvarInvestimentoDTO;
 import br.com.prismaapi.model.dto.investimento.SalvarResgateInvestimentoDTO;
 import br.com.prismaapi.model.dto.investimento.SalvarSaldoInvestimentoDTO;
+import br.com.prismaapi.model.dto.investimento.SalvarVendaAcaoDTO;
 import br.com.prismaapi.model.entity.conta.Conta;
 import br.com.prismaapi.model.entity.investimento.Investimento;
 import br.com.prismaapi.model.entity.lancamento.Lancamento;
@@ -54,6 +65,7 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -142,6 +154,12 @@ public class InvestimentoService {
     @CacheEvict(value = {"avisos", "contas", "dashboard", "investimentos", "lancamentos", "previsao", "relatorios"}, allEntries = true)
     public InvestimentoDTO salvar(SalvarInvestimentoDTO salvarInvestimentoDTO) {
         log.info("Salvando o investimento... - Nome: {}", salvarInvestimentoDTO.nome());
+
+        if (salvarInvestimentoDTO.classeAtivo() == ClasseAtivo.ACOES) {
+            log.error("Ações são cadastradas pela quantidade e pelo preço por ação!");
+            throw new CadastroDeAcaoPorValorException("Ações são cadastradas pela quantidade e pelo preço por ação!");
+        }
+
         var investimento = investimentoMapper.toEntity(salvarInvestimentoDTO);
 
         preencher(investimento, salvarInvestimentoDTO.nome(), salvarInvestimentoDTO.instituicao(), salvarInvestimentoDTO.observacoes());
@@ -161,14 +179,47 @@ public class InvestimentoService {
 
     @Transactional
     @CacheEvict(value = {"avisos", "contas", "dashboard", "investimentos", "lancamentos", "previsao", "relatorios"}, allEntries = true)
+    public InvestimentoDTO salvarAcao(SalvarAcaoDTO salvarAcaoDTO) {
+        log.info("Salvando a ação... - Código: {}", salvarAcaoDTO.codigo());
+        var investimento = investimentoMapper.toEntity(salvarAcaoDTO);
+
+        preencher(investimento, salvarAcaoDTO.nome(), salvarAcaoDTO.instituicao(), salvarAcaoDTO.observacoes());
+        investimento.setCodigo(codigoDaAcao(salvarAcaoDTO.codigo()));
+        investimento.setAportado(BigDecimal.ZERO);
+        investimento.setValorAtual(BigDecimal.ZERO);
+        investimento.setDataUltimaMovimentacao(salvarAcaoDTO.dataInicio());
+        investimentoRepository.save(investimento);
+
+        var conta = buscarConta(salvarAcaoDTO.idConta());
+        var movimentacoes = new ArrayList<MovimentacaoInvestimento>();
+        movimentacoes.add(movimentar(investimento, primeiraCompra(salvarAcaoDTO), conta));
+
+        if (salvarAcaoDTO.cotacao() != null && salvarAcaoDTO.cotacao().compareTo(salvarAcaoDTO.precoUnitario()) != 0) {
+            movimentacoes.add(movimentar(investimento, cotacaoDoCadastro(salvarAcaoDTO), null));
+        }
+
+        return atualizarPosicao(investimento, movimentacoes);
+    }
+
+    @Transactional
+    @CacheEvict(value = {"avisos", "contas", "dashboard", "investimentos", "lancamentos", "previsao", "relatorios"}, allEntries = true)
     public InvestimentoDTO atualizar(UUID id, AtualizarInvestimentoDTO atualizarInvestimentoDTO) {
         log.info("Atualizando o investimento... - ID: [{}]", id);
         var investimento = buscar(id);
+        validarClasse(investimento, atualizarInvestimentoDTO.classeAtivo());
 
         investimentoMapper.updateEntity(atualizarInvestimentoDTO, investimento);
         preencher(investimento, atualizarInvestimentoDTO.nome(), atualizarInvestimentoDTO.instituicao(), atualizarInvestimentoDTO.observacoes());
 
-        return investimentoMapper.toDTO(investimento);
+        if (investimento.getClasseAtivo() != ClasseAtivo.ACOES) return paraDTO(investimento);
+
+        investimento.setCodigo(codigoDaAcao(atualizarInvestimentoDTO.codigo()));
+
+        if (investimento.getQuantidade() != null) return paraDTO(investimento);
+
+        movimentar(investimento, posicaoInformada(investimento, quantidadeDaAcao(atualizarInvestimentoDTO.quantidade())), null);
+
+        return atualizarPosicao(investimento, movimentacaoInvestimentoRepository.findByInvestimentoId(id));
     }
 
     @Transactional
@@ -176,7 +227,8 @@ public class InvestimentoService {
     public InvestimentoDTO registrarAporte(UUID id, SalvarAporteInvestimentoDTO salvarAporteInvestimentoDTO) {
         log.info("Registrando o aporte do investimento... - ID: [{}] - Data: {}", id, salvarAporteInvestimentoDTO.data());
         var investimento = buscar(id);
-        validarData(investimento, salvarAporteInvestimentoDTO.data(), "aporte");
+        validarPorValor(investimento);
+        validarData(investimento, salvarAporteInvestimentoDTO.data(), "do aporte");
         var conta = buscarConta(salvarAporteInvestimentoDTO.idConta());
 
         movimentar(investimento, movimentacaoInvestimentoMapper.toEntity(salvarAporteInvestimentoDTO), conta);
@@ -189,7 +241,8 @@ public class InvestimentoService {
     public InvestimentoDTO registrarResgate(UUID id, SalvarResgateInvestimentoDTO salvarResgateInvestimentoDTO) {
         log.info("Registrando o resgate do investimento... - ID: [{}] - Data: {}", id, salvarResgateInvestimentoDTO.data());
         var investimento = buscar(id);
-        validarData(investimento, salvarResgateInvestimentoDTO.data(), "resgate");
+        validarPorValor(investimento);
+        validarData(investimento, salvarResgateInvestimentoDTO.data(), "do resgate");
         validarResgate(investimento, salvarResgateInvestimentoDTO.valor());
         var conta = buscarConta(salvarResgateInvestimentoDTO.idConta());
 
@@ -203,9 +256,58 @@ public class InvestimentoService {
     public InvestimentoDTO registrarSaldo(UUID id, SalvarSaldoInvestimentoDTO salvarSaldoInvestimentoDTO) {
         log.info("Registrando o saldo do investimento... - ID: [{}] - Data: {}", id, salvarSaldoInvestimentoDTO.data());
         var investimento = buscar(id);
-        validarData(investimento, salvarSaldoInvestimentoDTO.data(), "saldo");
+        validarPorValor(investimento);
+        validarData(investimento, salvarSaldoInvestimentoDTO.data(), "do saldo");
 
         movimentar(investimento, movimentacaoInvestimentoMapper.toEntity(salvarSaldoInvestimentoDTO), null);
+
+        return atualizarPosicao(investimento, movimentacaoInvestimentoRepository.findByInvestimentoId(id));
+    }
+
+    @Transactional
+    @CacheEvict(value = {"avisos", "contas", "dashboard", "investimentos", "lancamentos", "previsao", "relatorios"}, allEntries = true)
+    public InvestimentoDTO registrarCompra(UUID id, SalvarCompraAcaoDTO salvarCompraAcaoDTO) {
+        log.info("Registrando a compra de ações... - ID: [{}] - Data: {}", id, salvarCompraAcaoDTO.data());
+        var investimento = buscar(id);
+        validarPorQuantidade(investimento);
+        validarData(investimento, salvarCompraAcaoDTO.data(), "da compra");
+        var conta = buscarConta(salvarCompraAcaoDTO.idConta());
+
+        var compra = movimentacaoInvestimentoMapper.toEntity(salvarCompraAcaoDTO);
+        compra.setValor(custoDaCompra(compra.getQuantidade(), compra.getPrecoUnitario(), compra.getTaxas()));
+        movimentar(investimento, compra, conta);
+
+        return atualizarPosicao(investimento, movimentacaoInvestimentoRepository.findByInvestimentoId(id));
+    }
+
+    @Transactional
+    @CacheEvict(value = {"avisos", "contas", "dashboard", "investimentos", "lancamentos", "previsao", "relatorios"}, allEntries = true)
+    public InvestimentoDTO registrarVenda(UUID id, SalvarVendaAcaoDTO salvarVendaAcaoDTO) {
+        log.info("Registrando a venda de ações... - ID: [{}] - Data: {}", id, salvarVendaAcaoDTO.data());
+        var investimento = buscar(id);
+        validarPorQuantidade(investimento);
+        validarData(investimento, salvarVendaAcaoDTO.data(), "da venda");
+        validarVenda(investimento, salvarVendaAcaoDTO.quantidade());
+        var conta = buscarConta(salvarVendaAcaoDTO.idConta());
+
+        var venda = movimentacaoInvestimentoMapper.toEntity(salvarVendaAcaoDTO);
+        venda.setValor(valorDaVenda(venda.getQuantidade(), venda.getPrecoUnitario(), venda.getTaxas()));
+        movimentar(investimento, venda, conta);
+
+        return atualizarPosicao(investimento, movimentacaoInvestimentoRepository.findByInvestimentoId(id));
+    }
+
+    @Transactional
+    @CacheEvict(value = {"avisos", "contas", "dashboard", "investimentos", "lancamentos", "previsao", "relatorios"}, allEntries = true)
+    public InvestimentoDTO registrarCotacao(UUID id, SalvarCotacaoAcaoDTO salvarCotacaoAcaoDTO) {
+        log.info("Registrando a cotação da ação... - ID: [{}] - Data: {}", id, salvarCotacaoAcaoDTO.data());
+        var investimento = buscar(id);
+        validarPorQuantidade(investimento);
+        validarData(investimento, salvarCotacaoAcaoDTO.data(), "da cotação");
+
+        var cotacao = movimentacaoInvestimentoMapper.toEntity(salvarCotacaoAcaoDTO);
+        cotacao.setSaldoInformado(dinheiro(investimento.getQuantidade().multiply(cotacao.getPrecoUnitario())));
+        movimentar(investimento, cotacao, null);
 
         return atualizarPosicao(investimento, movimentacaoInvestimentoRepository.findByInvestimentoId(id));
     }
@@ -260,7 +362,7 @@ public class InvestimentoService {
         var resgate = movimentacao.getTipo() == TipoMovimentacaoInvestimento.RESGATE;
         var lancamento = new Lancamento();
 
-        lancamento.setDescricao((resgate ? "Resgate — " : "Aporte — ") + investimento.getNome());
+        lancamento.setDescricao(descricaoDaTransferencia(investimento, movimentacao, resgate));
         lancamento.setValor(movimentacao.getValor());
         lancamento.setData(movimentacao.getData());
         lancamento.setForma(FormaLancamento.CONTA);
@@ -279,6 +381,14 @@ public class InvestimentoService {
         return lancamento;
     }
 
+    private static String descricaoDaTransferencia(Investimento investimento, MovimentacaoInvestimento movimentacao, boolean resgate) {
+        if (movimentacao.getQuantidade() == null) {
+            return (resgate ? "Resgate — " : "Aporte — ") + investimento.getNome();
+        }
+
+        return (resgate ? "Venda — " : "Compra — ") + investimento.getCodigo();
+    }
+
     private static void desfazerNaConta(Lancamento lancamento) {
         if (lancamento.getConta() != null) {
             lancamento.getConta().setSaldo(lancamento.getConta().getSaldo().add(lancamento.getValor()));
@@ -294,10 +404,16 @@ public class InvestimentoService {
 
         investimento.setAportado(serie.getLast().aportadoApos());
         investimento.setValorAtual(serie.getLast().saldoApos());
+        investimento.setQuantidade(serie.getLast().quantidadeApos());
+        investimento.setCotacao(cotacaoAtual(serie));
         investimento.setDataInicio(serie.getFirst().data());
         investimento.setDataUltimaMovimentacao(serie.getLast().data());
 
-        return investimentoMapper.toDTO(investimento);
+        return paraDTO(investimento);
+    }
+
+    private InvestimentoDTO paraDTO(Investimento investimento) {
+        return investimentoMapper.toDTO(investimento, precoMedio(investimento));
     }
 
     private Map<UUID, List<MovimentacaoInvestimentoDTO>> seriesPorInvestimento() {
@@ -311,27 +427,66 @@ public class InvestimentoService {
     private List<MovimentacaoInvestimentoDTO> serie(List<MovimentacaoInvestimento> movimentacoes) {
         var saldo = BigDecimal.ZERO;
         var aportado = BigDecimal.ZERO;
+        BigDecimal quantidade = null;
         var serie = new ArrayList<MovimentacaoInvestimentoDTO>();
 
         for (var movimentacao : movimentacoes.stream().sorted(ORDEM_DA_SERIE).toList()) {
-            var valor = switch (movimentacao.getTipo()) {
+            var saldoAnterior = saldo;
+            var porQuantidade = movimentacao.getQuantidade() != null;
+
+            switch (movimentacao.getTipo()) {
+                case APORTE -> {
+                    aportado = dinheiro(aportado.add(movimentacao.getValor()));
+
+                    if (porQuantidade) {
+                        quantidade = Objects.requireNonNullElse(quantidade, BigDecimal.ZERO).add(movimentacao.getQuantidade());
+                        saldo = dinheiro(quantidade.multiply(movimentacao.getPrecoUnitario()));
+                    } else {
+                        saldo = dinheiro(saldo.add(movimentacao.getValor()));
+                    }
+                }
+                case RESGATE -> {
+                    if (porQuantidade && quantidade != null) {
+                        var restante = quantidade.subtract(movimentacao.getQuantidade());
+                        aportado = aportadoDepoisDaVenda(aportado, quantidade, restante);
+                        quantidade = restante;
+                        saldo = dinheiro(quantidade.multiply(movimentacao.getPrecoUnitario()));
+                    } else {
+                        aportado = aportadoDepoisDoResgate(aportado, saldo, movimentacao.getValor());
+                        saldo = dinheiro(saldo.subtract(movimentacao.getValor()));
+                    }
+                }
+                case RENDIMENTO -> {
+                    quantidade = porQuantidade ? movimentacao.getQuantidade() : quantidade;
+                    saldo = dinheiro(movimentacao.getSaldoInformado());
+                }
+            }
+
+            var valorExibido = switch (movimentacao.getTipo()) {
                 case APORTE -> movimentacao.getValor();
                 case RESGATE -> movimentacao.getValor().negate();
-                case RENDIMENTO -> movimentacao.getSaldoInformado().subtract(saldo);
+                case RENDIMENTO -> saldo.subtract(saldoAnterior);
             };
 
-            aportado = switch (movimentacao.getTipo()) {
-                case APORTE -> dinheiro(aportado.add(valor));
-                case RESGATE -> aportadoDepoisDoResgate(aportado, saldo, movimentacao.getValor());
-                case RENDIMENTO -> aportado;
-            };
-
-            saldo = dinheiro(saldo.add(valor));
-
-            serie.add(movimentacaoInvestimentoMapper.toDTO(movimentacao, dinheiro(valor), saldo, aportado));
+            serie.add(movimentacaoInvestimentoMapper.toDTO(movimentacao, dinheiro(valorExibido), saldo, aportado, quantidade));
         }
 
         return serie;
+    }
+
+    private static BigDecimal cotacaoAtual(List<MovimentacaoInvestimentoDTO> serie) {
+        return serie.reversed()
+                .stream()
+                .map(MovimentacaoInvestimentoDTO::precoUnitario)
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private static BigDecimal precoMedio(Investimento investimento) {
+        if (investimento.getQuantidade() == null || investimento.getQuantidade().signum() <= 0) return null;
+
+        return investimento.getAportado().divide(investimento.getQuantidade(), 2, RoundingMode.HALF_UP);
     }
 
     private static List<PontoEvolucaoDTO> pontosDaCarteira(Collection<List<MovimentacaoInvestimentoDTO>> series, List<YearMonth> meses, LocalDate hoje) {
@@ -377,6 +532,82 @@ public class InvestimentoService {
         return dinheiro(aportado.multiply(parteQueFica));
     }
 
+    private static BigDecimal aportadoDepoisDaVenda(BigDecimal aportado, BigDecimal quantidade, BigDecimal restante) {
+        if (quantidade.signum() <= 0 || restante.signum() <= 0) {
+            return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        }
+
+        return aportado.multiply(restante).divide(quantidade, 2, RoundingMode.HALF_UP);
+    }
+
+    private static BigDecimal custoDaCompra(BigDecimal quantidade, BigDecimal precoUnitario, BigDecimal taxas) {
+        return dinheiro(quantidade.multiply(precoUnitario).add(Objects.requireNonNullElse(taxas, BigDecimal.ZERO)));
+    }
+
+    private static BigDecimal valorDaVenda(BigDecimal quantidade, BigDecimal precoUnitario, BigDecimal taxas) {
+        var valor = dinheiro(quantidade.multiply(precoUnitario).subtract(Objects.requireNonNullElse(taxas, BigDecimal.ZERO)));
+
+        if (valor.signum() <= 0) {
+            log.error("As taxas não podem passar do valor da venda!");
+            throw new TaxasMaioresQueVendaException("As taxas não podem passar do valor da venda!");
+        }
+
+        return valor;
+    }
+
+    private static void validarVenda(Investimento investimento, BigDecimal quantidade) {
+        if (quantidade.compareTo(investimento.getQuantidade()) > 0) {
+            var quantidadeAtual = investimento.getQuantidade().stripTrailingZeros().toPlainString();
+            var limite = investimento.getQuantidade().compareTo(BigDecimal.ONE) == 0 ? "da 1 ação" : "das %s ações".formatted(quantidadeAtual);
+            log.error("A venda não pode passar {} que você tem!", limite);
+            throw new VendaMaiorQueQuantidadeException("A venda não pode passar %s que você tem!".formatted(limite));
+        }
+    }
+
+    private static void validarPorValor(Investimento investimento) {
+        if (investimento.getQuantidade() != null) {
+            log.error("Nas ações, registre compras, vendas e cotações!");
+            throw new MovimentacaoIncompativelComInvestimentoException("Nas ações, registre compras, vendas e cotações!");
+        }
+    }
+
+    private static void validarPorQuantidade(Investimento investimento) {
+        if (investimento.getQuantidade() == null) {
+            log.error("Só ações com a quantidade informada registram compras, vendas e cotações!");
+            throw new MovimentacaoIncompativelComInvestimentoException("Só ações com a quantidade informada registram compras, vendas e cotações!");
+        }
+    }
+
+    private static void validarClasse(Investimento investimento, ClasseAtivo classeAtivo) {
+        var eraAcao = investimento.getClasseAtivo() == ClasseAtivo.ACOES;
+
+        if (eraAcao != (classeAtivo == ClasseAtivo.ACOES)) {
+            var mensagem = eraAcao
+                    ? "Ações não podem trocar de classe depois do cadastro!"
+                    : "Para acompanhar uma ação pela quantidade, cadastre-a como um investimento novo!";
+            log.error(mensagem);
+            throw new TrocaDeClasseDeAcaoException(mensagem);
+        }
+    }
+
+    private static String codigoDaAcao(String codigo) {
+        if (codigo == null || codigo.isBlank()) {
+            log.error("Informe o código da ação, como PETR4!");
+            throw new CodigoDaAcaoObrigatorioException("Informe o código da ação, como PETR4!");
+        }
+
+        return codigo.strip().toUpperCase(Locale.ROOT);
+    }
+
+    private static BigDecimal quantidadeDaAcao(BigDecimal quantidade) {
+        if (quantidade == null) {
+            log.error("Informe quantas ações você tem para acompanhar a cotação!");
+            throw new QuantidadeDeAcoesObrigatoriaException("Informe quantas ações você tem para acompanhar a cotação!");
+        }
+
+        return quantidade;
+    }
+
     private static void validarResgate(Investimento investimento, BigDecimal valor) {
         if (valor.compareTo(investimento.getValorAtual()) > 0) {
             var saldo = String.format(Locale.forLanguageTag("pt-BR"), "%,.2f", investimento.getValorAtual());
@@ -390,8 +621,8 @@ public class InvestimentoService {
 
         if (data.isBefore(ultimaAtualizacao)) {
             var formatada = ultimaAtualizacao.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-            log.error("A data do {} não pode ser anterior à última atualização, de {}!", movimento, formatada);
-            throw new DataAnteriorAUltimaAtualizacaoException("A data do %s não pode ser anterior à última atualização, de %s!".formatted(movimento, formatada));
+            log.error("A data {} não pode ser anterior à última atualização, de {}!", movimento, formatada);
+            throw new DataAnteriorAUltimaAtualizacaoException("A data %s não pode ser anterior à última atualização, de %s!".formatted(movimento, formatada));
         }
     }
 
@@ -415,6 +646,44 @@ public class InvestimentoService {
         saldo.setDescricao("Saldo informado no cadastro");
 
         return saldo;
+    }
+
+    private static MovimentacaoInvestimento primeiraCompra(SalvarAcaoDTO salvarAcaoDTO) {
+        var compra = new MovimentacaoInvestimento();
+
+        compra.setTipo(TipoMovimentacaoInvestimento.APORTE);
+        compra.setData(salvarAcaoDTO.dataInicio());
+        compra.setQuantidade(salvarAcaoDTO.quantidade());
+        compra.setPrecoUnitario(salvarAcaoDTO.precoUnitario());
+        compra.setTaxas(salvarAcaoDTO.taxas());
+        compra.setValor(custoDaCompra(salvarAcaoDTO.quantidade(), salvarAcaoDTO.precoUnitario(), salvarAcaoDTO.taxas()));
+        compra.setDescricao("Primeira compra");
+
+        return compra;
+    }
+
+    private static MovimentacaoInvestimento cotacaoDoCadastro(SalvarAcaoDTO salvarAcaoDTO) {
+        var cotacao = new MovimentacaoInvestimento();
+
+        cotacao.setTipo(TipoMovimentacaoInvestimento.RENDIMENTO);
+        cotacao.setData(LocalDate.now());
+        cotacao.setPrecoUnitario(salvarAcaoDTO.cotacao());
+        cotacao.setSaldoInformado(dinheiro(salvarAcaoDTO.quantidade().multiply(salvarAcaoDTO.cotacao())));
+        cotacao.setDescricao("Cotação informada no cadastro");
+
+        return cotacao;
+    }
+
+    private static MovimentacaoInvestimento posicaoInformada(Investimento investimento, BigDecimal quantidade) {
+        var posicao = new MovimentacaoInvestimento();
+
+        posicao.setTipo(TipoMovimentacaoInvestimento.RENDIMENTO);
+        posicao.setData(LocalDate.now());
+        posicao.setQuantidade(quantidade);
+        posicao.setSaldoInformado(investimento.getValorAtual());
+        posicao.setPrecoUnitario(investimento.getValorAtual().divide(quantidade, 2, RoundingMode.HALF_UP));
+
+        return posicao;
     }
 
     private static ReservaEmergenciaDTO reserva(List<Investimento> investimentos) {
@@ -460,7 +729,7 @@ public class InvestimentoService {
         var rendimento = investimento.getValorAtual().subtract(investimento.getAportado());
 
         return new PosicaoDTO(
-                investimentoMapper.toDTO(investimento),
+                paraDTO(investimento),
                 rendimento,
                 fracao(rendimento, investimento.getAportado()),
                 fracao(investimento.getValorAtual(), valorDaCarteira));

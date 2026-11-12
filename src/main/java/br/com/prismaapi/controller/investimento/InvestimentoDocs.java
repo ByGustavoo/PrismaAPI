@@ -5,10 +5,14 @@ import br.com.prismaapi.model.dto.investimento.AtualizarInvestimentoDTO;
 import br.com.prismaapi.model.dto.investimento.CarteiraDTO;
 import br.com.prismaapi.model.dto.investimento.ExtratoInvestimentoDTO;
 import br.com.prismaapi.model.dto.investimento.InvestimentoDTO;
+import br.com.prismaapi.model.dto.investimento.SalvarAcaoDTO;
 import br.com.prismaapi.model.dto.investimento.SalvarAporteInvestimentoDTO;
+import br.com.prismaapi.model.dto.investimento.SalvarCompraAcaoDTO;
+import br.com.prismaapi.model.dto.investimento.SalvarCotacaoAcaoDTO;
 import br.com.prismaapi.model.dto.investimento.SalvarInvestimentoDTO;
 import br.com.prismaapi.model.dto.investimento.SalvarResgateInvestimentoDTO;
 import br.com.prismaapi.model.dto.investimento.SalvarSaldoInvestimentoDTO;
+import br.com.prismaapi.model.dto.investimento.SalvarVendaAcaoDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -99,6 +103,10 @@ public interface InvestimentoDocs {
                     description = "Corpo da requisição inválido!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
+                    responseCode = "422",
+                    description = "Ação cadastrada por valor ou conta inexistente!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(
                     responseCode = "500",
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
@@ -118,8 +126,42 @@ public interface InvestimentoDocs {
 
                     Valor atual abaixo do aportado é aceito, porque posição no prejuízo existe. A data \
                     da aplicação inicial não pode estar no futuro. Nome, instituição e observações são \
-                    gravados sem os espaços das pontas.""")
+                    gravados sem os espaços das pontas. Ações não são aceitas aqui: elas são cadastradas \
+                    pela quantidade, em POST /investimentos/acoes.""")
     ResponseEntity<InvestimentoDTO> salvarInvestimento(@RequestBody @Valid SalvarInvestimentoDTO salvarInvestimentoDTO);
+
+    @PostMapping("/acoes")
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "Ação cadastrada com sucesso!"),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Corpo da requisição inválido!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(
+                    responseCode = "422",
+                    description = "Conta inexistente!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Erro interno do servidor!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
+    })
+    @Operation(
+            summary = "Cadastra uma ação pela quantidade",
+            description = """
+                    Cadastra uma ação na classe ACOES e devolve o registro salvo. O servidor grava a \
+                    primeira compra na data de início, com a descrição "Primeira compra": o aportado é \
+                    quantidade vezes preço por ação mais as taxas, e o saldo, quantidade vezes o preço. \
+                    Com cotacao diferente do preço, ele grava também a cotação na data de hoje, com a \
+                    descrição "Cotação informada no cadastro", e o saldo passa a ser quantidade vezes \
+                    a cotação.
+
+                    O código é gravado em maiúsculas. idConta, reservaEmergencia e as demais regras são \
+                    as do cadastro por valor. A resposta traz quantidade, precoMedio (aportado dividido \
+                    pela quantidade) e cotacao.""")
+    ResponseEntity<InvestimentoDTO> salvarAcao(@RequestBody @Valid SalvarAcaoDTO salvarAcaoDTO);
 
     @PutMapping("/{id}")
     @Operation(
@@ -267,6 +309,117 @@ public interface InvestimentoDocs {
             @PathVariable UUID id,
 
             @RequestBody @Valid SalvarSaldoInvestimentoDTO salvarSaldoInvestimentoDTO);
+
+    @PostMapping("/{id}/compras")
+    @Operation(
+            summary = "Registra a compra de ações",
+            description = """
+                    Grava uma compra e devolve a ação já atualizada. A quantidade soma à posição, o \
+                    aportado soma quantidade vezes preço mais as taxas, e o preço da compra passa a ser \
+                    a cotação: o saldo é a quantidade nova vezes esse preço.
+
+                    Só vale para ações com a quantidade informada; nos demais investimentos responde \
+                    422. A data segue a regra do aporte, e com idConta o servidor grava a \
+                    transferência "Compra — <código>" da conta para a ação.""")
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "Compra registrada com sucesso!"),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Corpo da requisição ou id inválido!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Investimento não encontrado!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(
+                    responseCode = "422",
+                    description = "Investimento sem quantidade, data anterior à última atualização ou conta inexistente!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Erro interno do servidor!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
+    })
+    ResponseEntity<InvestimentoDTO> registrarCompra(
+            @Parameter(description = "Id do investimento")
+            @PathVariable UUID id,
+
+            @RequestBody @Valid SalvarCompraAcaoDTO salvarCompraAcaoDTO);
+
+    @PostMapping("/{id}/vendas")
+    @Operation(
+            summary = "Registra a venda de ações",
+            description = """
+                    Grava uma venda e devolve a ação já atualizada. A quantidade sai da posição, o \
+                    aportado diminui pelo preço médio das ações vendidas (na mesma proporção da \
+                    quantidade) e o preço da venda passa a ser a cotação. O valor recebido é quantidade \
+                    vezes preço menos as taxas.
+
+                    A venda não passa da quantidade que se tem, e as taxas não passam do valor da \
+                    venda. Com idConta, o valor recebido volta para a conta pela transferência \
+                    "Venda — <código>".""")
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "Venda registrada com sucesso!"),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Corpo da requisição ou id inválido!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Investimento não encontrado!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(
+                    responseCode = "422",
+                    description = "Venda maior que a quantidade, taxas maiores que a venda, investimento sem quantidade, data anterior à última atualização ou conta inexistente!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Erro interno do servidor!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
+    })
+    ResponseEntity<InvestimentoDTO> registrarVenda(
+            @Parameter(description = "Id do investimento")
+            @PathVariable UUID id,
+
+            @RequestBody @Valid SalvarVendaAcaoDTO salvarVendaAcaoDTO);
+
+    @PostMapping("/{id}/cotacoes")
+    @Operation(
+            summary = "Informa a cotação de uma ação",
+            description = """
+                    Grava a cotação e devolve a ação já atualizada: o saldo passa a ser a quantidade \
+                    vezes a cotação, e a diferença para o saldo anterior aparece no extrato como \
+                    rendimento. A data segue a regra do saldo.""")
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "Cotação registrada com sucesso!"),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Corpo da requisição ou id inválido!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Investimento não encontrado!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(
+                    responseCode = "422",
+                    description = "Investimento sem quantidade ou data anterior à última atualização!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Erro interno do servidor!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
+    })
+    ResponseEntity<InvestimentoDTO> registrarCotacao(
+            @Parameter(description = "Id do investimento")
+            @PathVariable UUID id,
+
+            @RequestBody @Valid SalvarCotacaoAcaoDTO salvarCotacaoAcaoDTO);
 
     @DeleteMapping("/{id}")
     @Operation(

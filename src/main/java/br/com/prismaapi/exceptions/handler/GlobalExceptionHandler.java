@@ -721,6 +721,97 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(response);
     }
 
+    @ExceptionHandler(CadastroDeAcaoPorValorException.class)
+    public ResponseEntity<ErrorResponseDTO> handleCadastroDeAcaoPorValorException(CadastroDeAcaoPorValorException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.UNPROCESSABLE_CONTENT.value(),
+                "Cadastro de Ação por Valor!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/cadastro-de-acao-por-valor",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(response);
+    }
+
+    @ExceptionHandler(TrocaDeClasseDeAcaoException.class)
+    public ResponseEntity<ErrorResponseDTO> handleTrocaDeClasseDeAcaoException(TrocaDeClasseDeAcaoException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.UNPROCESSABLE_CONTENT.value(),
+                "Troca de Classe de Ação!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/troca-de-classe-de-acao",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(response);
+    }
+
+    @ExceptionHandler(MovimentacaoIncompativelComInvestimentoException.class)
+    public ResponseEntity<ErrorResponseDTO> handleMovimentacaoIncompativelComInvestimentoException(MovimentacaoIncompativelComInvestimentoException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.UNPROCESSABLE_CONTENT.value(),
+                "Movimentação Incompatível com o Investimento!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/movimentacao-incompativel-com-investimento",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(response);
+    }
+
+    @ExceptionHandler(VendaMaiorQueQuantidadeException.class)
+    public ResponseEntity<ErrorResponseDTO> handleVendaMaiorQueQuantidadeException(VendaMaiorQueQuantidadeException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.UNPROCESSABLE_CONTENT.value(),
+                "Venda Maior que a Quantidade!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/venda-maior-que-quantidade",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(response);
+    }
+
+    @ExceptionHandler(TaxasMaioresQueVendaException.class)
+    public ResponseEntity<ErrorResponseDTO> handleTaxasMaioresQueVendaException(TaxasMaioresQueVendaException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.UNPROCESSABLE_CONTENT.value(),
+                "Taxas Maiores que a Venda!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/taxas-maiores-que-venda",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(response);
+    }
+
+    @ExceptionHandler(CodigoDaAcaoObrigatorioException.class)
+    public ResponseEntity<ErrorResponseDTO> handleCodigoDaAcaoObrigatorioException(CodigoDaAcaoObrigatorioException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.UNPROCESSABLE_CONTENT.value(),
+                "Código da Ação Obrigatório!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/codigo-da-acao-obrigatorio",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(response);
+    }
+
+    @ExceptionHandler(QuantidadeDeAcoesObrigatoriaException.class)
+    public ResponseEntity<ErrorResponseDTO> handleQuantidadeDeAcoesObrigatoriaException(QuantidadeDeAcoesObrigatoriaException ex, HttpServletRequest pHttpServletRequest) {
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.UNPROCESSABLE_CONTENT.value(),
+                "Quantidade de Ações Obrigatória!",
+                pHttpServletRequest.getRequestURI(),
+                "/PrismaAPI/problems/quantidade-de-acoes-obrigatoria",
+                ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(response);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDTO> handleInternalServerErrorException(Exception ex, HttpServletRequest pHttpServletRequest) {
 
