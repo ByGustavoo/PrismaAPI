@@ -11,6 +11,8 @@ public record FaturaDTO(
 
         String nomeCartao,
 
+        String mes,
+
         String dataVencimento,
 
         SituacaoFatura situacao

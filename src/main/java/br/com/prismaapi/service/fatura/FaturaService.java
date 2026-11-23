@@ -203,14 +203,33 @@ public class FaturaService {
 
     @Transactional(readOnly = true)
     public FaturaDTO faturaEmDestaque(YearMonth mes, LocalDate hoje) {
-        var cartoes = cartaoRepository.findByTipo(TipoCartao.CREDITO);
-        var parcelas = compraParceladaRepository.buscarParcelasAte(mes.atDay(1));
+        var cartoes = cartaoRepository.findByTipo(TipoCartao.CREDITO)
+                .stream()
+                .filter(FaturaService::temCicloDefinido)
+                .toList();
+
         var pagamentos = pagamentosPorCompra();
+        var faturasDoMes = faturasDoMes(cartoes, mes, hoje, pagamentos);
+
+        if (!mes.equals(YearMonth.from(hoje)) || faturasDoMes.stream().anyMatch(fatura -> fatura.situacao() != SituacaoFatura.PAGA)) {
+            return destaque(faturasDoMes);
+        }
+
+        var faturasDoProximoMes = faturasDoMes(cartoes, mes.plusMonths(1), hoje, pagamentos);
+        return faturasDoProximoMes.isEmpty() ? destaque(faturasDoMes) : destaque(faturasDoProximoMes);
+    }
+
+    private List<FaturaDTO> faturasDoMes(List<Cartao> cartoes, YearMonth mes, LocalDate hoje, Map<UUID, Map<Integer, LocalDate>> pagamentos) {
+        var parcelas = compraParceladaRepository.buscarParcelasAte(mes.atDay(1));
 
         return cartoes.stream()
-                .filter(FaturaService::temCicloDefinido)
                 .map(cartao -> montar(cartao, mes, hoje, parcelas, pagamentos))
                 .filter(fatura -> fatura.total().signum() > 0)
+                .toList();
+    }
+
+    private static FaturaDTO destaque(List<FaturaDTO> faturas) {
+        return faturas.stream()
                 .max(Comparator.comparing((FaturaDTO fatura) -> fatura.situacao() == SituacaoFatura.ABERTA)
                         .thenComparing(FaturaDTO::total))
                 .orElse(null);
@@ -440,6 +459,7 @@ public class FaturaService {
                 valorTotal,
                 valorTotal.subtract(valorPago),
                 cartao.getNome(),
+                mes.toString(),
                 vencimento.toString(),
                 situacao(aberturaDoCiclo, fechamento, vencimento, hoje, quitada(valorTotal, valorPago)));
     }
