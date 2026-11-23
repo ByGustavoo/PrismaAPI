@@ -390,6 +390,10 @@ mudar um sem os outros quebra rotas, migrations ou logs:
   origem, e não cartão de crédito. Lançamentos de vale gravados antes disso não foram recalculados: o
   saldo digitado no cadastro do cartão continua valendo como ponto de partida.
 - `faturaAtual` do dashboard vem `null` quando nenhum cartão teve movimento no mês.
+- **No mês corrente, fatura do mês paga cede o card à seguinte.** `faturaEmDestaque` monta as faturas
+  que fecham no mês; se o recorte é o mês de hoje e todas estão `PAGA` (ou não há nenhuma), devolve as
+  do mês seguinte. Fatura aberta quitada ("Paga até agora") não cede, porque ainda recebe compras, e
+  mês passado nunca avança. `FaturaDTO.mes` diz de qual fatura se trata, para o card trocar o rótulo.
 - `GET /v1/sistema/versao` lê o `BuildProperties` gerado pelo `buildInfo()` do `build.gradle.kts`, que
   grava `build.time` já truncado em segundos e um `build.data` extra, a mesma data em
   `dd/MM/uuuu - HH:mm:ss`. O `banner.txt` mostra essas duas linhas no start porque o
