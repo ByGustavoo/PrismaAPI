@@ -3,9 +3,11 @@
 ## O que é
 
 API REST do PrismaWeb, em Spring Boot. Concentra as regras de negócio, a persistência em
-PostgreSQL e os endpoints consumidos pela aplicação web. O contrato completo — rota, corpo,
-status, validação e regra de cálculo de cada endpoint — vive no `API_CONTRACT.md` do PrismaWeb.
-Mudou comportamento aqui, muda lá no mesmo trabalho.
+PostgreSQL e os endpoints consumidos pela aplicação web. O contrato é o que o PrismaWeb consome: as
+rotas em `src/api/rotasApi.ts` e os tipos em `src/types/dto/` de lá; deste lado, cada endpoint se
+documenta no `*Docs` (Swagger) e no `collection.json`. Mudou comportamento aqui, muda lá no mesmo
+trabalho. Quando o PrismaWeb passa a depender de algo que esta API ainda não tem, a pendência fica num
+`API_CONTRACT.md` na raiz de lá, que só existe até ela ser implementada.
 
 ## Tipo
 
@@ -159,7 +161,7 @@ relatório HTML em `build/reports/jacoco`.
   transação; não conte com lazy loading no controller
 - Rotas em português, em kebab-case sem acento (`/v1/contas/origens`,
   `/v1/recorrentes`, `/v1/metas/{id}/precos`). Rota é contrato com o PrismaWeb: mudou
-  aqui, muda no `src/api/rotasApi.ts` e no `API_CONTRACT.md` de lá no mesmo trabalho
+  aqui, muda no `src/api/rotasApi.ts` de lá no mesmo trabalho
 - Métodos de controller e de `*Docs` levam o nome da ação, não do verbo HTTP: `listarCartoes`,
   `buscarFatura`, `salvarCartao`, `atualizarCartao`, `deletarCartao`
 - Mapeamento entidade ↔ DTO com MapStruct, não manualmente. Um método de um argumento que devolve o
@@ -197,7 +199,7 @@ mudar um sem os outros quebra rotas, migrations ou logs:
 
 ## Estado atual
 
-- Todos os endpoints do `API_CONTRACT.md` estão implementados, com o esquema em `V1.0` e o catálogo
+- Todos os endpoints que o PrismaWeb consome estão implementados, com o esquema em `V1.0` e o catálogo
   fixo de 18 categorias: 17 em `V1.1` e "Benefícios" (receita) em `V2.6` (`token_cor` de 1 a 16, sem
   cor repetida dentro do mesmo tipo). A migração de categorias usa
   `ON CONFLICT (nome, tipo) DO UPDATE SET token_cor` para rodar sobre bancos que já tinham as
