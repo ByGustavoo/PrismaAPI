@@ -1,7 +1,10 @@
 package br.com.prismaapi.service.lancamento;
 
+import br.com.prismaapi.config.cache.LimparCachesDeLancamento;
+import br.com.prismaapi.enums.DirecaoOrdenacao;
 import br.com.prismaapi.enums.FormaLancamento;
 import br.com.prismaapi.enums.Frequencia;
+import br.com.prismaapi.enums.OrdenacaoLancamento;
 import br.com.prismaapi.enums.SituacaoLancamento;
 import br.com.prismaapi.enums.TipoCartao;
 import br.com.prismaapi.enums.TipoCategoria;
@@ -9,28 +12,30 @@ import br.com.prismaapi.enums.TipoLancamento;
 import br.com.prismaapi.exceptions.*;
 import br.com.prismaapi.model.dto.lancamento.FiltroLancamentoDTO;
 import br.com.prismaapi.model.dto.lancamento.LancamentoDTO;
+import br.com.prismaapi.model.dto.lancamento.PaginaLancamentosDTO;
 import br.com.prismaapi.model.dto.lancamento.SalvarLancamentoDTO;
 import br.com.prismaapi.model.entity.cartao.Cartao;
 import br.com.prismaapi.model.entity.conta.Conta;
 import br.com.prismaapi.model.entity.lancamento.Lancamento;
 import br.com.prismaapi.model.mapper.lancamento.LancamentoMapper;
 import br.com.prismaapi.repository.cartao.CartaoRepository;
-import br.com.prismaapi.repository.categoria.CategoriaRepository;
 import br.com.prismaapi.repository.conta.ContaRepository;
 import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import br.com.prismaapi.repository.lancamento.LancamentoSpecification;
+import br.com.prismaapi.service.categoria.CategoriaService;
 import br.com.prismaapi.service.recorrente.RecorrenteService;
+import br.com.prismaapi.util.PeriodoUtil;
+import br.com.prismaapi.util.TextoUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -42,26 +47,36 @@ public class LancamentoService {
     private final ContaRepository contaRepository;
     private final CartaoRepository cartaoRepository;
     private final LancamentoMapper lancamentoMapper;
+    private final CategoriaService categoriaService;
     private final RecorrenteService recorrenteService;
-    private final CategoriaRepository categoriaRepository;
     private final LancamentoRepository lancamentoRepository;
-
-    private static final Sort MAIS_RECENTES_PRIMEIRO = Sort.by(Sort.Order.desc("data"), Sort.Order.desc("dataCriacao"));
 
     @Cacheable("lancamentos")
     @Transactional(readOnly = true)
-    public List<LancamentoDTO> listar(FiltroLancamentoDTO filtro) {
+    public PaginaLancamentosDTO listar(FiltroLancamentoDTO filtro) {
         log.info("Listando os lançamentos... - Filtro: {}", filtro);
         validar(filtro);
 
-        return lancamentoRepository.findAll(LancamentoSpecification.filtrar(filtro), MAIS_RECENTES_PRIMEIRO)
-                .stream()
-                .map(lancamentoMapper::toDTO)
-                .toList();
+        var especificacao = LancamentoSpecification.filtrar(filtro);
+        var pagina = lancamentoRepository.findAll(especificacao, PageRequest.of(filtro.pagina(), filtro.tamanho(), ordenar(filtro)));
+
+        return new PaginaLancamentosDTO(
+                pagina.getContent().stream().map(lancamentoMapper::toDTO).toList(),
+                pagina.getNumber(),
+                pagina.getSize(),
+                pagina.getTotalElements(),
+                pagina.getTotalPages(),
+                lancamentoRepository.somarResultado(especificacao));
+    }
+
+    @Transactional(readOnly = true)
+    public LancamentoDTO buscarPorId(UUID id) {
+        log.info("Buscando o lançamento... - ID: [{}]", id);
+        return lancamentoMapper.toDTO(buscar(id));
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "contas", "dashboard", "faturas", "lancamentos", "orcamentos", "previsao", "recorrentes", "relatorios"}, allEntries = true)
+    @LimparCachesDeLancamento
     public LancamentoDTO salvar(SalvarLancamentoDTO salvarLancamentoDTO) {
         log.info("Salvando o lançamento... - Descrição: {} - Tipo: {}", salvarLancamentoDTO.descricao(), salvarLancamentoDTO.tipo());
         var lancamento = lancamentoMapper.toEntity(salvarLancamentoDTO);
@@ -75,7 +90,7 @@ public class LancamentoService {
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "contas", "dashboard", "faturas", "lancamentos", "orcamentos", "previsao", "recorrentes", "relatorios"}, allEntries = true)
+    @LimparCachesDeLancamento
     public LancamentoDTO atualizar(UUID id, SalvarLancamentoDTO salvarLancamentoDTO) {
         log.info("Atualizando o lançamento... - ID: [{}]", id);
         var lancamento = buscar(id);
@@ -92,7 +107,7 @@ public class LancamentoService {
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "contas", "dashboard", "faturas", "lancamentos", "orcamentos", "previsao", "recorrentes", "relatorios"}, allEntries = true)
+    @LimparCachesDeLancamento
     public void deletar(UUID id) {
         log.info("Deletando o lançamento... - ID: [{}]", id);
         var lancamento = buscar(id);
@@ -114,7 +129,7 @@ public class LancamentoService {
     }
 
     private Lancamento buscar(UUID id) {
-        return lancamentoRepository.findById(id)
+        return lancamentoRepository.buscarCompleto(id)
                 .orElseThrow(() -> {
                     log.warn("Lançamento não encontrado! - ID: [{}]", id);
                     return new LancamentoNaoEncontradoException("Lançamento não encontrado!");
@@ -124,8 +139,8 @@ public class LancamentoService {
     private void preencher(Lancamento lancamento, SalvarLancamentoDTO salvarLancamentoDTO) {
         validarSituacao(salvarLancamentoDTO);
 
-        lancamento.setDescricao(salvarLancamentoDTO.descricao().strip());
-        lancamento.setObservacoes(textoOuNulo(salvarLancamentoDTO.observacoes()));
+        lancamento.setDescricao(salvarLancamentoDTO.descricao());
+        lancamento.setObservacoes(TextoUtil.textoOuNulo(salvarLancamentoDTO.observacoes()));
 
         lancamento.setConta(null);
         lancamento.setCartao(null);
@@ -137,7 +152,7 @@ public class LancamentoService {
         if (salvarLancamentoDTO.tipo() == TipoLancamento.TRANSFERENCIA) {
             vincularContaDestino(lancamento, salvarLancamentoDTO.idContaDestino());
         } else {
-            vincularCategoria(lancamento, salvarLancamentoDTO.idCategoria(), salvarLancamentoDTO.tipo());
+            lancamento.setCategoria(categoriaService.buscarDoTipo(salvarLancamentoDTO.idCategoria(), TipoCategoria.valueOf(salvarLancamentoDTO.tipo().name())));
         }
 
         validarForma(lancamento, salvarLancamentoDTO.forma());
@@ -194,27 +209,6 @@ public class LancamentoService {
         }
 
         lancamento.setContaDestino(contaDestino);
-    }
-
-    private void vincularCategoria(Lancamento lancamento, UUID idCategoria, TipoLancamento tipo) {
-        var categoria = Optional.ofNullable(idCategoria)
-                .flatMap(categoriaRepository::findById)
-                .orElseThrow(() -> {
-                    log.error("A categoria informada não existe!");
-                    return new CategoriaInexistenteException("A categoria informada não existe!");
-                });
-
-        if (tipo == TipoLancamento.DESPESA && categoria.getTipo() != TipoCategoria.DESPESA) {
-            log.error("Escolha uma categoria de despesa!");
-            throw new CategoriaDeReceitaException("Escolha uma categoria de despesa!");
-        }
-
-        if (tipo == TipoLancamento.RECEITA && categoria.getTipo() != TipoCategoria.RECEITA) {
-            log.error("Escolha uma categoria de receita!");
-            throw new CategoriaDeDespesaException("Escolha uma categoria de receita!");
-        }
-
-        lancamento.setCategoria(categoria);
     }
 
     private static void movimentarSaldos(Lancamento lancamento, BigDecimal sentido) {
@@ -286,13 +280,29 @@ public class LancamentoService {
     }
 
     private static void validar(FiltroLancamentoDTO filtro) {
-        if (filtro.dataInicial() != null && filtro.dataFinal() != null && filtro.dataInicial().isAfter(filtro.dataFinal())) {
-            log.warn("O período informado é inválido!");
-            throw new RequisicaoInvalidaException("O período informado é inválido!");
+        PeriodoUtil.validar(filtro.dataInicial(), filtro.dataFinal());
+
+        if (filtro.pagina() < 0) {
+            log.warn("A página informada é inválida! - Página: {}", filtro.pagina());
+            throw new RequisicaoInvalidaException("A página precisa ser zero ou maior!");
+        }
+
+        if (filtro.tamanho() < 1 || filtro.tamanho() > 100) {
+            log.warn("O tamanho de página informado é inválido! - Tamanho: {}", filtro.tamanho());
+            throw new RequisicaoInvalidaException("O tamanho da página precisa ficar entre 1 e 100!");
         }
     }
 
-    private static String textoOuNulo(String texto) {
-        return texto == null || texto.isBlank() ? null : texto.strip();
+    private static Sort ordenar(FiltroLancamentoDTO filtro) {
+        var direcao = filtro.direcao() == DirecaoOrdenacao.ASC ? Sort.Direction.ASC : Sort.Direction.DESC;
+        var maisRecentes = Sort.by(Sort.Order.desc("data"), Sort.Order.desc("dataCriacao"));
+
+        var principal = switch (filtro.ordenacao() == null ? OrdenacaoLancamento.DATA : filtro.ordenacao()) {
+            case DATA -> Sort.by(new Sort.Order(direcao, "data"), new Sort.Order(direcao, "dataCriacao"));
+            case DESCRICAO -> Sort.by(new Sort.Order(direcao, "descricao").ignoreCase()).and(maisRecentes);
+            case VALOR -> Sort.by(new Sort.Order(direcao, "valor")).and(maisRecentes);
+        };
+
+        return principal.and(Sort.by(Sort.Order.asc("id")));
     }
 }

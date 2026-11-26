@@ -1,8 +1,10 @@
 package br.com.prismaapi.service.lancamento;
 
 import br.com.prismaapi.config.AbstractTest;
+import br.com.prismaapi.enums.DirecaoOrdenacao;
 import br.com.prismaapi.enums.FormaLancamento;
 import br.com.prismaapi.enums.Frequencia;
+import br.com.prismaapi.enums.OrdenacaoLancamento;
 import br.com.prismaapi.enums.SituacaoLancamento;
 import br.com.prismaapi.enums.TipoLancamento;
 import br.com.prismaapi.model.dto.lancamento.FiltroLancamentoDTO;
@@ -42,10 +44,22 @@ class LancamentoServiceTest extends AbstractTest {
                 LocalDate.now(),
                 null,
                 null,
-                SituacaoLancamento.PAGO);
+                SituacaoLancamento.PAGO,
+                0,
+                25,
+                OrdenacaoLancamento.VALOR,
+                DirecaoOrdenacao.ASC);
 
         var lancamentos = Assertions.assertDoesNotThrow(() -> lancamentoService.listar(filtroLancamentoDTO));
         Assertions.assertNotNull(lancamentos);
+    }
+
+    @Test
+    void buscarPorIdTest() {
+        var idLancamento = buscar(lancamentoRepository, lancamento -> lancamento.getDescricao().equals("Aluguel")).getId();
+
+        var lancamento = Assertions.assertDoesNotThrow(() -> lancamentoService.buscarPorId(idLancamento));
+        Assertions.assertNotNull(lancamento);
     }
 
     @Test

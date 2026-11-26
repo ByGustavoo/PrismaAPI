@@ -1,10 +1,14 @@
 package br.com.prismaapi.model.mapper.preferenciasavisos;
 
+import br.com.prismaapi.enums.TipoAviso;
 import br.com.prismaapi.model.dto.aviso.PreferenciasAvisosDTO;
 import br.com.prismaapi.model.entity.preferenciasavisos.PreferenciasAvisos;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
+
+import java.util.List;
+import java.util.Set;
 
 @Mapper(componentModel = "spring")
 public interface PreferenciasAvisosMapper {
@@ -14,4 +18,8 @@ public interface PreferenciasAvisosMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "dataAtualizacao", ignore = true)
     void updateEntity(PreferenciasAvisosDTO preferenciasAvisosDTO, @MappingTarget PreferenciasAvisos preferenciasAvisos);
+
+    default List<TipoAviso> toLista(Set<TipoAviso> tipos) {
+        return tipos == null ? null : tipos.stream().sorted().toList();
+    }
 }

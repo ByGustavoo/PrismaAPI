@@ -1,5 +1,6 @@
 package br.com.prismaapi.service.meta;
 
+import br.com.prismaapi.config.cache.LimparCachesDeMeta;
 import br.com.prismaapi.enums.LeituraMeta;
 import br.com.prismaapi.enums.SituacaoMeta;
 import br.com.prismaapi.enums.Tendencia;
@@ -20,21 +21,20 @@ import br.com.prismaapi.model.mapper.metapreco.MetaPrecoMapper;
 import br.com.prismaapi.repository.meta.MetaRepository;
 import br.com.prismaapi.repository.meta.MetaSpecification;
 import br.com.prismaapi.repository.metapreco.MetaPrecoRepository;
+import br.com.prismaapi.util.ValorUtil;
+import br.com.prismaapi.util.TextoUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.text.Collator;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -50,7 +50,6 @@ public class MetaService {
     private final MetaPrecoRepository metaPrecoRepository;
     private static final BigDecimal FOLGA_DOS_EXTREMOS = new BigDecimal("0.05");
     private static final BigDecimal FAIXA_DA_ESTABILIDADE = new BigDecimal("0.005");
-    private static final Collator ORDEM_ALFABETICA = Collator.getInstance(Locale.forLanguageTag("pt-BR"));
 
     @Cacheable("metas")
     @Transactional(readOnly = true)
@@ -59,7 +58,7 @@ public class MetaService {
         var metas = metaRepository.findAll(MetaSpecification.filtrar(situacao, busca));
 
         if (metas.isEmpty()) {
-            var zero = somar(Stream.empty());
+            var zero = ValorUtil.somarEmReais(Stream.empty());
             return new ResumoMetasDTO(List.of(), 0, 0, zero, zero, zero, zero);
         }
 
@@ -70,15 +69,15 @@ public class MetaService {
         var itens = metas.stream()
                 .map(meta -> acompanhar(meta, historicos.get(meta.getId())))
                 .sorted(Comparator.comparing((AcompanhamentoMetaDTO item) -> item.analise().ultimaAtualizacao(), Comparator.reverseOrder())
-                        .thenComparing(item -> item.meta().nome(), ORDEM_ALFABETICA))
+                        .thenComparing(item -> item.meta().nome(), TextoUtil.ORDEM_ALFABETICA))
                 .toList();
 
         var acompanhando = itens.stream()
                 .filter(item -> item.meta().situacao() == SituacaoMeta.ACOMPANHANDO)
                 .toList();
 
-        var totalAtual = somar(acompanhando.stream().map(item -> item.analise().precoAtual()));
-        var totalInicial = somar(acompanhando.stream().map(item -> item.analise().precoInicial()));
+        var totalAtual = ValorUtil.somarEmReais(acompanhando.stream().map(item -> item.analise().precoAtual()));
+        var totalInicial = ValorUtil.somarEmReais(acompanhando.stream().map(item -> item.analise().precoInicial()));
 
         return new ResumoMetasDTO(
                 itens,
@@ -87,11 +86,11 @@ public class MetaService {
                 totalAtual,
                 totalInicial,
                 totalAtual.subtract(totalInicial),
-                somar(acompanhando.stream().map(item -> item.analise().economia())));
+                ValorUtil.somarEmReais(acompanhando.stream().map(item -> item.analise().economia())));
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "metas"}, allEntries = true)
+    @LimparCachesDeMeta
     public MetaDTO salvar(SalvarMetaDTO salvarMetaDTO) {
         log.info("Salvando a meta... - Nome: {}", salvarMetaDTO.nome());
         var meta = metaMapper.toEntity(salvarMetaDTO);
@@ -104,7 +103,7 @@ public class MetaService {
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "metas"}, allEntries = true)
+    @LimparCachesDeMeta
     public MetaDTO atualizar(UUID id, AtualizarMetaDTO atualizarMetaDTO) {
         log.info("Atualizando a meta... - ID: [{}]", id);
         var meta = buscar(id);
@@ -116,7 +115,7 @@ public class MetaService {
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "metas"}, allEntries = true)
+    @LimparCachesDeMeta
     public MetaDTO registrarPreco(UUID id, SalvarMetaPrecoDTO salvarMetaPrecoDTO) {
         log.info("Registrando o preço da meta... - ID: [{}] - Data: {}", id, salvarMetaPrecoDTO.data());
         var meta = buscar(id);
@@ -127,7 +126,7 @@ public class MetaService {
             throw new DataAnteriorAoPrimeiroPrecoException("A data do registro não pode ser anterior ao primeiro preço!");
         }
 
-        if (metaPrecoRepository.existsByMetaIdAndDataAndPreco(id, salvarMetaPrecoDTO.data(), salvarMetaPrecoDTO.preco())) {
+        if (historico.stream().anyMatch(preco -> preco.getData().equals(salvarMetaPrecoDTO.data()) && preco.getPreco().compareTo(salvarMetaPrecoDTO.preco()) == 0)) {
             log.error("Já existe um registro com esse preço nesta data!");
             throw new PrecoDuplicadoException("Já existe um registro com esse preço nesta data!");
         }
@@ -139,7 +138,7 @@ public class MetaService {
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "metas"}, allEntries = true)
+    @LimparCachesDeMeta
     public void deletar(UUID id) {
         log.info("Deletando a meta... - ID: [{}]", id);
         metaRepository.delete(buscar(id));
@@ -157,7 +156,7 @@ public class MetaService {
         var preco = metaPrecoMapper.toEntity(salvarMetaPrecoDTO);
 
         preco.setMeta(meta);
-        preco.setObservacao(textoOuNulo(salvarMetaPrecoDTO.observacao()));
+        preco.setObservacao(TextoUtil.textoOuNulo(salvarMetaPrecoDTO.observacao()));
 
         return preco;
     }
@@ -232,17 +231,9 @@ public class MetaService {
     }
 
     private static void preencher(Meta meta, String nome, String url, String urlImagem, String observacoes) {
-        meta.setNome(nome.strip());
-        meta.setUrl(textoOuNulo(url));
-        meta.setUrlImagem(textoOuNulo(urlImagem));
-        meta.setObservacoes(textoOuNulo(observacoes));
-    }
-
-    private static BigDecimal somar(Stream<BigDecimal> valores) {
-        return valores.reduce(BigDecimal.ZERO, BigDecimal::add).setScale(2, RoundingMode.HALF_UP);
-    }
-
-    private static String textoOuNulo(String texto) {
-        return texto == null || texto.isBlank() ? null : texto.strip();
+        meta.setNome(nome);
+        meta.setUrl(TextoUtil.textoOuNulo(url));
+        meta.setUrlImagem(TextoUtil.textoOuNulo(urlImagem));
+        meta.setObservacoes(TextoUtil.textoOuNulo(observacoes));
     }
 }

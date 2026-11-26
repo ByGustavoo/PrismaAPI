@@ -9,19 +9,18 @@ import br.com.prismaapi.model.dto.dashboard.PeriodoDashboard;
 import br.com.prismaapi.model.dto.dashboard.fluxo.FluxoDTO;
 import br.com.prismaapi.model.dto.dashboard.gasto.categoria.GastoCategoriaDTO;
 import br.com.prismaapi.model.dto.dashboard.gasto.diario.GastoDiarioDTO;
-import br.com.prismaapi.model.dto.dashboard.projection.*;
+import br.com.prismaapi.model.dto.dashboard.projection.MovimentoDiarioProjecao;
 import br.com.prismaapi.model.dto.dashboard.saldo.SaldoDTO;
 import br.com.prismaapi.model.dto.dashboard.variacao.VariacaoDTO;
 import br.com.prismaapi.model.dto.lancamento.LancamentoDTO;
-import br.com.prismaapi.model.entity.categoria.Categoria;
 import br.com.prismaapi.model.mapper.categoria.CategoriaMapper;
 import br.com.prismaapi.model.mapper.lancamento.LancamentoMapper;
-import br.com.prismaapi.repository.categoria.CategoriaRepository;
-import br.com.prismaapi.repository.investimento.InvestimentoRepository;
 import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import br.com.prismaapi.service.fatura.FaturaService;
 import br.com.prismaapi.service.investimento.InvestimentoService;
 import br.com.prismaapi.service.saldo.SaldoService;
+import br.com.prismaapi.util.PeriodoUtil;
+import br.com.prismaapi.util.ValorUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
@@ -30,11 +29,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.YearMonth;
-import java.util.*;
-import java.util.function.Function;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -46,12 +45,8 @@ public class DashboardService {
     private final FaturaService faturaService;
     private final CategoriaMapper categoriaMapper;
     private final LancamentoMapper lancamentoMapper;
-    private static final int CASAS_DA_PARTICIPACAO = 4;
-    private final CategoriaRepository categoriaRepository;
     private final InvestimentoService investimentoService;
     private final LancamentoRepository lancamentoRepository;
-    private final InvestimentoRepository investimentoRepository;
-    private static final String PERIODO_INVALIDO = "O período informado é inválido!";
 
     @Cacheable("dashboard")
     @Transactional(readOnly = true)
@@ -62,51 +57,50 @@ public class DashboardService {
         var periodo = PeriodoDashboard.resolver(dataInicial, dataFinal, LocalDate.now());
         var anterior = periodo.anterior();
         var linhaDoSaldo = montarLinhaDoSaldo(periodo, anterior);
+        var movimentosDaJanela = lancamentoRepository.agruparReceitasEDespesasPorDia(periodo.primeiroDiaDaJanela(), periodo.ultimoDiaDaJanela());
 
         var saldoAtual = linhaDoSaldo.em(periodo.dataDeCorte());
         var saldoAnterior = linhaDoSaldo.em(anterior.dataDeCorte());
 
-        var receitas = somar(TipoLancamento.RECEITA, periodo);
-        var despesas = somar(TipoLancamento.DESPESA, periodo);
-        var receitasAnteriores = somar(TipoLancamento.RECEITA, anterior);
-        var despesasAnteriores = somar(TipoLancamento.DESPESA, anterior);
+        var resumo = lancamentoRepository.resumirPeriodos(periodo.primeiroDia(), periodo.ultimoDia(), anterior.primeiroDia(), anterior.ultimoDia());
+        var receitas = ValorUtil.zeroSeNulo(resumo.receitas());
+        var despesas = ValorUtil.zeroSeNulo(resumo.despesas());
+        var receitasAnteriores = ValorUtil.zeroSeNulo(resumo.receitasAnteriores());
+        var despesasAnteriores = ValorUtil.zeroSeNulo(resumo.despesasAnteriores());
 
-        var carteira = investimentoRepository.resumirCarteira();
         var carteiraNosCortes = investimentoService.evolucaoNosMeses(List.of(YearMonth.from(periodo.dataDeCorte()), YearMonth.from(anterior.dataDeCorte())));
-        var patrimonio = saldoAtual.add(carteiraNosCortes.getFirst().valor());
+        var carteira = carteiraNosCortes.getFirst();
+        var patrimonio = saldoAtual.add(carteira.valor());
         var patrimonioAnterior = saldoAnterior.add(carteiraNosCortes.getLast().valor());
 
         return new DashboardDTO(
                 periodo.dataInicial().toString(),
                 periodo.dataFinal().toString(),
-                dinheiro(saldoAtual),
+                ValorUtil.dinheiro(saldoAtual),
                 VariacaoDTO.entre(saldoAtual, saldoAnterior),
-                dinheiro(receitas),
+                ValorUtil.dinheiro(receitas),
                 VariacaoDTO.entre(receitas, receitasAnteriores),
-                dinheiro(despesas),
+                ValorUtil.dinheiro(despesas),
                 VariacaoDTO.entre(despesas, despesasAnteriores),
-                dinheiro(totalInvestido(carteira)),
-                rentabilidade(carteira),
-                dinheiro(patrimonio),
+                ValorUtil.dinheiro(carteira.valor()),
+                VariacaoDTO.entre(carteira.valor(), carteira.aportado()),
+                ValorUtil.dinheiro(patrimonio),
                 VariacaoDTO.entre(patrimonio, patrimonioAnterior),
                 faturaService.faturaEmDestaque(periodo.dataFinal(), periodo.hoje()),
                 historicoSaldo(periodo, linhaDoSaldo),
-                fluxoCaixa(periodo),
-                gastoDiario(periodo),
+                fluxoCaixa(periodo, movimentosDaJanela),
+                gastoDiario(periodo, movimentosDaJanela),
                 gastoPorCategoria(periodo, despesas),
                 lancamentosRecentes(periodo));
     }
 
     private static void validar(YearMonth dataInicial, YearMonth dataFinal) {
         if ((dataInicial == null) != (dataFinal == null)) {
-            log.warn(PERIODO_INVALIDO);
-            throw new RequisicaoInvalidaException(PERIODO_INVALIDO);
+            log.warn("O período informado é inválido!");
+            throw new RequisicaoInvalidaException("O período informado é inválido!");
         }
 
-        if (dataInicial != null && dataInicial.isAfter(dataFinal)) {
-            log.warn(PERIODO_INVALIDO);
-            throw new RequisicaoInvalidaException(PERIODO_INVALIDO);
-        }
+        PeriodoUtil.validar(dataInicial, dataFinal);
     }
 
     private LinhaDoSaldo montarLinhaDoSaldo(PeriodoDashboard periodo, PeriodoDashboard anterior) {
@@ -120,60 +114,49 @@ public class DashboardService {
 
     private List<SaldoDTO> historicoSaldo(PeriodoDashboard periodo, LinhaDoSaldo linhaDoSaldo) {
         return periodo.mesesDaJanela().stream()
-                .map(mes -> new SaldoDTO(MesDoAno.rotulo(mes), dinheiro(linhaDoSaldo.em(periodo.dataDeCorte(mes)))))
+                .map(mes -> new SaldoDTO(MesDoAno.rotulo(mes), ValorUtil.dinheiro(linhaDoSaldo.em(periodo.dataDeCorte(mes)))))
                 .toList();
     }
 
-    private List<FluxoDTO> fluxoCaixa(PeriodoDashboard periodo) {
-        var totais = lancamentoRepository
-                .agruparTotaisPorMes(periodo.primeiroDiaDaJanela(), periodo.ultimoDiaDaJanela())
-                .stream()
+    private static List<FluxoDTO> fluxoCaixa(PeriodoDashboard periodo, List<MovimentoDiarioProjecao> movimentos) {
+        var totais = movimentos.stream()
                 .collect(Collectors.groupingBy(
-                        total -> YearMonth.of(total.ano(), total.mes()),
-                        Collectors.toMap(TotalMensalProjecao::tipo, TotalMensalProjecao::valor)));
+                        movimento -> YearMonth.from(movimento.data()),
+                        Collectors.toMap(MovimentoDiarioProjecao::tipo, MovimentoDiarioProjecao::valor, BigDecimal::add)));
 
         return periodo.mesesDaJanela().stream()
                 .map(mes -> {
                     var doMes = totais.getOrDefault(mes, Map.of());
                     return new FluxoDTO(
                             MesDoAno.rotulo(mes),
-                            dinheiro(doMes.get(TipoLancamento.RECEITA)),
-                            dinheiro(doMes.get(TipoLancamento.DESPESA)));
+                            ValorUtil.dinheiro(doMes.get(TipoLancamento.RECEITA)),
+                            ValorUtil.dinheiro(doMes.get(TipoLancamento.DESPESA)));
                 })
                 .toList();
     }
 
-    private List<GastoDiarioDTO> gastoDiario(PeriodoDashboard periodo) {
+    private static List<GastoDiarioDTO> gastoDiario(PeriodoDashboard periodo, List<MovimentoDiarioProjecao> movimentos) {
         var inicio = periodo.primeiroDiaDaJanela();
         var fim = periodo.ultimoDiaDaJanela();
 
-        var gastos = lancamentoRepository.agruparDespesasPorDia(inicio, fim).stream()
-                .collect(Collectors.toMap(ValorPorDataProjecao::data, ValorPorDataProjecao::valor));
+        var gastos = movimentos.stream()
+                .filter(movimento -> movimento.tipo() == TipoLancamento.DESPESA)
+                .collect(Collectors.toMap(MovimentoDiarioProjecao::data, MovimentoDiarioProjecao::valor));
 
         var serie = new ArrayList<GastoDiarioDTO>();
         for (var dia = inicio; !dia.isAfter(fim); dia = dia.plusDays(1)) {
-            serie.add(new GastoDiarioDTO(dia.toString(), dinheiro(gastos.get(dia))));
+            serie.add(new GastoDiarioDTO(dia.toString(), ValorUtil.dinheiro(gastos.get(dia))));
         }
         return serie;
     }
 
     private List<GastoCategoriaDTO> gastoPorCategoria(PeriodoDashboard periodo, BigDecimal totalDeDespesas) {
-        var gastos = lancamentoRepository.agruparDespesasPorCategoria(periodo.primeiroDia(), periodo.ultimoDia());
-
-        if (gastos.isEmpty()) {
-            return List.of();
-        }
-
-        var categorias = categoriaRepository.findAllById(gastos.stream().map(GastoCategoriaProjecao::categoriaId).toList())
+        return lancamentoRepository.agruparPorCategoria(TipoLancamento.DESPESA, periodo.primeiroDia(), periodo.ultimoDia())
                 .stream()
-                .collect(Collectors.toMap(Categoria::getId, Function.identity()));
-
-        return gastos.stream()
-                .filter(gasto -> categorias.containsKey(gasto.categoriaId()))
                 .map(gasto -> new GastoCategoriaDTO(
-                        categoriaMapper.toDTO(categorias.get(gasto.categoriaId())),
-                        dinheiro(gasto.valor()),
-                        participacao(gasto.valor(), totalDeDespesas)))
+                        categoriaMapper.toDTO(gasto.categoria()),
+                        ValorUtil.dinheiro(gasto.valor()),
+                        ValorUtil.fracao(gasto.valor(), totalDeDespesas)))
                 .toList();
     }
 
@@ -183,41 +166,5 @@ public class DashboardService {
                 .stream()
                 .map(lancamentoMapper::toDTO)
                 .toList();
-    }
-
-    private BigDecimal somar(TipoLancamento tipo, PeriodoDashboard periodo) {
-        return zeroSeNulo(lancamentoRepository.somarPorTipo(tipo, periodo.primeiroDia(), periodo.ultimoDia()));
-    }
-
-    private static BigDecimal totalInvestido(CarteiraProjecao carteira) {
-        return carteira == null ? BigDecimal.ZERO : zeroSeNulo(carteira.valorAtual());
-    }
-
-    private static VariacaoDTO rentabilidade(CarteiraProjecao carteira) {
-        if (carteira == null) {
-            return VariacaoDTO.estavel();
-        }
-
-        var aportado = zeroSeNulo(carteira.aportado());
-        return VariacaoDTO.entre(zeroSeNulo(carteira.valorAtual()), aportado);
-    }
-
-    private static BigDecimal participacao(BigDecimal valor, BigDecimal total) {
-        if (total == null || total.signum() == 0) {
-            return zero(CASAS_DA_PARTICIPACAO);
-        }
-        return valor.divide(total, CASAS_DA_PARTICIPACAO, RoundingMode.HALF_UP);
-    }
-
-    private static BigDecimal dinheiro(BigDecimal valor) {
-        return zeroSeNulo(valor).setScale(2, RoundingMode.HALF_UP);
-    }
-
-    private static BigDecimal zeroSeNulo(BigDecimal valor) {
-        return valor != null ? valor : BigDecimal.ZERO;
-    }
-
-    private static BigDecimal zero(int casas) {
-        return BigDecimal.ZERO.setScale(casas, RoundingMode.HALF_UP);
     }
 }

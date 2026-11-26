@@ -7,7 +7,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
@@ -15,8 +14,6 @@ import java.util.UUID;
 
 @Repository
 public interface MetaPrecoRepository extends JpaRepository<MetaPreco, UUID> {
-
-    boolean existsByMetaIdAndDataAndPreco(UUID metaId, LocalDate data, BigDecimal preco);
 
     List<MetaPreco> findByMetaIdOrderByDataAscDataCriacaoAsc(UUID metaId);
 

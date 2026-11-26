@@ -35,7 +35,7 @@ class FaturaServiceTest extends AbstractTest {
 
     @Test
     void listarTest() {
-        var faturas = Assertions.assertDoesNotThrow(() -> faturaService.listar(null));
+        var faturas = Assertions.assertDoesNotThrow(() -> faturaService.listar(null, YearMonth.now().minusMonths(1), YearMonth.now().plusMonths(1)));
         Assertions.assertNotNull(faturas);
     }
 
@@ -88,6 +88,21 @@ class FaturaServiceTest extends AbstractTest {
     @Test
     void limitesComprometidosTest() {
         var limites = Assertions.assertDoesNotThrow(() -> faturaService.limitesComprometidos(cartaoRepository.findAll(), LocalDate.now()));
+        Assertions.assertNotNull(limites);
+    }
+
+    @Test
+    void faturasRecentesTest() {
+        var faturas = Assertions.assertDoesNotThrow(() -> faturaService.faturasRecentes(cartaoRepository.findAll(), LocalDate.now()));
+        Assertions.assertNotNull(faturas);
+    }
+
+    @Test
+    void somarLimitesComprometidosTest() {
+        var cartoes = cartaoRepository.findAll();
+        var faturas = faturaService.faturasRecentes(cartoes, LocalDate.now());
+
+        var limites = Assertions.assertDoesNotThrow(() -> faturaService.somarLimitesComprometidos(cartoes, faturas));
         Assertions.assertNotNull(limites);
     }
 

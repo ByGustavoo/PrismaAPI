@@ -1,19 +1,21 @@
 package br.com.prismaapi.repository.lancamento;
 
 import br.com.prismaapi.model.dto.lancamento.FiltroLancamentoDTO;
+import br.com.prismaapi.model.entity.cartao.Cartao;
+import br.com.prismaapi.model.entity.categoria.Categoria;
+import br.com.prismaapi.model.entity.conta.Conta;
 import br.com.prismaapi.model.entity.lancamento.Lancamento;
+import br.com.prismaapi.repository.BuscaSemAcento;
 import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.Expression;
-import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import org.springframework.data.jpa.domain.Specification;
 
-import java.text.Normalizer;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
+import java.util.UUID;
 
 public final class LancamentoSpecification {
 
@@ -40,62 +42,41 @@ public final class LancamentoSpecification {
                 predicados.add(builder.lessThanOrEqualTo(root.<LocalDate>get("data"), filtro.dataFinal()));
             }
 
-            if (filtro.idCategoria() != null || filtro.idOrigem() != null || temBusca(filtro)) {
-                predicados.addAll(filtrarPorRelacionamentos(filtro, root, builder));
+            if (filtro.idCategoria() != null) {
+                predicados.add(builder.equal(root.get("categoria").get("id"), filtro.idCategoria()));
+            }
+
+            if (filtro.idOrigem() != null) {
+                predicados.add(builder.or(
+                        builder.equal(root.get("conta").get("id"), filtro.idOrigem()),
+                        builder.equal(root.get("cartao").get("id"), filtro.idOrigem()),
+                        builder.equal(root.get("contaDestino").get("id"), filtro.idOrigem())));
+            }
+
+            if (BuscaSemAcento.informada(filtro.busca())) {
+                predicados.add(buscar(root, query, builder, BuscaSemAcento.padrao(filtro.busca())));
             }
 
             return builder.and(predicados.toArray(Predicate[]::new));
         };
     }
 
-    private static List<Predicate> filtrarPorRelacionamentos(FiltroLancamentoDTO filtro, Root<Lancamento> root, CriteriaBuilder builder) {
-        var categoria = root.join("categoria", JoinType.LEFT);
-        var conta = root.join("conta", JoinType.LEFT);
-        var cartao = root.join("cartao", JoinType.LEFT);
-        var contaDestino = root.join("contaDestino", JoinType.LEFT);
-
-        var predicados = new ArrayList<Predicate>();
-
-        if (filtro.idCategoria() != null) {
-            predicados.add(builder.equal(categoria.get("id"), filtro.idCategoria()));
-        }
-
-        if (filtro.idOrigem() != null) {
-            predicados.add(builder.or(
-                    builder.equal(conta.get("id"), filtro.idOrigem()),
-                    builder.equal(cartao.get("id"), filtro.idOrigem()),
-                    builder.equal(contaDestino.get("id"), filtro.idOrigem())));
-        }
-
-        if (temBusca(filtro)) {
-            var padrao = "%" + normalizar(filtro.busca()) + "%";
-
-            predicados.add(builder.or(
-                    contem(builder, root.get("descricao"), padrao),
-                    contem(builder, categoria.get("nome"), padrao),
-                    contem(builder, conta.get("nome"), padrao),
-                    contem(builder, cartao.get("nome"), padrao),
-                    contem(builder, contaDestino.get("nome"), padrao)));
-        }
-
-        return predicados;
+    private static Predicate buscar(Root<Lancamento> root, CriteriaQuery<?> query, CriteriaBuilder builder, String padrao) {
+        return builder.or(
+                BuscaSemAcento.contem(builder, root.get("descricao"), padrao),
+                BuscaSemAcento.contem(builder, root.get("observacoes"), padrao),
+                root.get("categoria").get("id").in(idsComNome(query, builder, Categoria.class, padrao)),
+                root.get("conta").get("id").in(idsComNome(query, builder, Conta.class, padrao)),
+                root.get("cartao").get("id").in(idsComNome(query, builder, Cartao.class, padrao)),
+                root.get("contaDestino").get("id").in(idsComNome(query, builder, Conta.class, padrao)));
     }
 
-    private static Predicate contem(CriteriaBuilder builder, Expression<String> campo, String padrao) {
-        var campoSemAcento = builder.function("unaccent", String.class, builder.lower(campo));
-        return builder.like(campoSemAcento, padrao, '\\');
-    }
+    private static Subquery<UUID> idsComNome(CriteriaQuery<?> query, CriteriaBuilder builder, Class<?> entidade, String padrao) {
+        var subconsulta = query.subquery(UUID.class);
+        var registro = subconsulta.from(entidade);
 
-    private static String normalizar(String busca) {
-        var semAcento = Normalizer.normalize(busca.strip(), Normalizer.Form.NFD).replaceAll("\\p{M}", "");
-        return escaparCuringas(semAcento.toLowerCase(Locale.ROOT));
-    }
-
-    private static String escaparCuringas(String termo) {
-        return termo.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
-    }
-
-    private static boolean temBusca(FiltroLancamentoDTO filtro) {
-        return filtro.busca() != null && !filtro.busca().isBlank();
+        return subconsulta
+                .select(registro.get("id"))
+                .where(BuscaSemAcento.contem(builder, registro.get("nome"), padrao));
     }
 }

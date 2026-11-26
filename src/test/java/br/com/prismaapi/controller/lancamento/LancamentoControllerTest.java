@@ -42,7 +42,14 @@ class LancamentoControllerTest extends AbstractControllerTest {
 
     @Test
     void listarLancamentosTest() throws Exception {
-        testGet("/v1/lancamentos");
+        testGet("/v1/lancamentos?pagina=1&tamanho=10&ordenacao=DESCRICAO&direcao=ASC&busca=reajuste");
+    }
+
+    @Test
+    void buscarLancamentoTest() throws Exception {
+        var idLancamento = buscar(lancamentoRepository, lancamento -> lancamento.getDescricao().equals("Aluguel")).getId();
+
+        testGet("/v1/lancamentos/" + idLancamento);
     }
 
     @Test

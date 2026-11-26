@@ -1,5 +1,6 @@
 package br.com.prismaapi.service.recorrente;
 
+import br.com.prismaapi.config.cache.LimparCachesDeLancamento;
 import br.com.prismaapi.enums.FormaLancamento;
 import br.com.prismaapi.enums.Frequencia;
 import br.com.prismaapi.enums.Situacao;
@@ -13,17 +14,18 @@ import br.com.prismaapi.model.entity.lancamento.Lancamento;
 import br.com.prismaapi.model.entity.recorrente.Recorrente;
 import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import br.com.prismaapi.repository.recorrente.RecorrenteRepository;
+import br.com.prismaapi.util.TextoUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 
 @Slf4j
@@ -35,32 +37,43 @@ public class LancamentoRecorrenteService {
     private final LancamentoRepository lancamentoRepository;
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "contas", "dashboard", "faturas", "lancamentos", "orcamentos", "previsao", "recorrentes", "relatorios"}, allEntries = true)
+    @LimparCachesDeLancamento(condition = "#result > 0")
     public int lancarVencidas() {
         log.info("Lançando as recorrentes que venceram...");
         var hoje = LocalDate.now();
 
-        return recorrenteRepository.buscarComOrigemECategoria()
+        var vencidas = recorrenteRepository.buscarComOrigemECategoria()
                 .stream()
-                .mapToInt(recorrente -> lancar(recorrente, hoje))
+                .filter(recorrente -> vencida(recorrente, hoje))
+                .toList();
+
+        if (vencidas.isEmpty()) return 0;
+
+        var existentes = existentes(vencidas, hoje);
+
+        return vencidas.stream()
+                .mapToInt(recorrente -> lancar(recorrente, hoje, existentes))
                 .sum();
     }
 
     public int lancar(Recorrente recorrente, LocalDate hoje) {
-        if (!lancaSozinha(recorrente) || recorrente.getProximoVencimento().isAfter(hoje)) return 0;
+        if (!vencida(recorrente, hoje)) return 0;
 
+        return lancar(recorrente, hoje, existentes(List.of(recorrente), hoje));
+    }
+
+    private int lancar(Recorrente recorrente, LocalDate hoje, List<Lancamento> existentes) {
         var frequencia = recorrente.getFrequencia();
         var conta = contaDoLancamento(recorrente);
         var cartao = cartaoDoLancamento(recorrente);
-        var existentes = lancamentoRepository.buscarComOrigemEntre(recorrente.getProximoVencimento().minusMonths(1), hoje.plusMonths(1));
 
         var lancadas = 0;
         var vencimento = recorrente.getProximoVencimento();
 
-        for (; !vencimento.isAfter(hoje); vencimento = frequencia.proximaOcorrencia(vencimento)) {
+        for (; !vencimento.isAfter(hoje); vencimento = frequencia.proximaOcorrencia(vencimento, recorrente.getDiaVencimento())) {
             if (!origemAtiva(conta, cartao) || jaLancada(recorrente, conta, cartao, vencimento, existentes)) continue;
 
-            lancamentoRepository.save(novoLancamento(recorrente, conta, cartao, vencimento));
+            existentes.add(lancamentoRepository.save(novoLancamento(recorrente, conta, cartao, vencimento)));
             lancadas++;
         }
 
@@ -71,6 +84,20 @@ public class LancamentoRecorrenteService {
         }
 
         return lancadas;
+    }
+
+    private List<Lancamento> existentes(List<Recorrente> recorrentes, LocalDate hoje) {
+        var inicio = recorrentes.stream()
+                .map(Recorrente::getProximoVencimento)
+                .min(Comparator.naturalOrder())
+                .orElse(hoje)
+                .minusMonths(1);
+
+        return new ArrayList<>(lancamentoRepository.buscarComOrigemEntre(inicio, hoje.plusMonths(1)));
+    }
+
+    private static boolean vencida(Recorrente recorrente, LocalDate hoje) {
+        return lancaSozinha(recorrente) && !recorrente.getProximoVencimento().isAfter(hoje);
     }
 
     public static boolean lancaSozinha(Recorrente recorrente) {
@@ -109,7 +136,7 @@ public class LancamentoRecorrenteService {
 
     private static boolean jaLancada(Recorrente recorrente, Conta conta, Cartao cartao, LocalDate vencimento, List<Lancamento> existentes) {
         var tipo = tipoDoLancamento(recorrente);
-        var descricao = normalizar(recorrente.getDescricao());
+        var descricao = TextoUtil.normalizar(recorrente.getDescricao());
 
         return existentes.stream()
                 .filter(lancamento -> lancamento.getTipo() == tipo)
@@ -117,7 +144,7 @@ public class LancamentoRecorrenteService {
                 .filter(lancamento -> mesmaOcorrencia(recorrente.getFrequencia(), lancamento.getData(), vencimento))
                 .anyMatch(lancamento -> lancamento.getRecorrente() != null
                         ? lancamento.getRecorrente().getId().equals(recorrente.getId())
-                        : normalizar(lancamento.getDescricao()).equals(descricao));
+                        : TextoUtil.normalizar(lancamento.getDescricao()).equals(descricao));
     }
 
     private static TipoLancamento tipoDoLancamento(Recorrente recorrente) {
@@ -150,9 +177,5 @@ public class LancamentoRecorrenteService {
     private static boolean origemAtiva(Conta conta, Cartao cartao) {
         if (conta != null) return conta.getSituacao() == Situacao.ATIVO;
         return cartao != null && cartao.getSituacao() == Situacao.ATIVO;
-    }
-
-    private static String normalizar(String descricao) {
-        return descricao.strip().toLowerCase(Locale.ROOT);
     }
 }

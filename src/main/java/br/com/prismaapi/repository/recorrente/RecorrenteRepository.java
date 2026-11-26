@@ -19,11 +19,11 @@ public interface RecorrenteRepository extends JpaRepository<Recorrente, UUID> {
     List<Recorrente> findBySituacao(SituacaoRecorrente situacao);
 
     @Query("""
-            SELECT despesa
-            FROM Recorrente despesa
-            LEFT JOIN FETCH despesa.categoria
-            LEFT JOIN FETCH despesa.conta
-            LEFT JOIN FETCH despesa.cartao
+            SELECT recorrente
+            FROM Recorrente recorrente
+            LEFT JOIN FETCH recorrente.categoria
+            LEFT JOIN FETCH recorrente.conta
+            LEFT JOIN FETCH recorrente.cartao
             """)
     List<Recorrente> buscarComOrigemECategoria();
 }

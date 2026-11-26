@@ -17,4 +17,9 @@ class CategoriaRepositoryTest extends AbstractTest {
     void findByTipoTest() {
         Assertions.assertDoesNotThrow(() -> categoriaRepository.findByTipo(TipoCategoria.DESPESA));
     }
+
+    @Test
+    void findByNomeAndTipoTest() {
+        Assertions.assertDoesNotThrow(() -> categoriaRepository.findByNomeAndTipo("Outras despesas", TipoCategoria.DESPESA));
+    }
 }

@@ -1,5 +1,6 @@
 package br.com.prismaapi.model.mapper.fatura;
 
+import br.com.prismaapi.model.dto.dashboard.fatura.FaturaDTO;
 import br.com.prismaapi.model.dto.fatura.DetalheFaturaDTO;
 import br.com.prismaapi.model.dto.fatura.FaturaCartaoDTO;
 import br.com.prismaapi.model.dto.fatura.ItemFaturaDTO;
@@ -18,6 +19,8 @@ public interface FaturaMapper {
 
     @Mapping(target = "itens", source = "itens")
     DetalheFaturaDTO toDetalheDTO(FaturaCartaoDTO fatura, List<ItemFaturaDTO> itens);
+
+    FaturaDTO toResumoDTO(FaturaCartaoDTO fatura);
 
     @Mapping(target = "parcela", ignore = true)
     @Mapping(target = "idRecorrente", source = "recorrente.id")

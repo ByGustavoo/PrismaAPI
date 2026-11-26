@@ -10,9 +10,11 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.YearMonth;
 import java.util.List;
 import java.util.UUID;
 
@@ -26,7 +28,7 @@ public interface FaturaDocs {
                     description = "Faturas retornadas com sucesso!"),
             @ApiResponse(
                     responseCode = "400",
-                    description = "Filtro inválido!",
+                    description = "Filtro ou período inválido!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "500",
@@ -47,10 +49,20 @@ public interface FaturaDocs {
                     cartão, quando ela existe.
 
                     O valorPago soma as parcelas da fatura com pagamento antecipado registrado, e o \
-                    valorRestante é o total menos ele. A fatura já fechada sem nada a pagar sai como PAGA.""")
+                    valorRestante é o total menos ele. A fatura já fechada sem nada a pagar sai como PAGA.
+
+                    Com dataInicial ou dataFinal, devolve só as faturas que fecham dentro do recorte, \
+                    pelo mês da fatura e com os dois lados inclusivos; sem eles, todas. O recorte não \
+                    muda a situação nem o totalAnterior de nenhuma fatura.""")
     ResponseEntity<List<FaturaCartaoDTO>> listarFaturas(
             @Parameter(description = "Id do cartão de crédito; sem ele, retorna as faturas de todos")
-            @RequestParam(required = false) UUID idCartao);
+            @RequestParam(required = false) UUID idCartao,
+
+            @Parameter(description = "Primeiro mês do recorte, pelo mês em que a fatura fecha", example = "2026-08")
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM") YearMonth dataInicial,
+
+            @Parameter(description = "Último mês do recorte, inclusivo", example = "2026-12")
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM") YearMonth dataFinal);
 
     @GetMapping("/{id}")
     @ApiResponses(value = {

@@ -1,11 +1,12 @@
 package br.com.prismaapi.model.dto.dashboard.projection;
 
+import br.com.prismaapi.model.entity.categoria.Categoria;
+
 import java.math.BigDecimal;
-import java.util.UUID;
 
 public record GastoCategoriaProjecao(
 
-        UUID categoriaId,
+        Categoria categoria,
 
         BigDecimal valor
 

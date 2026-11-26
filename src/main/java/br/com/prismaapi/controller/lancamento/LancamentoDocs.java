@@ -1,9 +1,12 @@
 package br.com.prismaapi.controller.lancamento;
 
+import br.com.prismaapi.enums.DirecaoOrdenacao;
+import br.com.prismaapi.enums.OrdenacaoLancamento;
 import br.com.prismaapi.enums.SituacaoLancamento;
 import br.com.prismaapi.enums.TipoLancamento;
 import br.com.prismaapi.exceptions.dto.ErrorResponseDTO;
 import br.com.prismaapi.model.dto.lancamento.LancamentoDTO;
+import br.com.prismaapi.model.dto.lancamento.PaginaLancamentosDTO;
 import br.com.prismaapi.model.dto.lancamento.SalvarLancamentoDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -18,7 +21,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.util.List;
 import java.util.UUID;
 
 @Tag(name = "Lançamento", description = "Endpoints relacionados a receitas, despesas e transferências")
@@ -26,32 +28,35 @@ public interface LancamentoDocs {
 
     @GetMapping
     @Operation(
-            summary = "Lista os lançamentos",
+            summary = "Lista os lançamentos, uma página por vez",
             description = """
-                    Retorna os lançamentos do mais recente para o mais antigo. Receitas, despesas e \
-                    transferências usam esta mesma rota, mudando apenas o tipo.
+                    Retorna uma página de lançamentos, do mais recente para o mais antigo por padrão. \
+                    Receitas, despesas e transferências usam esta mesma rota, mudando apenas o tipo.
 
                     Todos os filtros são opcionais e se combinam com E lógico. A busca casa com a \
-                    descrição, o nome da categoria e o nome da conta de origem ou de destino, sem \
-                    diferenciar maiúscula nem acento.""")
+                    descrição, a observação, o nome da categoria e o nome da conta de origem ou de \
+                    destino, sem diferenciar maiúscula nem acento.
+
+                    A resposta traz, além dos itens da página, a quantidade total e o resultado \
+                    (receitas menos despesas) de todos os lançamentos que passam no filtro.""")
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
                     description = "Lançamentos retornados com sucesso!"),
             @ApiResponse(
                     responseCode = "400",
-                    description = "Filtros inválidos!",
+                    description = "Filtros, página ou ordenação inválidos!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "500",
                     description = "Erro interno do servidor!",
                     content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
-    ResponseEntity<List<LancamentoDTO>> listarLancamentos(
+    ResponseEntity<PaginaLancamentosDTO> listarLancamentos(
             @Parameter(description = "Tipo do lançamento", example = "DESPESA")
             @RequestParam(required = false) TipoLancamento tipo,
 
-            @Parameter(description = "Texto buscado na descrição, na categoria, na origem ou no destino", example = "saude")
+            @Parameter(description = "Texto buscado na descrição, na observação, na categoria, na origem ou no destino", example = "saude")
             @RequestParam(required = false) String busca,
 
             @Parameter(description = "Início do período, inclusivo", example = "2026-09-01")
@@ -67,7 +72,44 @@ public interface LancamentoDocs {
             @RequestParam(required = false) UUID idOrigem,
 
             @Parameter(description = "Situação do lançamento", example = "PAGO")
-            @RequestParam(required = false) SituacaoLancamento situacao);
+            @RequestParam(required = false) SituacaoLancamento situacao,
+
+            @Parameter(description = "Número da página, começando em zero", example = "0")
+            @RequestParam(defaultValue = "0") int pagina,
+
+            @Parameter(description = "Quantidade de lançamentos por página, de 1 a 100", example = "25")
+            @RequestParam(defaultValue = "25") int tamanho,
+
+            @Parameter(description = "Campo da ordenação; empates seguem do mais recente para o mais antigo", example = "DATA")
+            @RequestParam(defaultValue = "DATA") OrdenacaoLancamento ordenacao,
+
+            @Parameter(description = "Direção da ordenação", example = "DESC")
+            @RequestParam(defaultValue = "DESC") DirecaoOrdenacao direcao);
+
+    @GetMapping("/{id}")
+    @Operation(
+            summary = "Busca um lançamento",
+            description = "Retorna um lançamento pelo id, no mesmo formato dos itens da listagem.")
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Lançamento retornado com sucesso!"),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Id inválido!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Lançamento não encontrado!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Erro interno do servidor!",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
+    })
+    ResponseEntity<LancamentoDTO> buscarLancamento(
+            @Parameter(description = "Id do lançamento")
+            @PathVariable UUID id);
 
     @PostMapping
     @Operation(

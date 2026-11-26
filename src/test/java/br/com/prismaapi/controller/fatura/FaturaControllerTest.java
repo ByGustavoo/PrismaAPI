@@ -34,7 +34,7 @@ class FaturaControllerTest extends AbstractControllerTest {
 
     @Test
     void listarFaturasTest() throws Exception {
-        testGet("/v1/faturas");
+        testGet("/v1/faturas?dataInicial=" + YearMonth.now().minusMonths(1) + "&dataFinal=" + YearMonth.now().plusMonths(1));
     }
 
     @Test

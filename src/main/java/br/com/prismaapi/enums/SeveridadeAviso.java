@@ -7,10 +7,9 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum SeveridadeAviso {
 
-    CRITICO(1, "CRÍTICO"),
-    ATENCAO(2, "ATENÇÃO"),
-    INFO(3, "INFORMATIVO");
+    CRITICO(1),
+    ATENCAO(2),
+    INFO(3);
 
     private final int prioridade;
-    private final String descricao;
 }

@@ -1,5 +1,6 @@
 package br.com.prismaapi.service.conta;
 
+import br.com.prismaapi.config.cache.LimparCachesDeConta;
 import br.com.prismaapi.enums.Situacao;
 import br.com.prismaapi.enums.TipoCartao;
 import br.com.prismaapi.exceptions.ContaComCartaoVinculadoException;
@@ -16,17 +17,15 @@ import br.com.prismaapi.repository.cartao.CartaoRepository;
 import br.com.prismaapi.repository.conta.ContaRepository;
 import br.com.prismaapi.repository.recorrente.RecorrenteRepository;
 import br.com.prismaapi.repository.lancamento.LancamentoRepository;
+import br.com.prismaapi.util.TextoUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.text.Collator;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -41,7 +40,6 @@ public class ContaService {
     private final CartaoRepository cartaoRepository;
     private final LancamentoRepository lancamentoRepository;
     private final RecorrenteRepository recorrenteRepository;
-    private static final Collator ORDEM_ALFABETICA = Collator.getInstance(Locale.forLanguageTag("pt-BR"));
 
     @Cacheable("contas")
     @Transactional(readOnly = true)
@@ -51,8 +49,8 @@ public class ContaService {
                 .stream()
                 .map(contaMapper::toDTO)
                 .sorted(Comparator.comparing((ContaDTO conta) -> conta.situacao() != Situacao.ATIVO)
-                        .thenComparing(ContaDTO::nome, ORDEM_ALFABETICA)
-                        .thenComparing(ContaDTO::instituicao, ORDEM_ALFABETICA))
+                        .thenComparing(ContaDTO::nome, TextoUtil.ORDEM_ALFABETICA)
+                        .thenComparing(ContaDTO::instituicao, TextoUtil.ORDEM_ALFABETICA))
                 .toList();
     }
 
@@ -63,18 +61,18 @@ public class ContaService {
         var contas = contaRepository.findBySituacao(Situacao.ATIVO)
                 .stream()
                 .map(contaMapper::toOrigemDTO)
-                .sorted(Comparator.comparing(OrigemDTO::nome, ORDEM_ALFABETICA));
+                .sorted(Comparator.comparing(OrigemDTO::nome, TextoUtil.ORDEM_ALFABETICA));
 
         var cartoes = cartaoRepository.findBySituacaoAndTipoNot(Situacao.ATIVO, TipoCartao.DEBITO)
                 .stream()
                 .map(cartaoMapper::toOrigemDTO)
-                .sorted(Comparator.comparing(OrigemDTO::nome, ORDEM_ALFABETICA));
+                .sorted(Comparator.comparing(OrigemDTO::nome, TextoUtil.ORDEM_ALFABETICA));
 
         return Stream.concat(contas, cartoes).toList();
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "contas", "dashboard", "recorrentes", "lancamentos", "previsao", "relatorios"}, allEntries = true)
+    @LimparCachesDeConta
     public ContaDTO salvar(SalvarContaDTO salvarContaDTO) {
         log.info("Salvando a conta... - Nome: {} - Instituição: {}", salvarContaDTO.nome(), salvarContaDTO.instituicao());
         validarDuplicidade(salvarContaDTO, null);
@@ -86,7 +84,7 @@ public class ContaService {
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "contas", "dashboard", "recorrentes", "lancamentos", "previsao", "relatorios"}, allEntries = true)
+    @LimparCachesDeConta
     public ContaDTO atualizar(UUID id, SalvarContaDTO salvarContaDTO) {
         log.info("Atualizando a conta... - ID: [{}]", id);
         var conta = buscar(id);
@@ -100,7 +98,7 @@ public class ContaService {
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "contas", "dashboard", "recorrentes", "lancamentos", "previsao", "relatorios"}, allEntries = true)
+    @LimparCachesDeConta
     public void deletar(UUID id) {
         log.info("Deletando a conta... - ID: [{}]", id);
         var conta = buscar(id);
@@ -120,8 +118,8 @@ public class ContaService {
     }
 
     private void validarDuplicidade(SalvarContaDTO salvarContaDTO, UUID id) {
-        var nome = salvarContaDTO.nome().strip();
-        var instituicao = salvarContaDTO.instituicao().strip();
+        var nome = salvarContaDTO.nome();
+        var instituicao = salvarContaDTO.instituicao();
 
         var duplicada = id == null
                 ? contaRepository.existsByNomeIgnoreCaseAndInstituicaoIgnoreCase(nome, instituicao)
@@ -158,8 +156,8 @@ public class ContaService {
     }
 
     private static void preencher(Conta conta, SalvarContaDTO salvarContaDTO) {
-        conta.setNome(salvarContaDTO.nome().strip());
-        conta.setInstituicao(salvarContaDTO.instituicao().strip());
+        conta.setNome(salvarContaDTO.nome());
+        conta.setInstituicao(salvarContaDTO.instituicao());
         conta.setIncluirNoTotal(salvarContaDTO.situacao() == Situacao.ATIVO && salvarContaDTO.incluirNoTotal());
     }
 }

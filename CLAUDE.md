@@ -3,9 +3,11 @@
 ## O que é
 
 API REST do PrismaWeb, em Spring Boot. Concentra as regras de negócio, a persistência em
-PostgreSQL e os endpoints consumidos pela aplicação web. O contrato completo — rota, corpo,
-status, validação e regra de cálculo de cada endpoint — vive no `API_CONTRACT.md` do PrismaWeb.
-Mudou comportamento aqui, muda lá no mesmo trabalho.
+PostgreSQL e os endpoints consumidos pela aplicação web. O contrato é o que o PrismaWeb consome: as
+rotas em `src/api/rotasApi.ts` e os tipos em `src/types/dto/` de lá; deste lado, cada endpoint se
+documenta no `*Docs` (Swagger) e no `collection.json`. Mudou comportamento aqui, muda lá no mesmo
+trabalho. Quando o PrismaWeb passa a depender de algo que esta API ainda não tem, a pendência fica num
+`API_CONTRACT.md` na raiz de lá, que só existe até ela ser implementada.
 
 ## Tipo
 
@@ -30,15 +32,20 @@ Backend / API — release: branch + Pull Request (`origin`: `ByGustavoo/PrismaAP
 ```
 src/main/java/br/com/prismaapi/
   PrismaAPIApplication.java
-  config/          CorsConfig (origens por propriedade), DataBaseConfig, JacksonConfig, RedisConfig
+  config/          CorsConfig (origens por propriedade), DataBaseConfig, JacksonConfig, RedisConfig;
+                   cache/ com as anotações compostas de limpeza (LimparCachesDeLancamento, ...DeFatura etc.)
   controller/      um pacote por recurso: <Recurso>Controller + <Recurso>Docs (mapeamento e OpenAPI)
-  enums/           enums do domínio
+  enums/           enums do domínio, só com as constantes (sem `descricao`, que nenhum código lia);
+                   campo só quando é usado, como `prioridade` em SeveridadeAviso e o rótulo de MesDoAno
   exceptions/      uma RuntimeException por falha de negócio, dto/ e handler/GlobalExceptionHandler
   model/dto/       DTOs de entrada e saída, e projeções por recurso
   model/entity/    entidades JPA
   model/mapper/    mappers MapStruct
-  repository/      repositórios Spring Data e Specifications
+  repository/      repositórios Spring Data, Specifications e BuscaSemAcento (busca com unaccent)
   service/         regras de negócio e cálculos (faturas, saldo, previsão, dashboard, relatórios, avisos)
+  util/            ValorUtil (dinheiro, fracao, somar, zeroSeNulo), TextoUtil (textoOuNulo, normalizar,
+                   ORDEM_ALFABETICA e PT_BR) e PeriodoUtil (validar: início depois do fim responde 400):
+                   helper que mais de um service usa mora aqui, não copiado
 src/main/resources/
   application.yaml config base + perfis dev, prod e test
   banner.txt       banner do start, com ${build.version} e ${build.data}
@@ -48,7 +55,8 @@ src/main/resources/
                    V1.5__AddPagamentoFaturaLancamentos.sql (pagamento de fatura na despesa do cartão) e
                    V1.6__AddLancamentoDoPagamento.sql (conta de pagamento do cartão de crédito e vínculo
                    do lançamento com a parcela paga e com a conta que pagou a fatura) e
-                   V1.8__CreateAvisos.sql (preferências dos avisos, tipos desligados e leituras)
+                   V1.8__CreateAvisos.sql (preferências dos avisos, tipos desligados e leituras); a mais
+                   recente é V2.9__AddDiaDoVencimentoDasRecorrentes.sql (dia de referência da recorrente)
 .run/              run configurations do IntelliJ (ignoradas pelo Git)
 .github/workflows/ workflow.yml (build no PR) e release.yml (imagem, tag e Release no merge para main)
 Dockerfile         build em dois estágios: gradle:jdk25 compila, eclipse-temurin:25-jre executa
@@ -62,7 +70,7 @@ src/test/resources/
                    V1.7__PopularContasDePagamento.sql, dados de exemplo aplicados só no perfil test
 ```
 
-São 15 recursos sob `/v1`, com 62 endpoints no total: `avisos`, `cartoes`, `categorias`,
+São 15 recursos sob `/v1`, com 64 endpoints no total: `avisos`, `cartoes`, `categorias`,
 `compras-parceladas`, `contas`, `dashboard`, `faturas`, `investimentos`,
 `lancamentos`, `metas`, `orcamentos`, `previsao`, `recorrentes`, `relatorios` e `sistema`. O esquema tem 15
 tabelas, todas em `prisma`.
@@ -95,7 +103,7 @@ relatório HTML em `build/reports/jacoco`.
   `classpath:db/test`: a `V1.2__PopularBanco.sql` popula o banco com um ano de dados relativos à data em
   que roda. Aponte as variáveis para um banco próprio, nunca para o de dev, que não conhece a `V1.2`.
   **As versões de `db/migration` e `db/test` formam uma sequência só**: a `V1.3`, a `V1.5`, a `V1.6`, a `V1.8`,
-  a `V1.9`, a `V2.0`, a `V2.2`, a `V2.3`, a `V2.4`, a `V2.6` e a `V2.7` são de produção, e a `V1.4`, a `V1.7`, a `V2.1`,
+  a `V1.9`, a `V2.0`, a `V2.2`, a `V2.3`, a `V2.4`, a `V2.6`, a `V2.7` e a `V2.9` são de produção, e a `V1.4`, a `V1.7`, a `V2.1`,
   a `V2.5` e a `V2.8` são carga de teste. O perfil `test` leva `spring.flyway.out-of-order: true`, porque
   num banco que o `dev` já levou até a `V1.5` a `V1.4` fica pendente abaixo da última aplicada, e sem
   isso o Flyway recusa o banco; por rodar sobre dados que podem já existir, a carga usa `ON CONFLICT`. Migração nova de produção leva o número seguinte ao último
@@ -153,7 +161,7 @@ relatório HTML em `build/reports/jacoco`.
   transação; não conte com lazy loading no controller
 - Rotas em português, em kebab-case sem acento (`/v1/contas/origens`,
   `/v1/recorrentes`, `/v1/metas/{id}/precos`). Rota é contrato com o PrismaWeb: mudou
-  aqui, muda no `src/api/rotasApi.ts` e no `API_CONTRACT.md` de lá no mesmo trabalho
+  aqui, muda no `src/api/rotasApi.ts` de lá no mesmo trabalho
 - Métodos de controller e de `*Docs` levam o nome da ação, não do verbo HTTP: `listarCartoes`,
   `buscarFatura`, `salvarCartao`, `atualizarCartao`, `deletarCartao`
 - Mapeamento entidade ↔ DTO com MapStruct, não manualmente. Um método de um argumento que devolve o
@@ -191,7 +199,7 @@ mudar um sem os outros quebra rotas, migrations ou logs:
 
 ## Estado atual
 
-- Todos os endpoints do `API_CONTRACT.md` estão implementados, com o esquema em `V1.0` e o catálogo
+- Todos os endpoints que o PrismaWeb consome estão implementados, com o esquema em `V1.0` e o catálogo
   fixo de 18 categorias: 17 em `V1.1` e "Benefícios" (receita) em `V2.6` (`token_cor` de 1 a 16, sem
   cor repetida dentro do mesmo tipo). A migração de categorias usa
   `ON CONFLICT (nome, tipo) DO UPDATE SET token_cor` para rodar sobre bancos que já tinham as
@@ -244,7 +252,27 @@ mudar um sem os outros quebra rotas, migrations ou logs:
   compra) e parcela (na data de `parcelasPorDataDePagamento`) só entram na projeção, depois de hoje:
   a compra em si não mexe em `contas.saldo`, então descontá-las no passado devolvia ao saldo dos meses
   anteriores um valor que nunca saiu da conta. O que o pagamento debitou entra no passado pelos
-  lançamentos gerados e pelo pagamento de fatura das despesas do cartão.
+  lançamentos gerados e pelo pagamento de fatura das despesas do cartão. São duas consultas JPQL:
+  `agruparMovimentosDoTotalPorDia` soma por dia, num `CASE`, as quatro origens que caem na data do
+  lançamento (receita e despesa das contas do total, despesa no crédito depois de hoje, transferência
+  que sai e que entra no total — cada lançamento cabe em no máximo uma), e
+  `agruparPagamentosDeFaturaDoTotalPorDia` lê o pagamento de fatura, que cai em outra data.
+  **Despesa futura no crédito com a fatura já paga não entra na projeção** (`dataPagamentoFatura IS
+  NULL` no `CASE`, e o mesmo filtro nos lançamentos em aberto e agendados da `PrevisaoService`): pagar
+  uma fatura aberta debita da conta também a compra agendada para depois de hoje, e contá-la de novo na
+  data dela baixava o saldo projetado duas vezes.
+- **As faturas são montadas a partir de um mês** (`FaturaService.montarFaturas`, parâmetro `desde`). Só
+  `GET /faturas` monta o histórico inteiro, porque devolve todas. Ela aceita o recorte opcional
+  `dataInicial`/`dataFinal` (`yyyy-MM`, inclusivos, pelo `mes` da fatura; início depois do fim responde
+  `400`), que o PrismaWeb manda em Cartões e Faturas para encolher a resposta. O recorte filtra depois
+  da montagem, então situação e `totalAnterior` continuam calculados sobre o histórico inteiro. O
+  detalhe e o pagamento montam o mês
+  pedido e o anterior, por causa do `totalAnterior` (o total da fatura anterior existente), e voltam ao
+  histórico completo só quando o mês anterior não tem fatura. O limite comprometido e os avisos usam
+  `faturasRecentes` (dois meses para trás): fatura mais antiga já está vencida ou paga e não pesa em
+  nenhum dos dois. O card do dashboard sai da mesma montagem (`FaturaMapper.toResumoDTO`), sem
+  consulta por cartão. Pagar a fatura carrega "Outras despesas" uma vez só, e desfazer apaga os
+  pagamentos de parcela e os lançamentos deles em lote.
 - `VariacaoDTO.entre` devolve sempre a `diferenca` em reais e omite o `percentual` (`NON_NULL`) quando
   a janela anterior é zero ou quando ele passaria de 999% — com R$ 2,74 de receita na janela anterior,
   o relatório de produção mostrava "+175257,3%", e com a base zero a variação saía "estável", como se
@@ -308,7 +336,10 @@ mudar um sem os outros quebra rotas, migrations ou logs:
 - `investimentos.reserva_emergencia` marca o investimento como parte da reserva de emergência, em qualquer
   classe: a reserva é finalidade, não produto. `CarteiraDTO.reserva` soma os marcados.
 - `DashboardDTO.patrimonio` é o saldo do total no corte mais a carteira no mesmo mês
-  (`InvestimentoService.evolucaoNosMeses`), com variação contra o corte anterior.
+  (`InvestimentoService.evolucaoNosMeses`), com variação contra o corte anterior. `totalInvestido` e
+  `variacaoInvestimentos` saem do mesmo ponto da carteira: o valor no corte e a rentabilidade dele contra
+  o aportado até ali. Liam a carteira de hoje, e num mês passado o card de investimentos mostrava o valor
+  atual enquanto o patrimônio, na mesma tela, usava o do mês.
 - Investimento sem movimentação há mais tempo que o lembrete escolhido (30 dias por padrão) vira aviso
   (`INVESTIMENTO_DESATUALIZADO`, sempre `ATENCAO`, sem `valor`), lido de `data_ultima_movimentacao`: é o
   lembrete de conferir o saldo na instituição, e some quando um aporte ou um saldo é registrado. A
@@ -319,7 +350,10 @@ mudar um sem os outros quebra rotas, migrations ou logs:
   leitura não atravessar a virada); `SALDO_NEGATIVO_PREVISTO` é o primeiro mês da `PrevisaoService`
   (o resto do mês corrente incluído) com `saldoFinal` negativo, `CRITICO` no mês atual e no seguinte;
   `META_SEM_PRECO` vem de `MetaPrecoRepository.buscarAcompanhadasSemPrecoDesde`, com a rota
-  `/planejamento/metas?meta=<id>`. A rota da fatura passou a ser `/faturas?fatura=<id>`. Por lerem
+  `/planejamento/metas?meta=<id>`. A rota da fatura passou a ser `/faturas?fatura=<id>`, e a dos avisos de lançamento
+  (`CONTA_VENCENDO`, `LANCAMENTO_AGENDADO` e `RECEITA_PREVISTA`) é `/lancamentos?editar=<id>`, que o
+  PrismaWeb abre direto no formulário pelo `GET /lancamentos/{id}`: com só `/lancamentos`, o aviso de uma
+  conta vencida há meses caía na lista inteira. Por lerem
   orçamento e metas, as escritas do `OrcamentoService` e do `MetaService` limpam também o cache `avisos`.
 - **Preferências e leituras dos avisos** (`V1.8`). `preferencias_avisos` tem uma linha só, criada pela
   migração, com a antecedência (3, 7, 15 ou 30 dias, usada por faturas, lançamentos e recorrentes), o
@@ -334,6 +368,17 @@ mudar um sem os outros quebra rotas, migrations ou logs:
   novos um aviso sem marca não faz nada. "Ler todos" apaga as marcas de avisos que deixaram de existir,
   para a tabela não crescer sem limite. As preferências passam pelo cache `preferencias-avisos`, e
   gravá-las limpa também `avisos`.
+- **O cálculo dos avisos e o estado deles são separados.** `DerivacaoAvisosService.derivar(hoje)` calcula
+  os avisos e é ele que fica no cache `avisos`; o `AvisoService` só aplica as leituras de
+  `leituras_avisos` (uma consulta) a cada `GET` e não tem cache próprio. Por isso ler, adiar e devolver
+  aos novos não limpam cache nenhum: marcar como lido não recalcula os avisos, nem obriga o próximo
+  `GET` a recalculá-los. Quem muda os dados dos avisos continua limpando `avisos`.
+- **"Esta recorrente já foi lançada no mês?" tem uma regra só** (`DespesasLancadasPorMes`, em
+  `model/dto/recorrente`), usada pelo aviso de recorrente e pela previsão: conta o lançamento ligado à
+  recorrente e, entre os lançamentos sem recorrente, a mesma descrição normalizada. O lançador automático
+  tem regra própria (mesma origem e tipo, janela de três dias para semanal e quinzenal).
+- **A categoria do lado do tipo é conferida num lugar só** (`CategoriaService.buscarDoTipo`), usado por
+  lançamento, recorrente e compra parcelada, com as mesmas exceções e mensagens.
 - **Telas ocultas** (`V1.9`, `GET` e `PUT /telas/ocultas`). `telas_ocultas` guarda uma linha por tela
   que o usuário tirou do menu em Configurações, com `tela` única e um `CHECK` das quatorze opções do enum
   `Tela` — Dashboard e Configurações não entram, porque nunca ficam ocultos. O `PUT` substitui a lista
@@ -348,6 +393,26 @@ mudar um sem os outros quebra rotas, migrations ou logs:
   compatível com a origem (cartão exige `CARTAO_CREDITO`, conta recusa), cartão de débito não é
   origem e `PAGO` não pode ter data futura. Compra parcelada recusa categoria de receita e primeira
   parcela antes do mês da compra.
+- **`GET /v1/lancamentos` é paginado** (pedido do usuário para o PrismaWeb carregar 25 por vez): recebe
+  `pagina` (a partir de 0, padrão 0), `tamanho` (1 a 100, padrão 25), `ordenacao` (`OrdenacaoLancamento`:
+  `DATA`, `DESCRICAO`, `VALOR`; padrão `DATA`) e `direcao` (`DirecaoOrdenacao`, padrão `DESC`), além dos
+  filtros, todos no `FiltroLancamentoDTO`, que é também a chave do cache `lancamentos`. Devolve
+  `PaginaLancamentosDTO` (`itens`, `pagina`, `tamanho`, `quantidadeTotal`, `quantidadePaginas` e
+  `resultado`, receitas menos despesas do filtro inteiro, sem transferências). Página negativa ou tamanho
+  fora da faixa responde `400` (`RequisicaoInvalidaException`). Empates de descrição e valor seguem do
+  mais recente para o mais antigo, e o `id` fecha a ordem, para uma página não repetir item da outra.
+  É a única listagem paginada, com DTO próprio, e não um `Page<T>` genérico.
+- **O resultado do filtro sai de um fragmento de repositório** (`LancamentoRepositoryCustom` e
+  `LancamentoRepositoryImpl`; o sufixo `Impl` é o que o Spring Data procura): uma Criteria com
+  `SUM(CASE ...)` sobre a mesma `LancamentoSpecification`, para somar no banco sem carregar linhas. O
+  `findAll` paginado leva o mesmo `@EntityGraph` do antigo, contra N+1.
+- **A busca de lançamentos casa também com a observação**, além de descrição, categoria e contas, sem
+  acento (`unaccent`). Categoria, conta, cartão e conta de destino entram por subconsulta de ids
+  (`id_categoria IN (...)`), sem `JOIN`, para o `unaccent` rodar uma vez por cadastro e não uma vez por
+  lançamento, e para os filtros não duplicarem os `JOIN FETCH` do `@EntityGraph`. `GET /v1/lancamentos/{id}` (`buscarLancamento`, `LancamentoService.buscarPorId`)
+  devolve um lançamento no formato da listagem, para o frontend abrir um que não está na página, numa
+  consulta só (`buscarCompleto`). O `@EntityGraph` da listagem e o `buscarRecentes` do dashboard trazem
+  também a `recorrente`, que o `LancamentoMapper` lê: sem ela, cada recorrente da página era uma consulta.
 - **Recorrente é um cadastro só, de receita ou de despesa** (`V2.4`, tabela `recorrentes`, rota
   `/v1/recorrentes`, `TipoRecorrente`). A tabela era `despesas_recorrentes`; a `V2.4` a renomeia junto
   com restrições e índices e cria `tipo` com `DESPESA` como padrão, então as linhas antigas continuam
@@ -358,7 +423,17 @@ mudar um sem os outros quebra rotas, migrations ou logs:
   `vencendoEmBreve`, o aviso `RECORRENTE_VENCENDO` e a previsão olham só despesas — a previsão projeta a
   receita pela média dos meses fechados, e somar as recorrentes contaria o salário duas vezes.
 - `RecorrenteService` devolve `proximoVencimento` avançado pela frequência até hoje
-  (`Frequencia.proximaOcorrencia`, a mesma conta da previsão); o banco guarda a data informada.
+  (`Frequencia.ocorrenciaDesde`, a mesma conta da previsão, do aviso e do lançador); o banco guarda a
+  data informada.
+- **A recorrente mensal guarda o dia de referência** (`recorrentes.dia_vencimento`, `V2.9`). A
+  `Frequencia` avança e recua pelo mês e põe a data nesse dia, ou no último dia do mês quando ele é mais
+  curto: a de 31 cai em 28/02 e volta a 31/03. Antes, somar um mês à data anterior fazia a recorrente
+  do dia 31 ficar no 28 para sempre depois de fevereiro, e o lançador gravava a data já escorregada. O
+  dia vem da data informada; numa edição, a data que é o próprio dia de referência ajustado ao mês
+  (28/02 para quem é do dia 31) mantém o dia, e qualquer outra o troca. Semanal e quinzenal ignoram o
+  dia. A `V2.9` preencheu o dia das recorrentes existentes com o dia do `proximo_vencimento`, então a que
+  já tinha escorregado para o 28 precisa de uma edição com a data certa. O campo não sai no DTO: o
+  contrato com o PrismaWeb não mudou.
 - **Recorrente que lança sozinha** (`lancarAutomaticamente`). Ligada e ativa, ela vira uma receita ou
   despesa `PAGO` de verdade em cada data, na conta ou no cartão dela, com a categoria e o valor da
   recorrente e `lancamentos.id_recorrente` apontando para ela (`LancamentoDTO.recorrente`, com `id` e
@@ -411,8 +486,15 @@ mudar um sem os outros quebra rotas, migrations ou logs:
   montada no `RedisConfig`, leva a data de hoje, a geração, o método e os parâmetros, porque quase todo cálculo
   depende de `LocalDate.now()` e a virada do dia não pode servir o resultado de ontem. Cada escrita
   limpa com `@CacheEvict(allEntries = true)` todos os caches que leem a tabela alterada — lançamento
-  mexe em saldo, fatura, previsão, avisos, orçamento, dashboard e relatório, então leva todos eles. Um
-  `GET` novo ou uma leitura nova de outra tabela exige revisar esses `@CacheEvict`.
+  mexe em saldo, fatura, previsão, avisos, orçamento, dashboard e relatório, então leva todos eles. As
+  listas repetidas são anotações compostas em `config/cache` (`@LimparCachesDeLancamento`,
+  `...DeFatura`, `...DeCartao`, `...DeConta`, `...DeInvestimento`, `...DeMeta`, `...DeOrcamento`), e a
+  lista é escrita uma vez só; a de uso único fica direto no método. O lançador automático usa
+  `@LimparCachesDeLancamento(condition = "#result > 0")` e só limpa quando lançou algo. Um `GET` novo ou
+  uma leitura nova de outra tabela exige revisar essas anotações. A exceção ao `@Cacheable` é a
+  listagem de avisos, descrita acima.
+- **As respostas saem comprimidas** (`server.compression.enabled`) para quem pede `gzip`: o dashboard de
+  12 meses cai de 19 KB para 3,4 KB.
 - O cache nunca derruba a API. Com o Redis fora, o `errorHandler` do `RedisConfig` registra a falha e a
   leitura vai ao banco; o Lettuce recusa comandos enquanto está desconectado e desiste em 2 segundos, em
   vez dos 60 do padrão. Uma limpeza que falha não pode deixar dado velho para quando o Redis voltar: a
