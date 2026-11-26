@@ -35,7 +35,7 @@ class FaturaServiceTest extends AbstractTest {
 
     @Test
     void listarTest() {
-        var faturas = Assertions.assertDoesNotThrow(() -> faturaService.listar(null));
+        var faturas = Assertions.assertDoesNotThrow(() -> faturaService.listar(null, YearMonth.now().minusMonths(1), YearMonth.now().plusMonths(1)));
         Assertions.assertNotNull(faturas);
     }
 

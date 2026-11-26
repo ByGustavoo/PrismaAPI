@@ -137,7 +137,7 @@ public class DerivacaoAvisosService {
                 .stream()
                 .filter(despesa -> despesa.getTipo() == TipoRecorrente.DESPESA)
                 .filter(despesa -> !Boolean.TRUE.equals(despesa.getLancarAutomaticamente()))
-                .map(despesa -> avisoDaRecorrente(despesa, proximoVencimento(despesa, hoje), lancadas, hoje))
+                .map(despesa -> avisoDaRecorrente(despesa, despesa.getFrequencia().ocorrenciaDesde(despesa.getProximoVencimento(), hoje, despesa.getDiaVencimento()), lancadas, hoje))
                 .flatMap(Optional::stream)
                 .filter(aviso -> !aviso.data().isAfter(limite))
                 .toList();
@@ -265,7 +265,7 @@ public class DerivacaoAvisosService {
                 descricao,
                 data,
                 lancamento.getValor(),
-                "/lancamentos");
+                "/lancamentos?editar=" + lancamento.getId());
     }
 
     private static AvisoDTO novo(String id, TipoAviso tipo, SeveridadeAviso severidade, String titulo, String descricao, LocalDate data, BigDecimal valor, String rota) {
@@ -310,16 +310,6 @@ public class DerivacaoAvisosService {
         formato.setRoundingMode(RoundingMode.HALF_UP);
 
         return "R$ " + formato.format(valor);
-    }
-
-    private static LocalDate proximoVencimento(Recorrente despesa, LocalDate hoje) {
-        var vencimento = despesa.getProximoVencimento();
-
-        while (vencimento.isBefore(hoje)) {
-            vencimento = despesa.getFrequencia().proximaOcorrencia(vencimento);
-        }
-
-        return vencimento;
     }
 
     private static BigDecimal percentual(BigDecimal parte, BigDecimal total) {

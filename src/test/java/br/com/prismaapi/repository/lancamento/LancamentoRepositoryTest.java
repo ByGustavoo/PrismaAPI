@@ -69,18 +69,8 @@ class LancamentoRepositoryTest extends AbstractTest {
     }
 
     @Test
-    void agruparTotaisPorMesTest() {
-        Assertions.assertDoesNotThrow(() -> lancamentoRepository.agruparTotaisPorMes(LocalDate.now().minusYears(1), LocalDate.now()));
-    }
-
-    @Test
     void agruparReceitasEDespesasPorDiaTest() {
         Assertions.assertDoesNotThrow(() -> lancamentoRepository.agruparReceitasEDespesasPorDia(LocalDate.now().minusMonths(1), LocalDate.now()));
-    }
-
-    @Test
-    void agruparDespesasPorDiaTest() {
-        Assertions.assertDoesNotThrow(() -> lancamentoRepository.agruparDespesasPorDia(LocalDate.now().minusMonths(1), LocalDate.now()));
     }
 
     @Test
@@ -99,13 +89,8 @@ class LancamentoRepositoryTest extends AbstractTest {
     }
 
     @Test
-    void somarDespesasDoCartaoTest() {
-        Assertions.assertDoesNotThrow(() -> lancamentoRepository.somarDespesasDoCartao(UUID.randomUUID(), LocalDate.now().minusMonths(1), LocalDate.now()));
-    }
-
-    @Test
-    void somarDespesasPagasDoCartaoTest() {
-        Assertions.assertDoesNotThrow(() -> lancamentoRepository.somarDespesasPagasDoCartao(UUID.randomUUID(), LocalDate.now().minusMonths(1), LocalDate.now()));
+    void somarDespesasEmAbertoDoCartaoTest() {
+        Assertions.assertDoesNotThrow(() -> lancamentoRepository.somarDespesasEmAbertoDoCartao(UUID.randomUUID(), LocalDate.now().minusMonths(1), LocalDate.now()));
     }
 
     @Test

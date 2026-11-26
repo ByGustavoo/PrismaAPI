@@ -126,7 +126,7 @@ public class MetaService {
             throw new DataAnteriorAoPrimeiroPrecoException("A data do registro não pode ser anterior ao primeiro preço!");
         }
 
-        if (metaPrecoRepository.existsByMetaIdAndDataAndPreco(id, salvarMetaPrecoDTO.data(), salvarMetaPrecoDTO.preco())) {
+        if (historico.stream().anyMatch(preco -> preco.getData().equals(salvarMetaPrecoDTO.data()) && preco.getPreco().compareTo(salvarMetaPrecoDTO.preco()) == 0)) {
             log.error("Já existe um registro com esse preço nesta data!");
             throw new PrecoDuplicadoException("Já existe um registro com esse preço nesta data!");
         }

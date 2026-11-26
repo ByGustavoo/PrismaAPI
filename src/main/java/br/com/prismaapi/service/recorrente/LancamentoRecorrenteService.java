@@ -70,7 +70,7 @@ public class LancamentoRecorrenteService {
         var lancadas = 0;
         var vencimento = recorrente.getProximoVencimento();
 
-        for (; !vencimento.isAfter(hoje); vencimento = frequencia.proximaOcorrencia(vencimento)) {
+        for (; !vencimento.isAfter(hoje); vencimento = frequencia.proximaOcorrencia(vencimento, recorrente.getDiaVencimento())) {
             if (!origemAtiva(conta, cartao) || jaLancada(recorrente, conta, cartao, vencimento, existentes)) continue;
 
             existentes.add(lancamentoRepository.save(novoLancamento(recorrente, conta, cartao, vencimento)));

@@ -320,8 +320,7 @@ public class InvestimentoService {
         var lancamentos = lancamentoRepository.findByMovimentacaoInvestimentoInvestimentoId(id);
 
         lancamentos.forEach(InvestimentoService::desfazerNaConta);
-        lancamentoRepository.deleteAll(lancamentos);
-        lancamentoRepository.flush();
+        lancamentoRepository.deleteAllInBatch(lancamentos);
 
         investimentoRepository.delete(investimento);
     }

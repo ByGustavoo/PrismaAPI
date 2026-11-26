@@ -49,7 +49,7 @@ public record VariacaoDTO(
         return new VariacaoDTO(percentual.setScale(CASAS_DO_PERCENTUAL, RoundingMode.HALF_UP), emReais(diferenca), tendencia);
     }
 
-    public static VariacaoDTO estavel() {
+    private static VariacaoDTO estavel() {
         return new VariacaoDTO(zeroPercentual(), emReais(BigDecimal.ZERO), Tendencia.ESTAVEL);
     }
 

@@ -18,6 +18,7 @@ import br.com.prismaapi.model.dto.compraparcelada.PlanoCompraParceladaDTO;
 import br.com.prismaapi.model.dto.compraparcelada.SalvarCompraParceladaDTO;
 import br.com.prismaapi.model.entity.cartao.Cartao;
 import br.com.prismaapi.model.entity.compraparcelada.CompraParcelada;
+import br.com.prismaapi.model.entity.parcelapaga.ParcelaPaga;
 import br.com.prismaapi.model.mapper.compraparcelada.CompraParceladaMapper;
 import br.com.prismaapi.repository.cartao.CartaoRepository;
 import br.com.prismaapi.repository.compraparcelada.CompraParceladaRepository;
@@ -39,6 +40,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -104,7 +106,9 @@ public class CompraParceladaService {
         log.info("Registrando o pagamento da parcela... - ID: [{}] - Parcela: {}", id, numero);
         var compra = buscar(id);
         var hoje = LocalDate.now();
-        var pagamentos = faturaService.pagamentosPorCompra().getOrDefault(id, Map.of());
+        var pagamentos = parcelaPagaRepository.findByCompraParceladaIdIn(List.of(id))
+                .stream()
+                .collect(Collectors.toMap(pagamento -> pagamento.getNumero().intValue(), ParcelaPaga::getDataPagamento));
 
         var parcela = faturaService.cronograma(compra, hoje, pagamentos)
                 .stream()

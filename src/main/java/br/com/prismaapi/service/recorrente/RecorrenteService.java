@@ -124,7 +124,8 @@ public class RecorrenteService {
         recorrente.setDescricao(lancamento.getDescricao());
         recorrente.setSituacao(SituacaoRecorrente.ATIVO);
         recorrente.setTipo(TipoRecorrente.valueOf(lancamento.getTipo().name()));
-        recorrente.setProximoVencimento(frequencia.proximaOcorrencia(lancamento.getData()));
+        recorrente.setDiaVencimento((short) lancamento.getData().getDayOfMonth());
+        recorrente.setProximoVencimento(frequencia.proximaOcorrencia(lancamento.getData(), recorrente.getDiaVencimento()));
         recorrente.setProximoVencimento(vencimentoAPartirDe(recorrente, hoje));
 
         recorrenteRepository.save(recorrente);
@@ -143,35 +144,20 @@ public class RecorrenteService {
     }
 
     private RecorrenteDTO toDTO(Recorrente recorrente, LocalDate hoje) {
-        var vencimento = vencimentoAPartirDe(recorrente, hoje);
-        var dto = recorrenteMapper.toDTO(recorrente);
-
-        return new RecorrenteDTO(
-                dto.id(),
-                dto.tipo(),
-                dto.descricao(),
-                dto.valor(),
-                dto.categoria(),
-                dto.frequencia(),
-                vencimento,
-                dto.idOrigem(),
-                dto.nomeOrigem(),
-                dto.situacao(),
-                dto.lancarAutomaticamente(),
-                dto.observacoes());
+        return recorrenteMapper.toDTO(recorrente, vencimentoAPartirDe(recorrente, hoje));
     }
 
     private static LocalDate vencimentoAPartirDe(Recorrente recorrente, LocalDate hoje) {
-        var vencimento = recorrente.getProximoVencimento();
+        return recorrente.getFrequencia().ocorrenciaDesde(recorrente.getProximoVencimento(), hoje, recorrente.getDiaVencimento());
+    }
 
-        while (vencimento.isBefore(hoje)) {
-            vencimento = recorrente.getFrequencia().proximaOcorrencia(vencimento);
-        }
-
-        return vencimento;
+    private static Short diaDoVencimento(Short diaAtual, LocalDate vencimento) {
+        var mesmoDia = diaAtual != null && vencimento.getDayOfMonth() == Math.min(diaAtual, vencimento.lengthOfMonth());
+        return mesmoDia ? diaAtual : (short) vencimento.getDayOfMonth();
     }
 
     private void preencher(Recorrente recorrente, SalvarRecorrenteDTO salvarRecorrenteDTO, LocalDate hoje) {
+        recorrente.setDiaVencimento(diaDoVencimento(recorrente.getDiaVencimento(), salvarRecorrenteDTO.proximoVencimento()));
         recorrente.setDescricao(salvarRecorrenteDTO.descricao());
         recorrente.setObservacoes(TextoUtil.textoOuNulo(salvarRecorrenteDTO.observacoes()));
 

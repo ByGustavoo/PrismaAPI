@@ -24,6 +24,7 @@ import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import br.com.prismaapi.repository.lancamento.LancamentoSpecification;
 import br.com.prismaapi.service.categoria.CategoriaService;
 import br.com.prismaapi.service.recorrente.RecorrenteService;
+import br.com.prismaapi.util.PeriodoUtil;
 import br.com.prismaapi.util.TextoUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -279,10 +280,7 @@ public class LancamentoService {
     }
 
     private static void validar(FiltroLancamentoDTO filtro) {
-        if (filtro.dataInicial() != null && filtro.dataFinal() != null && filtro.dataInicial().isAfter(filtro.dataFinal())) {
-            log.warn("O período informado é inválido!");
-            throw new RequisicaoInvalidaException("O período informado é inválido!");
-        }
+        PeriodoUtil.validar(filtro.dataInicial(), filtro.dataFinal());
 
         if (filtro.pagina() < 0) {
             log.warn("A página informada é inválida! - Página: {}", filtro.pagina());

@@ -18,6 +18,7 @@ import br.com.prismaapi.model.mapper.categoria.CategoriaMapper;
 import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import br.com.prismaapi.service.investimento.InvestimentoService;
 import br.com.prismaapi.service.saldo.SaldoService;
+import br.com.prismaapi.util.PeriodoUtil;
 import br.com.prismaapi.util.ValorUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -92,10 +93,7 @@ public class RelatorioService {
             throw new RequisicaoInvalidaException("Informe o início e o fim do período!");
         }
 
-        if (dataInicial.isAfter(dataFinal)) {
-            log.warn("O período informado é inválido!");
-            throw new RequisicaoInvalidaException("O período informado é inválido!");
-        }
+        PeriodoUtil.validar(dataInicial, dataFinal);
     }
 
     private static List<BaldeRelatorio> baldes(LocalDate inicio, LocalDate fim, long dias) {

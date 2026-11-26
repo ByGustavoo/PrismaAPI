@@ -1,45 +1,49 @@
 package br.com.prismaapi.enums;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-
 import java.time.LocalDate;
+import java.time.YearMonth;
 
-@Getter
-@AllArgsConstructor
 public enum Frequencia {
 
-    ANUAL("ANUAL"),
-    MENSAL("MENSAL"),
-    SEMANAL("SEMANAL"),
-    QUINZENAL("QUINZENAL"),
-    BIMESTRAL("BIMESTRAL"),
-    SEMESTRAL("SEMESTRAL"),
-    TRIMESTRAL("TRIMESTRAL");
+    ANUAL,
+    MENSAL,
+    SEMANAL,
+    QUINZENAL,
+    BIMESTRAL,
+    SEMESTRAL,
+    TRIMESTRAL;
 
-    private final String descricao;
+    public LocalDate proximaOcorrencia(LocalDate data, int dia) {
+        return deslocar(data, 1, dia);
+    }
 
-    public LocalDate proximaOcorrencia(LocalDate data) {
+    public LocalDate ocorrenciaAnterior(LocalDate data, int dia) {
+        return deslocar(data, -1, dia);
+    }
+
+    public LocalDate ocorrenciaDesde(LocalDate data, LocalDate limite, int dia) {
+        var ocorrencia = data;
+
+        while (ocorrencia.isBefore(limite)) {
+            ocorrencia = proximaOcorrencia(ocorrencia, dia);
+        }
+
+        return ocorrencia;
+    }
+
+    private LocalDate deslocar(LocalDate data, int sentido, int dia) {
         return switch (this) {
-            case SEMANAL -> data.plusWeeks(1);
-            case QUINZENAL -> data.plusWeeks(2);
-            case MENSAL -> data.plusMonths(1);
-            case BIMESTRAL -> data.plusMonths(2);
-            case TRIMESTRAL -> data.plusMonths(3);
-            case SEMESTRAL -> data.plusMonths(6);
-            case ANUAL -> data.plusYears(1);
+            case SEMANAL -> data.plusWeeks(sentido);
+            case QUINZENAL -> data.plusWeeks(2L * sentido);
+            case MENSAL -> noDia(YearMonth.from(data).plusMonths(sentido), dia);
+            case BIMESTRAL -> noDia(YearMonth.from(data).plusMonths(2L * sentido), dia);
+            case TRIMESTRAL -> noDia(YearMonth.from(data).plusMonths(3L * sentido), dia);
+            case SEMESTRAL -> noDia(YearMonth.from(data).plusMonths(6L * sentido), dia);
+            case ANUAL -> noDia(YearMonth.from(data).plusYears(sentido), dia);
         };
     }
 
-    public LocalDate ocorrenciaAnterior(LocalDate data) {
-        return switch (this) {
-            case SEMANAL -> data.minusWeeks(1);
-            case QUINZENAL -> data.minusWeeks(2);
-            case MENSAL -> data.minusMonths(1);
-            case BIMESTRAL -> data.minusMonths(2);
-            case TRIMESTRAL -> data.minusMonths(3);
-            case SEMESTRAL -> data.minusMonths(6);
-            case ANUAL -> data.minusYears(1);
-        };
+    private static LocalDate noDia(YearMonth mes, int dia) {
+        return mes.atDay(Math.min(dia, mes.lengthOfMonth()));
     }
 }

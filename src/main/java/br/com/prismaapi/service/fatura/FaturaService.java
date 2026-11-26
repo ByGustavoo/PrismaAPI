@@ -34,6 +34,7 @@ import br.com.prismaapi.repository.categoria.CategoriaRepository;
 import br.com.prismaapi.repository.compraparcelada.CompraParceladaRepository;
 import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import br.com.prismaapi.repository.parcelapaga.ParcelaPagaRepository;
+import br.com.prismaapi.util.PeriodoUtil;
 import br.com.prismaapi.util.TextoUtil;
 import br.com.prismaapi.util.ValorUtil;
 import lombok.RequiredArgsConstructor;
@@ -75,8 +76,10 @@ public class FaturaService {
 
     @Cacheable("faturas")
     @Transactional(readOnly = true)
-    public List<FaturaCartaoDTO> listar(UUID idCartao) {
-        log.info("Listando as faturas... - ID do Cartão: [{}]", idCartao);
+    public List<FaturaCartaoDTO> listar(UUID idCartao, YearMonth dataInicial, YearMonth dataFinal) {
+        log.info("Listando as faturas... - ID do Cartão: [{}] - Data Inicial: {} - Data Final: {}", idCartao, dataInicial, dataFinal);
+        PeriodoUtil.validar(dataInicial, dataFinal);
+
         var cartoes = cartaoRepository.findByTipo(TipoCartao.CREDITO)
                 .stream()
                 .filter(cartao -> idCartao == null || cartao.getId().equals(idCartao))
@@ -84,6 +87,7 @@ public class FaturaService {
 
         return montarFaturas(cartoes, LocalDate.now(), null, pagamentosPorCompra())
                 .stream()
+                .filter(fatura -> dentroDoRecorte(YearMonth.parse(fatura.mes()), dataInicial, dataFinal))
                 .sorted(Comparator.comparing(FaturaCartaoDTO::dataVencimento)
                         .thenComparing(FaturaCartaoDTO::nomeCartao, TextoUtil.ORDEM_ALFABETICA))
                 .toList();
@@ -130,8 +134,7 @@ public class FaturaService {
 
         emAberto.forEach(compra -> pagarParcela(compra, numeroNoMes(compra.getPrimeiroMes(), mes), hoje, compra.getCategoria() != null ? compra.getCategoria() : semCategoria));
 
-        var despesasEmAberto = ValorUtil.zeroSeNulo(lancamentoRepository.somarDespesasDoCartao(cartao.getId(), abertura, fechamento))
-                .subtract(ValorUtil.zeroSeNulo(lancamentoRepository.somarDespesasPagasDoCartao(cartao.getId(), abertura, fechamento)));
+        var despesasEmAberto = ValorUtil.zeroSeNulo(lancamentoRepository.somarDespesasEmAbertoDoCartao(cartao.getId(), abertura, fechamento));
 
         lancamentoRepository.marcarDespesasDoCartaoComoPagas(cartao.getId(), abertura, fechamento, hoje, conta);
         conta.setSaldo(conta.getSaldo().subtract(despesasEmAberto));
@@ -534,6 +537,10 @@ public class FaturaService {
     private static LocalDate dataDePagamento(ParcelaDTO parcela, Map<Integer, LocalDate> pagamentos) {
         var registrada = pagamentos.get(parcela.numero());
         return registrada != null && registrada.isBefore(parcela.dataVencimento()) ? registrada : parcela.dataVencimento();
+    }
+
+    private static boolean dentroDoRecorte(YearMonth mes, YearMonth dataInicial, YearMonth dataFinal) {
+        return (dataInicial == null || !mes.isBefore(dataInicial)) && (dataFinal == null || !mes.isAfter(dataFinal));
     }
 
     private static boolean quitada(BigDecimal valorTotal, BigDecimal valorPago) {

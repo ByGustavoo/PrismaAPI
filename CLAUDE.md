@@ -33,15 +33,17 @@ src/main/java/br/com/prismaapi/
   config/          CorsConfig (origens por propriedade), DataBaseConfig, JacksonConfig, RedisConfig;
                    cache/ com as anotações compostas de limpeza (LimparCachesDeLancamento, ...DeFatura etc.)
   controller/      um pacote por recurso: <Recurso>Controller + <Recurso>Docs (mapeamento e OpenAPI)
-  enums/           enums do domínio
+  enums/           enums do domínio, só com as constantes (sem `descricao`, que nenhum código lia);
+                   campo só quando é usado, como `prioridade` em SeveridadeAviso e o rótulo de MesDoAno
   exceptions/      uma RuntimeException por falha de negócio, dto/ e handler/GlobalExceptionHandler
   model/dto/       DTOs de entrada e saída, e projeções por recurso
   model/entity/    entidades JPA
   model/mapper/    mappers MapStruct
   repository/      repositórios Spring Data, Specifications e BuscaSemAcento (busca com unaccent)
   service/         regras de negócio e cálculos (faturas, saldo, previsão, dashboard, relatórios, avisos)
-  util/            ValorUtil (dinheiro, fracao, somar, zeroSeNulo) e TextoUtil (textoOuNulo, normalizar,
-                   ORDEM_ALFABETICA e PT_BR): helper que mais de um service usa mora aqui, não copiado
+  util/            ValorUtil (dinheiro, fracao, somar, zeroSeNulo), TextoUtil (textoOuNulo, normalizar,
+                   ORDEM_ALFABETICA e PT_BR) e PeriodoUtil (validar: início depois do fim responde 400):
+                   helper que mais de um service usa mora aqui, não copiado
 src/main/resources/
   application.yaml config base + perfis dev, prod e test
   banner.txt       banner do start, com ${build.version} e ${build.data}
@@ -51,7 +53,8 @@ src/main/resources/
                    V1.5__AddPagamentoFaturaLancamentos.sql (pagamento de fatura na despesa do cartão) e
                    V1.6__AddLancamentoDoPagamento.sql (conta de pagamento do cartão de crédito e vínculo
                    do lançamento com a parcela paga e com a conta que pagou a fatura) e
-                   V1.8__CreateAvisos.sql (preferências dos avisos, tipos desligados e leituras)
+                   V1.8__CreateAvisos.sql (preferências dos avisos, tipos desligados e leituras); a mais
+                   recente é V2.9__AddDiaDoVencimentoDasRecorrentes.sql (dia de referência da recorrente)
 .run/              run configurations do IntelliJ (ignoradas pelo Git)
 .github/workflows/ workflow.yml (build no PR) e release.yml (imagem, tag e Release no merge para main)
 Dockerfile         build em dois estágios: gradle:jdk25 compila, eclipse-temurin:25-jre executa
@@ -65,7 +68,7 @@ src/test/resources/
                    V1.7__PopularContasDePagamento.sql, dados de exemplo aplicados só no perfil test
 ```
 
-São 15 recursos sob `/v1`, com 62 endpoints no total: `avisos`, `cartoes`, `categorias`,
+São 15 recursos sob `/v1`, com 64 endpoints no total: `avisos`, `cartoes`, `categorias`,
 `compras-parceladas`, `contas`, `dashboard`, `faturas`, `investimentos`,
 `lancamentos`, `metas`, `orcamentos`, `previsao`, `recorrentes`, `relatorios` e `sistema`. O esquema tem 15
 tabelas, todas em `prisma`.
@@ -98,7 +101,7 @@ relatório HTML em `build/reports/jacoco`.
   `classpath:db/test`: a `V1.2__PopularBanco.sql` popula o banco com um ano de dados relativos à data em
   que roda. Aponte as variáveis para um banco próprio, nunca para o de dev, que não conhece a `V1.2`.
   **As versões de `db/migration` e `db/test` formam uma sequência só**: a `V1.3`, a `V1.5`, a `V1.6`, a `V1.8`,
-  a `V1.9`, a `V2.0`, a `V2.2`, a `V2.3`, a `V2.4`, a `V2.6` e a `V2.7` são de produção, e a `V1.4`, a `V1.7`, a `V2.1`,
+  a `V1.9`, a `V2.0`, a `V2.2`, a `V2.3`, a `V2.4`, a `V2.6`, a `V2.7` e a `V2.9` são de produção, e a `V1.4`, a `V1.7`, a `V2.1`,
   a `V2.5` e a `V2.8` são carga de teste. O perfil `test` leva `spring.flyway.out-of-order: true`, porque
   num banco que o `dev` já levou até a `V1.5` a `V1.4` fica pendente abaixo da última aplicada, e sem
   isso o Flyway recusa o banco; por rodar sobre dados que podem já existir, a carga usa `ON CONFLICT`. Migração nova de produção leva o número seguinte ao último
@@ -252,8 +255,16 @@ mudar um sem os outros quebra rotas, migrations ou logs:
   lançamento (receita e despesa das contas do total, despesa no crédito depois de hoje, transferência
   que sai e que entra no total — cada lançamento cabe em no máximo uma), e
   `agruparPagamentosDeFaturaDoTotalPorDia` lê o pagamento de fatura, que cai em outra data.
+  **Despesa futura no crédito com a fatura já paga não entra na projeção** (`dataPagamentoFatura IS
+  NULL` no `CASE`, e o mesmo filtro nos lançamentos em aberto e agendados da `PrevisaoService`): pagar
+  uma fatura aberta debita da conta também a compra agendada para depois de hoje, e contá-la de novo na
+  data dela baixava o saldo projetado duas vezes.
 - **As faturas são montadas a partir de um mês** (`FaturaService.montarFaturas`, parâmetro `desde`). Só
-  `GET /faturas` monta o histórico inteiro, porque devolve todas. O detalhe e o pagamento montam o mês
+  `GET /faturas` monta o histórico inteiro, porque devolve todas. Ela aceita o recorte opcional
+  `dataInicial`/`dataFinal` (`yyyy-MM`, inclusivos, pelo `mes` da fatura; início depois do fim responde
+  `400`), que o PrismaWeb manda em Cartões e Faturas para encolher a resposta. O recorte filtra depois
+  da montagem, então situação e `totalAnterior` continuam calculados sobre o histórico inteiro. O
+  detalhe e o pagamento montam o mês
   pedido e o anterior, por causa do `totalAnterior` (o total da fatura anterior existente), e voltam ao
   histórico completo só quando o mês anterior não tem fatura. O limite comprometido e os avisos usam
   `faturasRecentes` (dois meses para trás): fatura mais antiga já está vencida ou paga e não pesa em
@@ -323,7 +334,10 @@ mudar um sem os outros quebra rotas, migrations ou logs:
 - `investimentos.reserva_emergencia` marca o investimento como parte da reserva de emergência, em qualquer
   classe: a reserva é finalidade, não produto. `CarteiraDTO.reserva` soma os marcados.
 - `DashboardDTO.patrimonio` é o saldo do total no corte mais a carteira no mesmo mês
-  (`InvestimentoService.evolucaoNosMeses`), com variação contra o corte anterior.
+  (`InvestimentoService.evolucaoNosMeses`), com variação contra o corte anterior. `totalInvestido` e
+  `variacaoInvestimentos` saem do mesmo ponto da carteira: o valor no corte e a rentabilidade dele contra
+  o aportado até ali. Liam a carteira de hoje, e num mês passado o card de investimentos mostrava o valor
+  atual enquanto o patrimônio, na mesma tela, usava o do mês.
 - Investimento sem movimentação há mais tempo que o lembrete escolhido (30 dias por padrão) vira aviso
   (`INVESTIMENTO_DESATUALIZADO`, sempre `ATENCAO`, sem `valor`), lido de `data_ultima_movimentacao`: é o
   lembrete de conferir o saldo na instituição, e some quando um aporte ou um saldo é registrado. A
@@ -334,7 +348,10 @@ mudar um sem os outros quebra rotas, migrations ou logs:
   leitura não atravessar a virada); `SALDO_NEGATIVO_PREVISTO` é o primeiro mês da `PrevisaoService`
   (o resto do mês corrente incluído) com `saldoFinal` negativo, `CRITICO` no mês atual e no seguinte;
   `META_SEM_PRECO` vem de `MetaPrecoRepository.buscarAcompanhadasSemPrecoDesde`, com a rota
-  `/planejamento/metas?meta=<id>`. A rota da fatura passou a ser `/faturas?fatura=<id>`. Por lerem
+  `/planejamento/metas?meta=<id>`. A rota da fatura passou a ser `/faturas?fatura=<id>`, e a dos avisos de lançamento
+  (`CONTA_VENCENDO`, `LANCAMENTO_AGENDADO` e `RECEITA_PREVISTA`) é `/lancamentos?editar=<id>`, que o
+  PrismaWeb abre direto no formulário pelo `GET /lancamentos/{id}`: com só `/lancamentos`, o aviso de uma
+  conta vencida há meses caía na lista inteira. Por lerem
   orçamento e metas, as escritas do `OrcamentoService` e do `MetaService` limpam também o cache `avisos`.
 - **Preferências e leituras dos avisos** (`V1.8`). `preferencias_avisos` tem uma linha só, criada pela
   migração, com a antecedência (3, 7, 15 ou 30 dias, usada por faturas, lançamentos e recorrentes), o
@@ -404,7 +421,17 @@ mudar um sem os outros quebra rotas, migrations ou logs:
   `vencendoEmBreve`, o aviso `RECORRENTE_VENCENDO` e a previsão olham só despesas — a previsão projeta a
   receita pela média dos meses fechados, e somar as recorrentes contaria o salário duas vezes.
 - `RecorrenteService` devolve `proximoVencimento` avançado pela frequência até hoje
-  (`Frequencia.proximaOcorrencia`, a mesma conta da previsão); o banco guarda a data informada.
+  (`Frequencia.ocorrenciaDesde`, a mesma conta da previsão, do aviso e do lançador); o banco guarda a
+  data informada.
+- **A recorrente mensal guarda o dia de referência** (`recorrentes.dia_vencimento`, `V2.9`). A
+  `Frequencia` avança e recua pelo mês e põe a data nesse dia, ou no último dia do mês quando ele é mais
+  curto: a de 31 cai em 28/02 e volta a 31/03. Antes, somar um mês à data anterior fazia a recorrente
+  do dia 31 ficar no 28 para sempre depois de fevereiro, e o lançador gravava a data já escorregada. O
+  dia vem da data informada; numa edição, a data que é o próprio dia de referência ajustado ao mês
+  (28/02 para quem é do dia 31) mantém o dia, e qualquer outra o troca. Semanal e quinzenal ignoram o
+  dia. A `V2.9` preencheu o dia das recorrentes existentes com o dia do `proximo_vencimento`, então a que
+  já tinha escorregado para o 28 precisa de uma edição com a data certa. O campo não sai no DTO: o
+  contrato com o PrismaWeb não mudou.
 - **Recorrente que lança sozinha** (`lancarAutomaticamente`). Ligada e ativa, ela vira uma receita ou
   despesa `PAGO` de verdade em cada data, na conta ou no cartão dela, com a categoria e o valor da
   recorrente e `lancamentos.id_recorrente` apontando para ela (`LancamentoDTO.recorrente`, com `id` e

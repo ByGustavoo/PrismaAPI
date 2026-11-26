@@ -1,24 +1,16 @@
 package br.com.prismaapi.enums;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-
-@Getter
-@AllArgsConstructor
 public enum ClasseAtivo {
 
-    CDB("CDB"),
-    RDB("RDB"),
-    ETF("ETF"),
-    ACOES("AÇÕES"),
-    CRIPTO("CRIPTO"),
-    OUTROS("OUTROS"),
-    FUNDOS("FUNDOS"),
-    POUPANCA("POUPANÇA"),
-    RENDA_FIXA("RENDA FIXA"),
-    TESOURO("TESOURO DIRETO"),
-    PREVIDENCIA("PREVIDÊNCIA PRIVADA");
-
-    private final String descricao;
-
+    CDB,
+    RDB,
+    ETF,
+    ACOES,
+    CRIPTO,
+    OUTROS,
+    FUNDOS,
+    POUPANCA,
+    RENDA_FIXA,
+    TESOURO,
+    PREVIDENCIA
 }

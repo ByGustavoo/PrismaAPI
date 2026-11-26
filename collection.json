@@ -787,6 +787,16 @@
                                 {
                                     "key": "idCartao",
                                     "value": "{{idCartao}}"
+                                },
+                                {
+                                    "key": "dataInicial",
+                                    "value": "2026-10",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "dataFinal",
+                                    "value": "2026-12",
+                                    "disabled": true
                                 }
                             ]
                         }

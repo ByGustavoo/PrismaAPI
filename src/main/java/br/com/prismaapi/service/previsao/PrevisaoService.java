@@ -92,7 +92,10 @@ public class PrevisaoService {
                 recorrentes.stream().map(despesa -> TextoUtil.normalizar(despesa.getDescricao())).collect(Collectors.toSet()));
 
         var saldoAtual = ValorUtil.dinheiro(contaRepository.somarSaldoDoTotal());
-        var emAberto = lancamentoRepository.buscarNaoPagosAte(mesAtual.atEndOfMonth());
+        var emAberto = lancamentoRepository.buscarNaoPagosAte(mesAtual.atEndOfMonth())
+                .stream()
+                .filter(PrevisaoService::foraDeFaturaPaga)
+                .toList();
         var restanteMesAtual = projetarRestante(cenario, emAberto, hoje, saldoAtual);
 
         var saldo = restanteMesAtual.saldoFinal();
@@ -221,6 +224,7 @@ public class PrevisaoService {
     private static Map<YearMonth, List<Lancamento>> agendadosPorMes(List<Lancamento> lancamentos) {
         return lancamentos.stream()
                 .filter(lancamento -> lancamento.getSituacao() != SituacaoLancamento.PAGO)
+                .filter(PrevisaoService::foraDeFaturaPaga)
                 .collect(Collectors.groupingBy(lancamento -> YearMonth.from(lancamento.getData())));
     }
 
@@ -236,14 +240,15 @@ public class PrevisaoService {
     }
 
     private static long ocorrenciasEntre(Recorrente despesa, LocalDate inicio, LocalDate fim) {
+        var dia = despesa.getDiaVencimento();
         var frequencia = despesa.getFrequencia();
         var ocorrencias = 0L;
 
-        for (var vencimento = frequencia.ocorrenciaAnterior(despesa.getProximoVencimento()); !vencimento.isBefore(inicio); vencimento = frequencia.ocorrenciaAnterior(vencimento)) {
+        for (var vencimento = frequencia.ocorrenciaAnterior(despesa.getProximoVencimento(), dia); !vencimento.isBefore(inicio); vencimento = frequencia.ocorrenciaAnterior(vencimento, dia)) {
             if (!vencimento.isAfter(fim)) ocorrencias++;
         }
 
-        for (var vencimento = despesa.getProximoVencimento(); !vencimento.isAfter(fim); vencimento = frequencia.proximaOcorrencia(vencimento)) {
+        for (var vencimento = despesa.getProximoVencimento(); !vencimento.isAfter(fim); vencimento = frequencia.proximaOcorrencia(vencimento, dia)) {
             if (!vencimento.isBefore(inicio)) ocorrencias++;
         }
 
@@ -266,6 +271,10 @@ public class PrevisaoService {
 
     private static boolean aporte(Lancamento lancamento) {
         return lancamento.getTipo() == TipoLancamento.TRANSFERENCIA && pesaNoTotal(lancamento.getConta()) && !pesaNoTotal(lancamento.getContaDestino());
+    }
+
+    private static boolean foraDeFaturaPaga(Lancamento lancamento) {
+        return lancamento.getDataPagamentoFatura() == null;
     }
 
     private static boolean pesaNoTotal(Conta conta) {

@@ -44,6 +44,9 @@ public class Recorrente {
     @Column(name = "proximo_vencimento", nullable = false)
     private LocalDate proximoVencimento;
 
+    @Column(name = "dia_vencimento", nullable = false)
+    private Short diaVencimento;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
     private SituacaoRecorrente situacao;
