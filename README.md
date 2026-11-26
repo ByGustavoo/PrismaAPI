@@ -1,16 +1,18 @@
 <div align="center"> <br> 
-  <img align="center" alt="guru-java" height="150" width="150" src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/spring/spring-original.svg" />
+  <img align="center" alt="prismaapi-spring" height="150" width="150" src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/spring/spring-original.svg" />
 </div> 
 
 <br> 
 
 <div align="center">
-  API REST do PrismaWeb, construída em Spring Boot. Concentra as regras de negócio, a persistência e os endpoints consumidos pela aplicação web.
+  API REST do <a href="https://github.com/ByGustavoo/PrismaWeb">PrismaWeb</a>, construída em Spring Boot. O Prisma é uma aplicação de finanças pessoais; esta API concentra as regras de negócio, os cálculos (saldo, faturas, previsão, avisos, relatórios), a persistência em PostgreSQL e os endpoints consumidos pela aplicação web.
 </div> 
 
- <br> 
+<br> <br> 
 
 ## 🚀 Ferramentas Utilizadas
+
+* 🟥 Redis
 
 * 🐳 Docker
 
@@ -26,19 +28,19 @@
 
 * 🧪 JUnit 5
 
-* 🗺️ MapStruct
-
 * 🃏 Jackson 3
 
 * 🐘 PostgreSQL 18
 
 * ⚙️ GitHub Actions
 
+* 🗺️ MapStruct 1.6.3
+
 * 🟢 Spring Boot 4.1.1
 
-* 🐘 Gradle 9.7.1 (Kotlin DSL)
+* 🐘 Gradle 9.8.0 (Kotlin DSL)
 
-* 📄 Springdoc OpenAPI (Swagger UI)
+* 📄 Springdoc OpenAPI 3.1.0 (Swagger UI)
 
 <br> 
 
@@ -46,7 +48,9 @@
 
 * JDK 25 instalada (o projeto não declara resolver de toolchain, então o Gradle não baixa a JDK sozinho)
 
-* PostgreSQL acessível para os perfis `dev`, `prod` e `test`
+* PostgreSQL e Redis acessíveis para os perfis `dev` e `prod`
+
+* PostgreSQL próprio para os testes, separado do banco de `dev`
 
 <br> 
 
@@ -65,14 +69,18 @@ Obrigatórias nos perfis `dev` e `prod` (usadas por `DataBaseConfig` e `RedisCon
 | `REDIS_PORT` | Porta do Redis |
 | `REDIS_PASSWORD` | Senha do Redis (opcional) |
 
-No perfil `test` as mesmas variáveis são lidas por `TestDataBaseConfig`, que assume
-`localhost:5432/prisma` quando elas não estão definidas.
+No perfil `test` as variáveis `DATABASE_*` são lidas por `TestDataBaseConfig`, que assume
+`localhost:5432/prisma` quando elas não estão definidas. O perfil desliga o cache, então os testes
+não precisam de Redis.
 
 <br> 
 
 ## ▶️ Como Executar
 
 ```bash
+# Sobe o PostgreSQL na 5432 e o Redis na 6379
+docker compose -f docker-compose-postgres.yml up -d
+
 # Ambiente de desenvolvimento (porta 9017)
 ./gradlew bootRun --args="--spring.profiles.active=dev"
 
@@ -80,10 +88,37 @@ No perfil `test` as mesmas variáveis são lidas por `TestDataBaseConfig`, que a
 ./gradlew bootRun --args="--spring.profiles.active=prod"
 ```
 
-No IntelliJ IDEA, as configurações equivalentes estão em `.run/`.
+No IntelliJ IDEA, as configurações equivalentes estão em `.run/`, já com as variáveis apontando
+para o PostgreSQL e o Redis do `docker-compose-postgres.yml`.
 
 A aplicação sobe sob o context path `/PrismaAPI`. Em desenvolvimento, a documentação
 fica em `http://localhost:9017/PrismaAPI/swagger-ui.html`.
+
+<br> 
+
+## 🔌 API
+
+São 16 recursos sob `/PrismaAPI/v1`, com 64 endpoints. Cada um é documentado no Swagger pela
+interface `<Recurso>Docs`.
+
+| Recurso | Endpoints | O que faz |
+|---|---|---|
+| `/avisos` | 8 | Avisos derivados dos dados, leitura, adiamento e preferências |
+| `/cartoes` | 4 | Cartões de crédito, débito e vale |
+| `/categorias` | 1 | Catálogo fixo de categorias de receita e despesa |
+| `/compras-parceladas` | 6 | Compras no cartão e pagamento antecipado de parcela |
+| `/contas` | 5 | Contas e origens dos lançamentos |
+| `/dashboard` | 1 | Resumo do período: saldo, patrimônio, fluxo e categorias |
+| `/faturas` | 4 | Faturas calculadas, detalhe e pagamento |
+| `/investimentos` | 12 | Carteira, extrato, aportes, resgates, saldos e ações por quantidade |
+| `/lancamentos` | 5 | Receitas, despesas e transferências, com listagem paginada |
+| `/metas` | 5 | Metas de compra e histórico de preços |
+| `/orcamentos` | 4 | Limite mensal por categoria e visão geral do mês |
+| `/previsao` | 1 | Projeção do resto do mês e dos meses seguintes |
+| `/recorrentes` | 4 | Receitas e despesas recorrentes, com lançamento automático |
+| `/relatorios` | 1 | Resumo por recorte de datas |
+| `/sistema` | 1 | Versão e data do build |
+| `/telas` | 2 | Telas ocultas no menu |
 
 <br> 
 
@@ -100,15 +135,19 @@ fica em `http://localhost:9017/PrismaAPI/swagger-ui.html`.
 ./gradlew clean build -x test
 ```
 
+Os testes rodam sobre um banco populado pela carga de `src/test/resources/db/test`, aplicada pelo
+Flyway só no perfil `test`. Aponte as variáveis `DATABASE_*` para um banco próprio, e não para o de
+desenvolvimento.
+
 <br> 
 
 ## 🐳 Docker
 
 ```bash
-# Sobe um PostgreSQL local na porta 5432
+# Sobe um PostgreSQL local na porta 5432 e um Redis na 6379
 docker compose -f docker-compose-postgres.yml up -d
 
-# Sobe a API em produção na porta 9027, lendo as variáveis de um .env ao lado
+# Sobe a API em produção na porta 9027, com Redis próprio, lendo as variáveis de um .env ao lado
 docker compose -f docker-compose-prismaapi.yml up -d
 ```
 
@@ -122,7 +161,10 @@ O `Dockerfile` constrói em dois estágios: `gradle:jdk25` gera o jar com
 | Workflow | Gatilho | O que faz |
 |---|---|---|
 | `workflow.yml` | Pull Request para `main` | Sobe um PostgreSQL de serviço e roda `build jacocoTestReport` |
-| `release.yml` | Push em `main` | Lê a versão do `build.gradle.kts` e publica a imagem no Docker Hub |
+| `release.yml` | PR mergeado em `main` (ou manual) | Sobe a versão a partir da última tag `vX.Y.Z`, publica a imagem multi-arch no Docker Hub e cria a tag e a Release |
+
+O incremento é de patch, ou de minor/major quando o PR tem o rótulo `release:minor` ou
+`release:major`. A versão publicada é a que `GET /v1/sistema/versao` devolve.
 
 <br> 
 
@@ -131,13 +173,14 @@ O `Dockerfile` constrói em dois estágios: `gradle:jdk25` gera o jar com
 ```
 src/main/java/br/com/prismaapi
 ├── PrismaAPIApplication.java   # Classe de inicialização
-├── config                      # CorsConfig, DataBaseConfig e JacksonConfig
+├── config                      # CorsConfig, DataBaseConfig, JacksonConfig, RedisConfig e cache/
 ├── controller                  # Um pacote por recurso: <Recurso>Controller + <Recurso>Docs
 ├── enums                       # Enums do domínio
 ├── exceptions                  # Exceções de negócio, dto e GlobalExceptionHandler
 ├── model                       # dto, entity e mapper (MapStruct)
-├── repository                  # Repositórios Spring Data e Specifications
-└── service                     # Regras de negócio e cálculos
+├── repository                  # Repositórios Spring Data, Specifications e busca sem acento
+├── service                     # Regras de negócio e cálculos
+└── util                        # ValorUtil, TextoUtil e PeriodoUtil
 
 src/main/resources
 ├── application.yaml            # Configuração por perfil (dev, prod, test)
@@ -147,7 +190,9 @@ src/main/resources
 
 src/test/java/br/com/prismaapi
 ├── config                      # AbstractTest, AbstractControllerTest e TestDataBaseConfig
-└── repository                  # Um pacote por repositório: <Recurso>RepositoryTest
+├── controller                  # Um teste por endpoint: <Recurso>ControllerTest
+├── repository                  # Um teste por repositório: <Recurso>RepositoryTest
+└── service                     # Um teste por service: <Recurso>ServiceTest
 
 src/test/resources
 └── db/test                     # Massa de dados aplicada só no perfil test
