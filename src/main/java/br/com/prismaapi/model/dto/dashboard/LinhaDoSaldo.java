@@ -1,8 +1,9 @@
 package br.com.prismaapi.model.dto.dashboard;
 
+import br.com.prismaapi.util.ValorUtil;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.Map;
 import java.util.NavigableMap;
 
 public record LinhaDoSaldo(
@@ -21,13 +22,9 @@ public record LinhaDoSaldo(
         }
 
         if (data.isAfter(hoje)) {
-            return saldoDeHoje.add(somar(movimentos.subMap(hoje, false, data, true)));
+            return saldoDeHoje.add(ValorUtil.somar(movimentos.subMap(hoje, false, data, true).values().stream()));
         }
 
-        return saldoDeHoje.subtract(somar(movimentos.subMap(data, false, hoje, true)));
-    }
-
-    private static BigDecimal somar(Map<LocalDate, BigDecimal> trecho) {
-        return trecho.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+        return saldoDeHoje.subtract(ValorUtil.somar(movimentos.subMap(data, false, hoje, true).values().stream()));
     }
 }

@@ -4,6 +4,7 @@ import br.com.prismaapi.enums.TipoLancamento;
 import br.com.prismaapi.model.dto.cartao.projection.DespesaCartaoProjecao;
 import br.com.prismaapi.model.dto.dashboard.projection.GastoCategoriaProjecao;
 import br.com.prismaapi.model.dto.dashboard.projection.MovimentoDiarioProjecao;
+import br.com.prismaapi.model.dto.dashboard.projection.ResumoDoPeriodoProjecao;
 import br.com.prismaapi.model.dto.dashboard.projection.TotalMensalProjecao;
 import br.com.prismaapi.model.dto.dashboard.projection.ValorPorDataProjecao;
 import br.com.prismaapi.model.dto.relatorio.projection.GastoOrigemProjecao;
@@ -22,6 +23,7 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -29,10 +31,11 @@ import java.util.UUID;
 @Repository
 public interface LancamentoRepository extends JpaRepository<Lancamento, UUID>, JpaSpecificationExecutor<Lancamento>, LancamentoRepositoryCustom {
 
-    @EntityGraph(attributePaths = {"categoria", "conta", "cartao", "contaDestino", "parcelaPaga.compraParcelada", "movimentacaoInvestimento.investimento"})
+    @EntityGraph(attributePaths = {"categoria", "conta", "cartao", "contaDestino", "recorrente", "parcelaPaga.compraParcelada", "movimentacaoInvestimento.investimento"})
     Page<Lancamento> findAll(Specification<Lancamento> specification, Pageable pageable);
 
-    Optional<Lancamento> findByParcelaPagaId(UUID parcelaPagaId);
+    @EntityGraph(attributePaths = "conta")
+    List<Lancamento> findByParcelaPagaIdIn(Collection<UUID> parcelasPagasIds);
 
     List<Lancamento> findByMovimentacaoInvestimentoInvestimentoId(UUID investimentoId);
 
@@ -40,17 +43,37 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, UUID>, J
 
     long countByCartaoId(UUID cartaoId);
 
-    long countByTipoNotAndDataBetween(TipoLancamento tipo, LocalDate inicio, LocalDate fim);
+    @Query("""
+            SELECT lancamento
+            FROM Lancamento lancamento
+            LEFT JOIN FETCH lancamento.categoria
+            LEFT JOIN FETCH lancamento.conta
+            LEFT JOIN FETCH lancamento.cartao
+            LEFT JOIN FETCH lancamento.contaDestino
+            LEFT JOIN FETCH lancamento.recorrente
+            LEFT JOIN FETCH lancamento.parcelaPaga pagamento
+            LEFT JOIN FETCH pagamento.compraParcelada
+            LEFT JOIN FETCH lancamento.movimentacaoInvestimento movimentacao
+            LEFT JOIN FETCH movimentacao.investimento
+            WHERE lancamento.id = :id
+            """)
+    Optional<Lancamento> buscarCompleto(@Param("id") UUID id);
 
     @Query("""
-            SELECT SUM(lancamento.valor)
+            SELECT new br.com.prismaapi.model.dto.dashboard.projection.ResumoDoPeriodoProjecao(
+                       SUM(CASE WHEN lancamento.tipo = br.com.prismaapi.enums.TipoLancamento.RECEITA AND lancamento.data BETWEEN :inicio AND :fim THEN lancamento.valor END),
+                       SUM(CASE WHEN lancamento.tipo = br.com.prismaapi.enums.TipoLancamento.DESPESA AND lancamento.data BETWEEN :inicio AND :fim THEN lancamento.valor END),
+                       SUM(CASE WHEN lancamento.tipo = br.com.prismaapi.enums.TipoLancamento.RECEITA AND lancamento.data BETWEEN :inicioAnterior AND :fimAnterior THEN lancamento.valor END),
+                       SUM(CASE WHEN lancamento.tipo = br.com.prismaapi.enums.TipoLancamento.DESPESA AND lancamento.data BETWEEN :inicioAnterior AND :fimAnterior THEN lancamento.valor END),
+                       COUNT(CASE WHEN lancamento.data BETWEEN :inicio AND :fim THEN 1 END))
             FROM Lancamento lancamento
-            WHERE lancamento.tipo = :tipo
-              AND lancamento.data BETWEEN :inicio AND :fim
+            WHERE lancamento.tipo <> br.com.prismaapi.enums.TipoLancamento.TRANSFERENCIA
+              AND (lancamento.data BETWEEN :inicio AND :fim OR lancamento.data BETWEEN :inicioAnterior AND :fimAnterior)
             """)
-    BigDecimal somarPorTipo(@Param("tipo") TipoLancamento tipo,
-                            @Param("inicio") LocalDate inicio,
-                            @Param("fim") LocalDate fim);
+    ResumoDoPeriodoProjecao resumirPeriodos(@Param("inicio") LocalDate inicio,
+                                            @Param("fim") LocalDate fim,
+                                            @Param("inicioAnterior") LocalDate inicioAnterior,
+                                            @Param("fimAnterior") LocalDate fimAnterior);
 
     @Query("""
             SELECT new br.com.prismaapi.model.dto.dashboard.projection.TotalMensalProjecao(
@@ -93,32 +116,72 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, UUID>, J
 
     @Query("""
             SELECT new br.com.prismaapi.model.dto.dashboard.projection.GastoCategoriaProjecao(
-                       lancamento.categoria.id,
+                       categoria,
                        SUM(lancamento.valor))
             FROM Lancamento lancamento
-            WHERE lancamento.tipo = br.com.prismaapi.enums.TipoLancamento.DESPESA
-              AND lancamento.categoria IS NOT NULL
-              AND lancamento.data BETWEEN :inicio AND :fim
-            GROUP BY lancamento.categoria.id
-            ORDER BY SUM(lancamento.valor) DESC
-            """)
-    List<GastoCategoriaProjecao> agruparDespesasPorCategoria(@Param("inicio") LocalDate inicio,
-                                                             @Param("fim") LocalDate fim);
-
-    @Query("""
-            SELECT new br.com.prismaapi.model.dto.dashboard.projection.GastoCategoriaProjecao(
-                       lancamento.categoria.id,
-                       SUM(lancamento.valor))
-            FROM Lancamento lancamento
+            JOIN lancamento.categoria categoria
             WHERE lancamento.tipo = :tipo
-              AND lancamento.categoria IS NOT NULL
               AND lancamento.data BETWEEN :inicio AND :fim
-            GROUP BY lancamento.categoria.id
+            GROUP BY categoria
             ORDER BY SUM(lancamento.valor) DESC
             """)
     List<GastoCategoriaProjecao> agruparPorCategoria(@Param("tipo") TipoLancamento tipo,
                                                      @Param("inicio") LocalDate inicio,
                                                      @Param("fim") LocalDate fim);
+
+    @Query("""
+            SELECT new br.com.prismaapi.model.dto.dashboard.projection.ValorPorDataProjecao(
+                       lancamento.data,
+                       SUM(CASE
+                               WHEN lancamento.tipo <> br.com.prismaapi.enums.TipoLancamento.TRANSFERENCIA
+                                AND conta.situacao = br.com.prismaapi.enums.Situacao.ATIVO
+                                AND conta.incluirNoTotal = TRUE
+                                AND (lancamento.situacao = br.com.prismaapi.enums.SituacaoLancamento.PAGO OR lancamento.data > :hoje)
+                               THEN (CASE WHEN lancamento.tipo = br.com.prismaapi.enums.TipoLancamento.RECEITA THEN lancamento.valor ELSE -lancamento.valor END)
+                               WHEN lancamento.tipo = br.com.prismaapi.enums.TipoLancamento.DESPESA
+                                AND cartao.tipo = br.com.prismaapi.enums.TipoCartao.CREDITO
+                                AND lancamento.data > :hoje
+                               THEN -lancamento.valor
+                               WHEN lancamento.tipo = br.com.prismaapi.enums.TipoLancamento.TRANSFERENCIA
+                                AND conta.situacao = br.com.prismaapi.enums.Situacao.ATIVO
+                                AND conta.incluirNoTotal = TRUE
+                                AND (destino IS NULL OR destino.situacao <> br.com.prismaapi.enums.Situacao.ATIVO OR destino.incluirNoTotal = FALSE)
+                                AND (lancamento.situacao = br.com.prismaapi.enums.SituacaoLancamento.PAGO OR lancamento.data > :hoje)
+                               THEN -lancamento.valor
+                               WHEN lancamento.tipo = br.com.prismaapi.enums.TipoLancamento.TRANSFERENCIA
+                                AND destino.situacao = br.com.prismaapi.enums.Situacao.ATIVO
+                                AND destino.incluirNoTotal = TRUE
+                                AND (conta IS NULL OR conta.situacao <> br.com.prismaapi.enums.Situacao.ATIVO OR conta.incluirNoTotal = FALSE)
+                                AND (lancamento.situacao = br.com.prismaapi.enums.SituacaoLancamento.PAGO OR lancamento.data > :hoje)
+                               THEN lancamento.valor
+                               ELSE 0
+                           END))
+            FROM Lancamento lancamento
+            LEFT JOIN lancamento.conta conta
+            LEFT JOIN lancamento.cartao cartao
+            LEFT JOIN lancamento.contaDestino destino
+            WHERE lancamento.data > :inicio
+              AND lancamento.data <= :fim
+            GROUP BY lancamento.data
+            """)
+    List<ValorPorDataProjecao> agruparMovimentosDoTotalPorDia(@Param("inicio") LocalDate inicio,
+                                                              @Param("fim") LocalDate fim,
+                                                              @Param("hoje") LocalDate hoje);
+
+    @Query("""
+            SELECT new br.com.prismaapi.model.dto.dashboard.projection.ValorPorDataProjecao(
+                       lancamento.dataPagamentoFatura,
+                       SUM(lancamento.valor))
+            FROM Lancamento lancamento
+            JOIN lancamento.contaPagamentoFatura conta
+            WHERE conta.situacao = br.com.prismaapi.enums.Situacao.ATIVO
+              AND conta.incluirNoTotal = TRUE
+              AND lancamento.dataPagamentoFatura > :inicio
+              AND lancamento.dataPagamentoFatura <= :fim
+            GROUP BY lancamento.dataPagamentoFatura
+            """)
+    List<ValorPorDataProjecao> agruparPagamentosDeFaturaDoTotalPorDia(@Param("inicio") LocalDate inicio,
+                                                                      @Param("fim") LocalDate fim);
 
     @Query("""
             SELECT new br.com.prismaapi.model.dto.relatorio.projection.GastoOrigemProjecao(
@@ -137,95 +200,6 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, UUID>, J
             """)
     List<GastoOrigemProjecao> agruparDespesasPorOrigem(@Param("inicio") LocalDate inicio,
                                                        @Param("fim") LocalDate fim);
-
-    @Query("""
-            SELECT new br.com.prismaapi.model.dto.dashboard.projection.MovimentoDiarioProjecao(
-                       lancamento.data,
-                       lancamento.tipo,
-                       SUM(lancamento.valor))
-            FROM Lancamento lancamento
-            JOIN lancamento.conta conta
-            WHERE lancamento.tipo <> br.com.prismaapi.enums.TipoLancamento.TRANSFERENCIA
-              AND conta.situacao = br.com.prismaapi.enums.Situacao.ATIVO
-              AND conta.incluirNoTotal = TRUE
-              AND lancamento.data > :inicio
-              AND lancamento.data <= :fim
-              AND (lancamento.situacao = br.com.prismaapi.enums.SituacaoLancamento.PAGO OR lancamento.data > :hoje)
-            GROUP BY lancamento.data, lancamento.tipo
-            """)
-    List<MovimentoDiarioProjecao> agruparMovimentoDoTotalPorDia(@Param("inicio") LocalDate inicio,
-                                                                @Param("fim") LocalDate fim,
-                                                                @Param("hoje") LocalDate hoje);
-
-    @Query("""
-            SELECT new br.com.prismaapi.model.dto.dashboard.projection.ValorPorDataProjecao(
-                       lancamento.data,
-                       SUM(lancamento.valor))
-            FROM Lancamento lancamento
-            JOIN lancamento.cartao cartao
-            WHERE lancamento.tipo = br.com.prismaapi.enums.TipoLancamento.DESPESA
-              AND cartao.tipo = br.com.prismaapi.enums.TipoCartao.CREDITO
-              AND lancamento.data > :inicio
-              AND lancamento.data <= :fim
-            GROUP BY lancamento.data
-            """)
-    List<ValorPorDataProjecao> agruparDespesasNoCreditoPorDia(@Param("inicio") LocalDate inicio,
-                                                              @Param("fim") LocalDate fim);
-
-    @Query("""
-            SELECT new br.com.prismaapi.model.dto.dashboard.projection.ValorPorDataProjecao(
-                       lancamento.data,
-                       SUM(lancamento.valor))
-            FROM Lancamento lancamento
-            JOIN lancamento.conta origem
-            LEFT JOIN lancamento.contaDestino destino
-            WHERE lancamento.tipo = br.com.prismaapi.enums.TipoLancamento.TRANSFERENCIA
-              AND origem.situacao = br.com.prismaapi.enums.Situacao.ATIVO
-              AND origem.incluirNoTotal = TRUE
-              AND (destino IS NULL OR destino.situacao <> br.com.prismaapi.enums.Situacao.ATIVO OR destino.incluirNoTotal = FALSE)
-              AND lancamento.data > :inicio
-              AND lancamento.data <= :fim
-              AND (lancamento.situacao = br.com.prismaapi.enums.SituacaoLancamento.PAGO OR lancamento.data > :hoje)
-            GROUP BY lancamento.data
-            """)
-    List<ValorPorDataProjecao> agruparTransferenciasQueSaemDoTotal(@Param("inicio") LocalDate inicio,
-                                                                   @Param("fim") LocalDate fim,
-                                                                   @Param("hoje") LocalDate hoje);
-
-    @Query("""
-            SELECT new br.com.prismaapi.model.dto.dashboard.projection.ValorPorDataProjecao(
-                       lancamento.data,
-                       SUM(lancamento.valor))
-            FROM Lancamento lancamento
-            LEFT JOIN lancamento.conta origem
-            JOIN lancamento.contaDestino destino
-            WHERE lancamento.tipo = br.com.prismaapi.enums.TipoLancamento.TRANSFERENCIA
-              AND destino.situacao = br.com.prismaapi.enums.Situacao.ATIVO
-              AND destino.incluirNoTotal = TRUE
-              AND (origem IS NULL OR origem.situacao <> br.com.prismaapi.enums.Situacao.ATIVO OR origem.incluirNoTotal = FALSE)
-              AND lancamento.data > :inicio
-              AND lancamento.data <= :fim
-              AND (lancamento.situacao = br.com.prismaapi.enums.SituacaoLancamento.PAGO OR lancamento.data > :hoje)
-            GROUP BY lancamento.data
-            """)
-    List<ValorPorDataProjecao> agruparTransferenciasQueEntramNoTotal(@Param("inicio") LocalDate inicio,
-                                                                     @Param("fim") LocalDate fim,
-                                                                     @Param("hoje") LocalDate hoje);
-
-    @Query("""
-            SELECT new br.com.prismaapi.model.dto.dashboard.projection.ValorPorDataProjecao(
-                       lancamento.dataPagamentoFatura,
-                       SUM(lancamento.valor))
-            FROM Lancamento lancamento
-            JOIN lancamento.contaPagamentoFatura conta
-            WHERE conta.situacao = br.com.prismaapi.enums.Situacao.ATIVO
-              AND conta.incluirNoTotal = TRUE
-              AND lancamento.dataPagamentoFatura > :inicio
-              AND lancamento.dataPagamentoFatura <= :fim
-            GROUP BY lancamento.dataPagamentoFatura
-            """)
-    List<ValorPorDataProjecao> agruparPagamentosDeFaturaDoTotalPorDia(@Param("inicio") LocalDate inicio,
-                                                                      @Param("fim") LocalDate fim);
 
     @Query("""
             SELECT SUM(lancamento.valor)
@@ -291,14 +265,17 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, UUID>, J
             JOIN lancamento.cartao cartao
             WHERE lancamento.tipo = br.com.prismaapi.enums.TipoLancamento.DESPESA
               AND cartao.id IN :idsCartoes
+              AND lancamento.data >= COALESCE(:inicio, lancamento.data)
             GROUP BY cartao.id, lancamento.data
             """)
-    List<DespesaCartaoProjecao> agruparDespesasDosCartoes(@Param("idsCartoes") List<UUID> idsCartoes);
+    List<DespesaCartaoProjecao> agruparDespesasDosCartoes(@Param("idsCartoes") List<UUID> idsCartoes,
+                                                          @Param("inicio") LocalDate inicio);
 
     @Query("""
             SELECT lancamento
             FROM Lancamento lancamento
             LEFT JOIN FETCH lancamento.categoria
+            LEFT JOIN FETCH lancamento.contaPagamentoFatura
             WHERE lancamento.tipo = br.com.prismaapi.enums.TipoLancamento.DESPESA
               AND lancamento.cartao.id = :cartaoId
               AND lancamento.data BETWEEN :inicio AND :fim
@@ -314,6 +291,7 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, UUID>, J
             LEFT JOIN FETCH lancamento.conta
             LEFT JOIN FETCH lancamento.cartao
             LEFT JOIN FETCH lancamento.contaDestino
+            LEFT JOIN FETCH lancamento.recorrente
             LEFT JOIN FETCH lancamento.parcelaPaga pagamento
             LEFT JOIN FETCH pagamento.compraParcelada
             LEFT JOIN FETCH lancamento.movimentacaoInvestimento movimentacao

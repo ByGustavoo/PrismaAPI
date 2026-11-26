@@ -24,18 +24,6 @@ public interface CompraParceladaRepository extends JpaRepository<CompraParcelada
                        compra.parcelas,
                        compra.primeiroMes)
             FROM CompraParcelada compra
-            WHERE compra.primeiroMes <= :mes
-            """)
-    List<ParcelaProjecao> buscarParcelasAte(@Param("mes") LocalDate mes);
-
-    @Query("""
-            SELECT new br.com.prismaapi.model.dto.dashboard.projection.ParcelaProjecao(
-                       compra.id,
-                       compra.cartao.id,
-                       compra.valorTotal,
-                       compra.parcelas,
-                       compra.primeiroMes)
-            FROM CompraParcelada compra
             WHERE compra.cartao.id IN :idsCartoes
             """)
     List<ParcelaProjecao> buscarParcelasDosCartoes(@Param("idsCartoes") List<UUID> idsCartoes);

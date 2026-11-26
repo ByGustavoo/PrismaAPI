@@ -1,7 +1,9 @@
 package br.com.prismaapi.service.orcamento;
 
+import br.com.prismaapi.config.cache.LimparCachesDeOrcamento;
 import br.com.prismaapi.enums.SituacaoOrcamento;
 import br.com.prismaapi.enums.TipoCategoria;
+import br.com.prismaapi.enums.TipoLancamento;
 import br.com.prismaapi.exceptions.CategoriaDeReceitaException;
 import br.com.prismaapi.exceptions.CategoriaInexistenteException;
 import br.com.prismaapi.exceptions.OrcamentoDuplicadoException;
@@ -19,39 +21,34 @@ import br.com.prismaapi.model.mapper.orcamento.OrcamentoMapper;
 import br.com.prismaapi.repository.categoria.CategoriaRepository;
 import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import br.com.prismaapi.repository.orcamento.OrcamentoRepository;
+import br.com.prismaapi.util.TextoUtil;
+import br.com.prismaapi.util.ValorUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.text.Collator;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
-import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class OrcamentoService {
 
-    private static final int CASAS_DA_FRACAO = 4;
     private final OrcamentoMapper orcamentoMapper;
     private final CategoriaMapper categoriaMapper;
     private final OrcamentoRepository orcamentoRepository;
     private final CategoriaRepository categoriaRepository;
     private final LancamentoRepository lancamentoRepository;
     private static final BigDecimal INICIO_DO_ALERTA = new BigDecimal("0.8");
-    private static final Collator ORDEM_ALFABETICA = Collator.getInstance(Locale.forLanguageTag("pt-BR"));
 
     @Cacheable("orcamentos")
     @Transactional(readOnly = true)
@@ -62,27 +59,27 @@ public class OrcamentoService {
         var diasNoMes = referencia.lengthOfMonth();
         var diasDecorridos = diasDecorridos(referencia, hoje);
 
-        var gastos = lancamentoRepository.agruparDespesasPorCategoria(referencia.atDay(1), referencia.atEndOfMonth());
+        var gastos = lancamentoRepository.agruparPorCategoria(TipoLancamento.DESPESA, referencia.atDay(1), referencia.atEndOfMonth());
         var gastoPorCategoria = gastos.stream()
-                .collect(Collectors.toMap(GastoCategoriaProjecao::categoriaId, GastoCategoriaProjecao::valor));
+                .collect(Collectors.toMap(gasto -> gasto.categoria().getId(), GastoCategoriaProjecao::valor));
 
         var orcamentos = orcamentoRepository.buscarComCategoria();
 
         var itens = orcamentos.stream()
                 .map(orcamento -> consumo(orcamento, gastoPorCategoria.getOrDefault(orcamento.getCategoria().getId(), BigDecimal.ZERO), diasDecorridos, diasNoMes))
                 .sorted(Comparator.comparing(ConsumoOrcamentoDTO::consumo, Comparator.reverseOrder())
-                        .thenComparing(item -> item.orcamento().categoria().nome(), ORDEM_ALFABETICA))
+                        .thenComparing(item -> item.orcamento().categoria().nome(), TextoUtil.ORDEM_ALFABETICA))
                 .toList();
 
-        var planejado = somar(orcamentos.stream().map(Orcamento::getLimiteMensal));
-        var gasto = somar(itens.stream().map(ConsumoOrcamentoDTO::gasto));
+        var planejado = ValorUtil.somarEmReais(orcamentos.stream().map(Orcamento::getLimiteMensal));
+        var gasto = ValorUtil.somarEmReais(itens.stream().map(ConsumoOrcamentoDTO::gasto));
 
         return new VisaoGeralOrcamentoDTO(
                 referencia,
                 planejado,
                 gasto,
                 planejado.subtract(gasto),
-                fracao(gasto, planejado),
+                ValorUtil.fracao(gasto, planejado),
                 diasNoMes - diasDecorridos,
                 diasDecorridos,
                 diasNoMes,
@@ -91,7 +88,7 @@ public class OrcamentoService {
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "orcamentos"}, allEntries = true)
+    @LimparCachesDeOrcamento
     public OrcamentoDTO salvar(SalvarOrcamentoDTO salvarOrcamentoDTO) {
         log.info("Salvando o orçamento... - ID da Categoria: [{}]", salvarOrcamentoDTO.idCategoria());
         var orcamento = orcamentoMapper.toEntity(salvarOrcamentoDTO);
@@ -101,7 +98,7 @@ public class OrcamentoService {
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "orcamentos"}, allEntries = true)
+    @LimparCachesDeOrcamento
     public OrcamentoDTO atualizar(UUID id, SalvarOrcamentoDTO salvarOrcamentoDTO) {
         log.info("Atualizando o orçamento... - ID: [{}]", id);
         var orcamento = buscar(id);
@@ -113,7 +110,7 @@ public class OrcamentoService {
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "orcamentos"}, allEntries = true)
+    @LimparCachesDeOrcamento
     public void deletar(UUID id) {
         log.info("Deletando o orçamento... - ID: [{}]", id);
         orcamentoRepository.delete(buscar(id));
@@ -163,13 +160,13 @@ public class OrcamentoService {
 
     private ConsumoOrcamentoDTO consumo(Orcamento orcamento, BigDecimal gastoNoMes, int diasDecorridos, int diasNoMes) {
         var limite = orcamento.getLimiteMensal();
-        var gasto = dinheiro(gastoNoMes);
+        var gasto = ValorUtil.dinheiro(gastoNoMes);
 
         return new ConsumoOrcamentoDTO(
                 orcamentoMapper.toDTO(orcamento),
                 gasto,
                 limite.subtract(gasto),
-                fracao(gasto, limite),
+                ValorUtil.fracao(gasto, limite),
                 projecao(gasto, diasDecorridos, diasNoMes),
                 situacao(gasto, limite));
     }
@@ -180,23 +177,20 @@ public class OrcamentoService {
                 .collect(Collectors.toSet());
 
         var semLimite = gastos.stream()
-                .filter(gasto -> !orcadas.contains(gasto.categoriaId()))
+                .filter(gasto -> !orcadas.contains(gasto.categoria().getId()))
                 .toList();
 
         if (semLimite.isEmpty()) {
             return List.of();
         }
 
-        var totalDoMes = somar(gastos.stream().map(GastoCategoriaProjecao::valor));
-        var categorias = categoriaRepository.findAllById(semLimite.stream().map(GastoCategoriaProjecao::categoriaId).toList())
-                .stream()
-                .collect(Collectors.toMap(Categoria::getId, Function.identity()));
+        var totalDoMes = ValorUtil.somarEmReais(gastos.stream().map(GastoCategoriaProjecao::valor));
 
         return semLimite.stream()
                 .map(gasto -> new GastoCategoriaDTO(
-                        categoriaMapper.toDTO(categorias.get(gasto.categoriaId())),
-                        dinheiro(gasto.valor()),
-                        fracao(gasto.valor(), totalDoMes)))
+                        categoriaMapper.toDTO(gasto.categoria()),
+                        ValorUtil.dinheiro(gasto.valor()),
+                        ValorUtil.fracao(gasto.valor(), totalDoMes)))
                 .toList();
     }
 
@@ -212,7 +206,7 @@ public class OrcamentoService {
 
     private static BigDecimal projecao(BigDecimal gasto, int diasDecorridos, int diasNoMes) {
         if (diasDecorridos < 10) {
-            return dinheiro(BigDecimal.ZERO);
+            return ValorUtil.dinheiro(BigDecimal.ZERO);
         }
 
         return gasto.multiply(BigDecimal.valueOf(diasNoMes)).divide(BigDecimal.valueOf(diasDecorridos), 2, RoundingMode.HALF_UP);
@@ -224,21 +218,5 @@ public class OrcamentoService {
         }
 
         return gasto.compareTo(limite.multiply(INICIO_DO_ALERTA)) >= 0 ? SituacaoOrcamento.ALERTA : SituacaoOrcamento.SEGURO;
-    }
-
-    private static BigDecimal somar(Stream<BigDecimal> valores) {
-        return dinheiro(valores.reduce(BigDecimal.ZERO, BigDecimal::add));
-    }
-
-    private static BigDecimal fracao(BigDecimal parte, BigDecimal total) {
-        if (total.signum() == 0) {
-            return BigDecimal.ZERO.setScale(CASAS_DA_FRACAO, RoundingMode.HALF_UP);
-        }
-
-        return parte.divide(total, CASAS_DA_FRACAO, RoundingMode.HALF_UP);
-    }
-
-    private static BigDecimal dinheiro(BigDecimal valor) {
-        return valor.setScale(2, RoundingMode.HALF_UP);
     }
 }

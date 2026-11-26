@@ -1,5 +1,6 @@
 package br.com.prismaapi.service.fatura;
 
+import br.com.prismaapi.config.cache.LimparCachesDeFatura;
 import br.com.prismaapi.enums.FormaLancamento;
 import br.com.prismaapi.enums.SituacaoFatura;
 import br.com.prismaapi.enums.SituacaoLancamento;
@@ -33,16 +34,16 @@ import br.com.prismaapi.repository.categoria.CategoriaRepository;
 import br.com.prismaapi.repository.compraparcelada.CompraParceladaRepository;
 import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import br.com.prismaapi.repository.parcelapaga.ParcelaPagaRepository;
+import br.com.prismaapi.util.TextoUtil;
+import br.com.prismaapi.util.ValorUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.text.Collator;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
@@ -50,7 +51,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.TreeMap;
@@ -71,7 +71,6 @@ public class FaturaService {
     private final LancamentoRepository lancamentoRepository;
     private final ParcelaPagaRepository parcelaPagaRepository;
     private final CompraParceladaRepository compraParceladaRepository;
-    private static final Collator ORDEM_ALFABETICA = Collator.getInstance(Locale.forLanguageTag("pt-BR"));
     private static final Pattern FORMATO_DO_ID = Pattern.compile("^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})-(\\d{4}-(?:0[1-9]|1[0-2]))$");
 
     @Cacheable("faturas")
@@ -83,10 +82,10 @@ public class FaturaService {
                 .filter(cartao -> idCartao == null || cartao.getId().equals(idCartao))
                 .toList();
 
-        return montarFaturas(cartoes, LocalDate.now())
+        return montarFaturas(cartoes, LocalDate.now(), null, pagamentosPorCompra())
                 .stream()
                 .sorted(Comparator.comparing(FaturaCartaoDTO::dataVencimento)
-                        .thenComparing(FaturaCartaoDTO::nomeCartao, ORDEM_ALFABETICA))
+                        .thenComparing(FaturaCartaoDTO::nomeCartao, TextoUtil.ORDEM_ALFABETICA))
                 .toList();
     }
 
@@ -98,52 +97,57 @@ public class FaturaService {
         var partes = partesDoId(id);
         var mes = YearMonth.parse(partes.group(2));
         var cartao = buscarCartao(partes, id);
+        var pagamentos = pagamentosPorCompra();
 
-        return faturaMapper.toDetalheDTO(buscarFatura(cartao, mes, hoje, id), itens(cartao, mes, hoje));
+        return faturaMapper.toDetalheDTO(buscarFatura(cartao, mes, hoje, id, pagamentos), itens(cartao, mes, hoje, pagamentos));
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "contas", "dashboard", "faturas", "lancamentos", "orcamentos", "previsao", "relatorios"}, allEntries = true)
+    @LimparCachesDeFatura
     public FaturaCartaoDTO registrarPagamento(String id) {
         log.info("Registrando o pagamento da fatura... - ID: [{}]", id);
         var hoje = LocalDate.now();
         var partes = partesDoId(id);
         var mes = YearMonth.parse(partes.group(2));
         var cartao = buscarCartao(partes, id);
+        var pagamentos = pagamentosPorCompra();
 
-        if (buscarFatura(cartao, mes, hoje, id).valorRestante().signum() == 0) {
+        if (buscarFatura(cartao, mes, hoje, id, pagamentos).valorRestante().signum() == 0) {
             log.error("Essa fatura já está paga!");
             throw new FaturaJaPagaException("Essa fatura já está paga!");
         }
 
         var conta = contaDePagamento(cartao);
-        var pagamentos = pagamentosPorCompra();
         var abertura = aberturaDoCiclo(cartao, mes);
         var fechamento = diaDoMes(mes, cartao.getDiaFechamento());
 
-        comprasDaFatura(cartao, mes)
+        var emAberto = comprasDaFatura(cartao, mes)
                 .stream()
                 .filter(compra -> !pagamentos.getOrDefault(compra.getId(), Map.of()).containsKey(numeroNoMes(compra.getPrimeiroMes(), mes)))
-                .forEach(compra -> pagarParcela(compra, numeroNoMes(compra.getPrimeiroMes(), mes), hoje));
+                .toList();
 
-        var despesasEmAberto = zeroSeNulo(lancamentoRepository.somarDespesasDoCartao(cartao.getId(), abertura, fechamento))
-                .subtract(zeroSeNulo(lancamentoRepository.somarDespesasPagasDoCartao(cartao.getId(), abertura, fechamento)));
+        var semCategoria = emAberto.stream().anyMatch(compra -> compra.getCategoria() == null) ? outrasDespesas() : null;
+
+        emAberto.forEach(compra -> pagarParcela(compra, numeroNoMes(compra.getPrimeiroMes(), mes), hoje, compra.getCategoria() != null ? compra.getCategoria() : semCategoria));
+
+        var despesasEmAberto = ValorUtil.zeroSeNulo(lancamentoRepository.somarDespesasDoCartao(cartao.getId(), abertura, fechamento))
+                .subtract(ValorUtil.zeroSeNulo(lancamentoRepository.somarDespesasPagasDoCartao(cartao.getId(), abertura, fechamento)));
 
         lancamentoRepository.marcarDespesasDoCartaoComoPagas(cartao.getId(), abertura, fechamento, hoje, conta);
         conta.setSaldo(conta.getSaldo().subtract(despesasEmAberto));
 
-        return buscarFatura(cartao, mes, hoje, id);
+        return buscarFatura(cartao, mes, hoje, id, pagamentosPorCompra());
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "contas", "dashboard", "faturas", "lancamentos", "orcamentos", "previsao", "relatorios"}, allEntries = true)
+    @LimparCachesDeFatura
     public void deletarPagamento(String id) {
         log.info("Deletando o pagamento da fatura... - ID: [{}]", id);
         var partes = partesDoId(id);
         var mes = YearMonth.parse(partes.group(2));
         var cartao = buscarCartao(partes, id);
 
-        if (buscarFatura(cartao, mes, LocalDate.now(), id).valorPago().signum() == 0) {
+        if (buscarFatura(cartao, mes, LocalDate.now(), id, pagamentosPorCompra()).valorPago().signum() == 0) {
             log.warn("Pagamento de fatura não encontrado! - ID: [{}]", id);
             throw new PagamentoDeFaturaNaoEncontradoException("Essa fatura não tem pagamento registrado!");
         }
@@ -151,9 +155,16 @@ public class FaturaService {
         var abertura = aberturaDoCiclo(cartao, mes);
         var fechamento = diaDoMes(mes, cartao.getDiaFechamento());
 
-        comprasDaFatura(cartao, mes).forEach(compra -> parcelaPagaRepository
-                .findByCompraParceladaIdAndNumero(compra.getId(), (short) numeroNoMes(compra.getPrimeiroMes(), mes))
-                .ifPresent(this::desfazerPagamentoDeParcela));
+        var numeros = comprasDaFatura(cartao, mes)
+                .stream()
+                .collect(Collectors.toMap(CompraParcelada::getId, compra -> (short) numeroNoMes(compra.getPrimeiroMes(), mes)));
+
+        var pagamentosDaFatura = numeros.isEmpty() ? List.<ParcelaPaga>of() : parcelaPagaRepository.findByCompraParceladaIdIn(numeros.keySet())
+                .stream()
+                .filter(pagamento -> pagamento.getNumero().equals(numeros.get(pagamento.getCompraParcelada().getId())))
+                .toList();
+
+        desfazerPagamentos(pagamentosDaFatura);
 
         lancamentoRepository.buscarDespesasDoCartao(cartao.getId(), abertura, fechamento)
                 .stream()
@@ -168,82 +179,45 @@ public class FaturaService {
 
     @Transactional
     public ParcelaPaga pagarParcela(CompraParcelada compra, int numero, LocalDate hoje) {
-        var conta = contaDePagamento(compra.getCartao());
-        var valor = valorDaParcela(compra.getValorTotal(), compra.getParcelas(), numero - 1L);
-        var pagamento = parcelaPagaRepository.save(parcelaPaga(compra, numero, hoje));
-        var lancamento = new Lancamento();
-
-        lancamento.setData(hoje);
-        lancamento.setValor(valor);
-        lancamento.setConta(conta);
-        lancamento.setParcelaPaga(pagamento);
-        lancamento.setForma(FormaLancamento.CONTA);
-        lancamento.setTipo(TipoLancamento.DESPESA);
-        lancamento.setSituacao(SituacaoLancamento.PAGO);
-        lancamento.setCategoria(categoriaDaDespesa(compra));
-        lancamento.setDescricao(descricaoDaParcela(compra, numero));
-
-        lancamentoRepository.save(lancamento);
-        conta.setSaldo(conta.getSaldo().subtract(valor));
-
-        return pagamento;
+        return pagarParcela(compra, numero, hoje, compra.getCategoria() != null ? compra.getCategoria() : outrasDespesas());
     }
 
     @Transactional
     public void desfazerPagamentoDeParcela(ParcelaPaga pagamento) {
-        lancamentoRepository.findByParcelaPagaId(pagamento.getId()).ifPresent(lancamento -> {
-            var conta = lancamento.getConta();
-
-            conta.setSaldo(conta.getSaldo().add(lancamento.getValor()));
-            lancamentoRepository.delete(lancamento);
-        });
-
-        parcelaPagaRepository.delete(pagamento);
+        desfazerPagamentos(List.of(pagamento));
     }
 
     @Transactional(readOnly = true)
     public FaturaDTO faturaEmDestaque(YearMonth mes, LocalDate hoje) {
-        var cartoes = cartaoRepository.findByTipo(TipoCartao.CREDITO)
-                .stream()
-                .filter(FaturaService::temCicloDefinido)
-                .toList();
-
-        var pagamentos = pagamentosPorCompra();
-        var faturasDoMes = faturasDoMes(cartoes, mes, hoje, pagamentos);
+        var faturas = montarFaturas(cartaoRepository.findByTipo(TipoCartao.CREDITO), hoje, mes, pagamentosPorCompra());
+        var faturasDoMes = faturasDoMes(faturas, mes);
 
         if (!mes.equals(YearMonth.from(hoje)) || faturasDoMes.stream().anyMatch(fatura -> fatura.situacao() != SituacaoFatura.PAGA)) {
             return destaque(faturasDoMes);
         }
 
-        var faturasDoProximoMes = faturasDoMes(cartoes, mes.plusMonths(1), hoje, pagamentos);
+        var faturasDoProximoMes = faturasDoMes(faturas, mes.plusMonths(1));
         return faturasDoProximoMes.isEmpty() ? destaque(faturasDoMes) : destaque(faturasDoProximoMes);
     }
 
-    private List<FaturaDTO> faturasDoMes(List<Cartao> cartoes, YearMonth mes, LocalDate hoje, Map<UUID, Map<Integer, LocalDate>> pagamentos) {
-        var parcelas = compraParceladaRepository.buscarParcelasAte(mes.atDay(1));
-
-        return cartoes.stream()
-                .map(cartao -> montar(cartao, mes, hoje, parcelas, pagamentos))
-                .filter(fatura -> fatura.total().signum() > 0)
-                .toList();
-    }
-
-    private static FaturaDTO destaque(List<FaturaDTO> faturas) {
-        return faturas.stream()
-                .max(Comparator.comparing((FaturaDTO fatura) -> fatura.situacao() == SituacaoFatura.ABERTA)
-                        .thenComparing(FaturaDTO::total))
-                .orElse(null);
+    @Transactional(readOnly = true)
+    public List<FaturaCartaoDTO> faturasRecentes(List<Cartao> cartoes, LocalDate hoje) {
+        return montarFaturas(cartoes, hoje, YearMonth.from(hoje).minusMonths(2), pagamentosPorCompra());
     }
 
     @Transactional(readOnly = true)
     public Map<UUID, BigDecimal> limitesComprometidos(List<Cartao> cartoes, LocalDate hoje) {
+        return somarLimitesComprometidos(cartoes, faturasRecentes(cartoes, hoje));
+    }
+
+    public Map<UUID, BigDecimal> somarLimitesComprometidos(List<Cartao> cartoes, List<FaturaCartaoDTO> faturas) {
         var limites = cartoes.stream()
                 .filter(cartao -> cartao.getTipo() == TipoCartao.CREDITO)
                 .filter(FaturaService::temCicloDefinido)
                 .collect(Collectors.toMap(Cartao::getId, cartao -> BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP), (primeiro, segundo) -> primeiro, HashMap::new));
 
-        montarFaturas(cartoes, hoje)
-                .stream()
+        faturas.stream()
+                .filter(fatura -> limites.containsKey(fatura.idCartao()))
                 .filter(fatura -> fatura.situacao() != SituacaoFatura.VENCIDA)
                 .forEach(fatura -> limites.merge(fatura.idCartao(), fatura.valorRestante(), BigDecimal::add));
 
@@ -296,7 +270,43 @@ public class FaturaService {
         return parcelas;
     }
 
-    private List<FaturaCartaoDTO> montarFaturas(List<Cartao> cartoes, LocalDate hoje) {
+    private ParcelaPaga pagarParcela(CompraParcelada compra, int numero, LocalDate hoje, Categoria categoria) {
+        var conta = contaDePagamento(compra.getCartao());
+        var valor = valorDaParcela(compra.getValorTotal(), compra.getParcelas(), numero - 1L);
+        var pagamento = parcelaPagaRepository.save(parcelaPaga(compra, numero, hoje));
+        var lancamento = new Lancamento();
+
+        lancamento.setData(hoje);
+        lancamento.setValor(valor);
+        lancamento.setConta(conta);
+        lancamento.setCategoria(categoria);
+        lancamento.setParcelaPaga(pagamento);
+        lancamento.setForma(FormaLancamento.CONTA);
+        lancamento.setTipo(TipoLancamento.DESPESA);
+        lancamento.setSituacao(SituacaoLancamento.PAGO);
+        lancamento.setDescricao(descricaoDaParcela(compra, numero));
+
+        lancamentoRepository.save(lancamento);
+        conta.setSaldo(conta.getSaldo().subtract(valor));
+
+        return pagamento;
+    }
+
+    private void desfazerPagamentos(List<ParcelaPaga> pagamentos) {
+        if (pagamentos.isEmpty()) return;
+
+        var lancamentos = lancamentoRepository.findByParcelaPagaIdIn(pagamentos.stream().map(ParcelaPaga::getId).toList());
+
+        lancamentos.forEach(lancamento -> {
+            var conta = lancamento.getConta();
+            conta.setSaldo(conta.getSaldo().add(lancamento.getValor()));
+        });
+
+        lancamentoRepository.deleteAllInBatch(lancamentos);
+        parcelaPagaRepository.deleteAllInBatch(pagamentos);
+    }
+
+    private List<FaturaCartaoDTO> montarFaturas(List<Cartao> cartoes, LocalDate hoje, YearMonth desde, Map<UUID, Map<Integer, LocalDate>> pagamentos) {
         var cartoesDeCredito = cartoes.stream()
                 .filter(cartao -> cartao.getTipo() == TipoCartao.CREDITO)
                 .filter(FaturaService::temCicloDefinido)
@@ -307,51 +317,56 @@ public class FaturaService {
         }
 
         var idsCartoes = cartoesDeCredito.stream().map(Cartao::getId).toList();
-        var despesas = lancamentoRepository.agruparDespesasDosCartoes(idsCartoes);
-        var parcelas = compraParceladaRepository.buscarParcelasDosCartoes(idsCartoes);
-        var pagamentos = pagamentosPorCompra();
+        var inicio = desde != null ? desde.minusMonths(1).atDay(1) : null;
+
+        var despesas = lancamentoRepository.agruparDespesasDosCartoes(idsCartoes, inicio)
+                .stream()
+                .collect(Collectors.groupingBy(DespesaCartaoProjecao::cartaoId));
+
+        var parcelas = compraParceladaRepository.buscarParcelasDosCartoes(idsCartoes)
+                .stream()
+                .collect(Collectors.groupingBy(ParcelaProjecao::cartaoId));
 
         return cartoesDeCredito.stream()
-                .flatMap(cartao -> montarFaturasDoCartao(cartao, hoje, despesas, parcelas, pagamentos).stream())
+                .flatMap(cartao -> montarFaturasDoCartao(cartao, hoje, desde, despesas.getOrDefault(cartao.getId(), List.of()), parcelas.getOrDefault(cartao.getId(), List.of()), pagamentos).stream())
                 .toList();
     }
 
-    private static List<FaturaCartaoDTO> montarFaturasDoCartao(Cartao cartao, LocalDate hoje, List<DespesaCartaoProjecao> despesas, List<ParcelaProjecao> parcelas, Map<UUID, Map<Integer, LocalDate>> pagamentos) {
+    private static List<FaturaCartaoDTO> montarFaturasDoCartao(Cartao cartao, LocalDate hoje, YearMonth desde, List<DespesaCartaoProjecao> despesas, List<ParcelaProjecao> parcelas, Map<UUID, Map<Integer, LocalDate>> pagamentos) {
         var totais = new TreeMap<YearMonth, BigDecimal>();
         var pagos = new HashMap<YearMonth, BigDecimal>();
         var quantidades = new HashMap<YearMonth, Long>();
 
-        despesas.stream()
-                .filter(despesa -> despesa.cartaoId().equals(cartao.getId()))
-                .forEach(despesa -> {
-                    var mes = mesDaFatura(cartao, despesa.data());
-                    totais.merge(mes, despesa.valor(), BigDecimal::add);
-                    pagos.merge(mes, zeroSeNulo(despesa.valorPago()), BigDecimal::add);
-                    quantidades.merge(mes, despesa.quantidade(), Long::sum);
-                });
+        despesas.forEach(despesa -> {
+            var mes = mesDaFatura(cartao, despesa.data());
+            totais.merge(mes, despesa.valor(), BigDecimal::add);
+            pagos.merge(mes, ValorUtil.zeroSeNulo(despesa.valorPago()), BigDecimal::add);
+            quantidades.merge(mes, despesa.quantidade(), Long::sum);
+        });
 
-        parcelas.stream()
-                .filter(parcela -> parcela.cartaoId().equals(cartao.getId()))
-                .forEach(parcela -> {
-                    var pagamentosDaCompra = pagamentos.getOrDefault(parcela.id(), Map.of());
+        parcelas.forEach(parcela -> {
+            var pagamentosDaCompra = pagamentos.getOrDefault(parcela.id(), Map.of());
 
-                    for (var indice = 0; indice < parcela.parcelas(); indice++) {
-                        var mes = YearMonth.from(parcela.primeiroMes()).plusMonths(indice);
-                        var valor = valorDaParcela(parcela.valorTotal(), parcela.parcelas(), indice);
+            for (var indice = 0; indice < parcela.parcelas(); indice++) {
+                var mes = YearMonth.from(parcela.primeiroMes()).plusMonths(indice);
 
-                        totais.merge(mes, valor, BigDecimal::add);
-                        quantidades.merge(mes, 1L, Long::sum);
+                if (desde != null && mes.isBefore(desde)) continue;
 
-                        if (pagamentosDaCompra.containsKey(indice + 1)) {
-                            pagos.merge(mes, valor, BigDecimal::add);
-                        }
-                    }
-                });
+                var valor = valorDaParcela(parcela.valorTotal(), parcela.parcelas(), indice);
+
+                totais.merge(mes, valor, BigDecimal::add);
+                quantidades.merge(mes, 1L, Long::sum);
+
+                if (pagamentosDaCompra.containsKey(indice + 1)) {
+                    pagos.merge(mes, valor, BigDecimal::add);
+                }
+            }
+        });
 
         var faturas = new ArrayList<FaturaCartaoDTO>();
         BigDecimal totalAnterior = null;
 
-        for (var fatura : totais.entrySet()) {
+        for (var fatura : (desde != null ? totais.tailMap(desde, true) : totais).entrySet()) {
             var mes = fatura.getKey();
             var montada = montarFatura(cartao, mes, fatura.getValue(), pagos.getOrDefault(mes, BigDecimal.ZERO), quantidades.get(mes), totalAnterior, hoje);
 
@@ -365,8 +380,8 @@ public class FaturaService {
     private static FaturaCartaoDTO montarFatura(Cartao cartao, YearMonth mes, BigDecimal total, BigDecimal pago, Long quantidadeItens, BigDecimal totalAnterior, LocalDate hoje) {
         var fechamento = diaDoMes(mes, cartao.getDiaFechamento());
         var vencimento = vencimento(cartao, mes);
-        var valorTotal = total.setScale(2, RoundingMode.HALF_UP);
-        var valorPago = pago.setScale(2, RoundingMode.HALF_UP);
+        var valorTotal = ValorUtil.dinheiro(total);
+        var valorPago = ValorUtil.dinheiro(pago);
 
         return new FaturaCartaoDTO(
                 "%s-%s".formatted(cartao.getId(), mes),
@@ -383,12 +398,30 @@ public class FaturaService {
                 totalAnterior);
     }
 
-    private FaturaCartaoDTO buscarFatura(Cartao cartao, YearMonth mes, LocalDate hoje, String id) {
-        return montarFaturas(List.of(cartao), hoje)
+    private FaturaCartaoDTO buscarFatura(Cartao cartao, YearMonth mes, LocalDate hoje, String id, Map<UUID, Map<Integer, LocalDate>> pagamentos) {
+        var recentes = montarFaturas(List.of(cartao), hoje, mes.minusMonths(1), pagamentos);
+        var temAnterior = recentes.stream().anyMatch(fatura -> fatura.mes().equals(mes.minusMonths(1).toString()));
+
+        return (temAnterior ? recentes : montarFaturas(List.of(cartao), hoje, null, pagamentos))
                 .stream()
                 .filter(montada -> montada.mes().equals(mes.toString()))
                 .findFirst()
                 .orElseThrow(() -> faturaNaoEncontrada(id));
+    }
+
+    private List<FaturaDTO> faturasDoMes(List<FaturaCartaoDTO> faturas, YearMonth mes) {
+        return faturas.stream()
+                .filter(fatura -> fatura.mes().equals(mes.toString()))
+                .filter(fatura -> fatura.total().signum() > 0)
+                .map(faturaMapper::toResumoDTO)
+                .toList();
+    }
+
+    private static FaturaDTO destaque(List<FaturaDTO> faturas) {
+        return faturas.stream()
+                .max(Comparator.comparing((FaturaDTO fatura) -> fatura.situacao() == SituacaoFatura.ABERTA)
+                        .thenComparing(FaturaDTO::total))
+                .orElse(null);
     }
 
     private Cartao buscarCartao(Matcher partes, String id) {
@@ -405,9 +438,7 @@ public class FaturaService {
                 .toList();
     }
 
-    private List<ItemFaturaDTO> itens(Cartao cartao, YearMonth mes, LocalDate hoje) {
-        var pagamentos = pagamentosPorCompra();
-
+    private List<ItemFaturaDTO> itens(Cartao cartao, YearMonth mes, LocalDate hoje, Map<UUID, Map<Integer, LocalDate>> pagamentos) {
         var despesas = lancamentoRepository.buscarDespesasDoCartao(cartao.getId(), aberturaDoCiclo(cartao, mes), diaDoMes(mes, cartao.getDiaFechamento()))
                 .stream()
                 .map(faturaMapper::toItemDTO);
@@ -418,7 +449,7 @@ public class FaturaService {
 
         return Stream.concat(despesas, parcelas)
                 .sorted(Comparator.comparing(ItemFaturaDTO::data).reversed()
-                        .thenComparing(ItemFaturaDTO::descricao, ORDEM_ALFABETICA))
+                        .thenComparing(ItemFaturaDTO::descricao, TextoUtil.ORDEM_ALFABETICA))
                 .toList();
     }
 
@@ -436,47 +467,8 @@ public class FaturaService {
         return faturaMapper.toItemParceladoDTO(compra, parcelaDoItem, parcela.valor(), pagamentos.containsKey(numero));
     }
 
-    private FaturaDTO montar(Cartao cartao, YearMonth mes, LocalDate hoje, List<ParcelaProjecao> parcelas, Map<UUID, Map<Integer, LocalDate>> pagamentos) {
-        var fechamento = diaDoMes(mes, cartao.getDiaFechamento());
-        var aberturaDoCiclo = aberturaDoCiclo(cartao, mes);
-        var vencimento = vencimento(cartao, mes);
-
-        var parcelasDoMes = parcelas.stream()
-                .filter(parcela -> parcela.cartaoId().equals(cartao.getId()))
-                .filter(parcela -> alcancaOMes(parcela.primeiroMes(), parcela.parcelas(), mes))
-                .toList();
-
-        var parcelasPagasDoMes = parcelasDoMes.stream()
-                .filter(parcela -> pagamentos.getOrDefault(parcela.id(), Map.of()).containsKey(numeroNoMes(parcela.primeiroMes(), mes)))
-                .toList();
-
-        var lancado = zeroSeNulo(lancamentoRepository.somarDespesasDoCartao(cartao.getId(), aberturaDoCiclo, fechamento));
-        var lancadoPago = zeroSeNulo(lancamentoRepository.somarDespesasPagasDoCartao(cartao.getId(), aberturaDoCiclo, fechamento));
-        var valorTotal = lancado.add(somarParcelasDoMes(parcelasDoMes, mes)).setScale(2, RoundingMode.HALF_UP);
-        var valorPago = lancadoPago.add(somarParcelasDoMes(parcelasPagasDoMes, mes)).setScale(2, RoundingMode.HALF_UP);
-
-        return new FaturaDTO(
-                valorTotal,
-                valorTotal.subtract(valorPago),
-                cartao.getNome(),
-                mes.toString(),
-                vencimento.toString(),
-                situacao(aberturaDoCiclo, fechamento, vencimento, hoje, quitada(valorTotal, valorPago)));
-    }
-
-    private static BigDecimal somarParcelasDoMes(List<ParcelaProjecao> parcelas, YearMonth mes) {
-        return parcelas.stream()
-                .map(parcela -> valorDaParcela(parcela.valorTotal(), parcela.parcelas(), numeroNoMes(parcela.primeiroMes(), mes) - 1L))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
-
-    private Categoria categoriaDaDespesa(CompraParcelada compra) {
-        if (compra.getCategoria() != null) return compra.getCategoria();
-
-        return categoriaRepository.findByTipo(TipoCategoria.DESPESA)
-                .stream()
-                .filter(categoria -> categoria.getNome().equals("Outras despesas"))
-                .findFirst()
+    private Categoria outrasDespesas() {
+        return categoriaRepository.findByNomeAndTipo("Outras despesas", TipoCategoria.DESPESA)
                 .orElseThrow(() -> {
                     log.error("A compra parcelada não tem categoria: escolha uma antes de registrar o pagamento!");
                     return new CategoriaInexistenteException("A compra parcelada não tem categoria: escolha uma antes de registrar o pagamento!");
@@ -586,9 +578,5 @@ public class FaturaService {
     private static FaturaNaoEncontradaException faturaNaoEncontrada(String id) {
         log.warn("Fatura não encontrada! - ID: [{}]", id);
         return new FaturaNaoEncontradaException("Fatura não encontrada!");
-    }
-
-    private static BigDecimal zeroSeNulo(BigDecimal valor) {
-        return valor != null ? valor : BigDecimal.ZERO;
     }
 }

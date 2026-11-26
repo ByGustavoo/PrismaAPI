@@ -1,11 +1,10 @@
 package br.com.prismaapi.service.saldo;
 
-import br.com.prismaapi.enums.TipoLancamento;
 import br.com.prismaapi.model.dto.dashboard.LinhaDoSaldo;
-import br.com.prismaapi.model.dto.dashboard.projection.MovimentoDiarioProjecao;
 import br.com.prismaapi.repository.conta.ContaRepository;
 import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import br.com.prismaapi.service.fatura.FaturaService;
+import br.com.prismaapi.util.ValorUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,31 +31,16 @@ public class SaldoService {
 
         var movimentos = new TreeMap<LocalDate, BigDecimal>();
 
-        lancamentoRepository.agruparMovimentoDoTotalPorDia(inicio, fim, hoje)
-                .forEach(movimento -> movimentos.merge(movimento.data(), comSinal(movimento), BigDecimal::add));
+        lancamentoRepository.agruparMovimentosDoTotalPorDia(inicio, fim, hoje)
+                .forEach(movimento -> movimentos.merge(movimento.data(), movimento.valor(), BigDecimal::add));
 
         lancamentoRepository.agruparPagamentosDeFaturaDoTotalPorDia(inicio, hoje)
                 .forEach(pagamento -> movimentos.merge(pagamento.data(), pagamento.valor().negate(), BigDecimal::add));
-
-        lancamentoRepository.agruparDespesasNoCreditoPorDia(hoje, fim)
-                .forEach(despesa -> movimentos.merge(despesa.data(), despesa.valor().negate(), BigDecimal::add));
-
-        lancamentoRepository.agruparTransferenciasQueSaemDoTotal(inicio, fim, hoje)
-                .forEach(saida -> movimentos.merge(saida.data(), saida.valor().negate(), BigDecimal::add));
-
-        lancamentoRepository.agruparTransferenciasQueEntramNoTotal(inicio, fim, hoje)
-                .forEach(entrada -> movimentos.merge(entrada.data(), entrada.valor(), BigDecimal::add));
 
         faturaService.parcelasPorDataDePagamento(hoje)
                 .subMap(hoje, false, fim, true)
                 .forEach((vencimento, valor) -> movimentos.merge(vencimento, valor.negate(), BigDecimal::add));
 
-        var saldoDeHoje = contaRepository.somarSaldoDoTotal();
-
-        return new LinhaDoSaldo(hoje, saldoDeHoje != null ? saldoDeHoje : BigDecimal.ZERO, movimentos);
-    }
-
-    private static BigDecimal comSinal(MovimentoDiarioProjecao movimento) {
-        return movimento.tipo() == TipoLancamento.RECEITA ? movimento.valor() : movimento.valor().negate();
+        return new LinhaDoSaldo(hoje, ValorUtil.zeroSeNulo(contaRepository.somarSaldoDoTotal()), movimentos);
     }
 }

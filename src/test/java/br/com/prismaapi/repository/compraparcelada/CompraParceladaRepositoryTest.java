@@ -22,11 +22,6 @@ class CompraParceladaRepositoryTest extends AbstractTest {
     }
 
     @Test
-    void buscarParcelasAteTest() {
-        Assertions.assertDoesNotThrow(() -> compraParceladaRepository.buscarParcelasAte(LocalDate.now().withDayOfMonth(1)));
-    }
-
-    @Test
     void buscarParcelasDosCartoesTest() {
         Assertions.assertDoesNotThrow(() -> compraParceladaRepository.buscarParcelasDosCartoes(List.of(UUID.randomUUID())));
     }

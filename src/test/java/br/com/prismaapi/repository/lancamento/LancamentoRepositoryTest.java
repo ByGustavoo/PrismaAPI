@@ -42,8 +42,8 @@ class LancamentoRepositoryTest extends AbstractTest {
     }
 
     @Test
-    void findByParcelaPagaIdTest() {
-        Assertions.assertDoesNotThrow(() -> lancamentoRepository.findByParcelaPagaId(UUID.randomUUID()));
+    void findByParcelaPagaIdInTest() {
+        Assertions.assertDoesNotThrow(() -> lancamentoRepository.findByParcelaPagaIdIn(List.of(UUID.randomUUID())));
     }
 
     @Test
@@ -59,13 +59,13 @@ class LancamentoRepositoryTest extends AbstractTest {
     }
 
     @Test
-    void countByTipoNotAndDataBetweenTest() {
-        Assertions.assertDoesNotThrow(() -> lancamentoRepository.countByTipoNotAndDataBetween(TipoLancamento.TRANSFERENCIA, LocalDate.now().minusMonths(1), LocalDate.now()));
+    void buscarCompletoTest() {
+        Assertions.assertDoesNotThrow(() -> lancamentoRepository.buscarCompleto(UUID.randomUUID()));
     }
 
     @Test
-    void somarPorTipoTest() {
-        Assertions.assertDoesNotThrow(() -> lancamentoRepository.somarPorTipo(TipoLancamento.RECEITA, LocalDate.now().minusMonths(1), LocalDate.now()));
+    void resumirPeriodosTest() {
+        Assertions.assertDoesNotThrow(() -> lancamentoRepository.resumirPeriodos(LocalDate.now().minusMonths(1), LocalDate.now(), LocalDate.now().minusMonths(2), LocalDate.now().minusMonths(1).minusDays(1)));
     }
 
     @Test
@@ -84,11 +84,6 @@ class LancamentoRepositoryTest extends AbstractTest {
     }
 
     @Test
-    void agruparDespesasPorCategoriaTest() {
-        Assertions.assertDoesNotThrow(() -> lancamentoRepository.agruparDespesasPorCategoria(LocalDate.now().minusMonths(1), LocalDate.now()));
-    }
-
-    @Test
     void agruparPorCategoriaTest() {
         Assertions.assertDoesNotThrow(() -> lancamentoRepository.agruparPorCategoria(TipoLancamento.RECEITA, LocalDate.now().minusMonths(1), LocalDate.now()));
     }
@@ -99,23 +94,8 @@ class LancamentoRepositoryTest extends AbstractTest {
     }
 
     @Test
-    void agruparMovimentoDoTotalPorDiaTest() {
-        Assertions.assertDoesNotThrow(() -> lancamentoRepository.agruparMovimentoDoTotalPorDia(LocalDate.now().minusYears(1), LocalDate.now().plusMonths(1), LocalDate.now()));
-    }
-
-    @Test
-    void agruparDespesasNoCreditoPorDiaTest() {
-        Assertions.assertDoesNotThrow(() -> lancamentoRepository.agruparDespesasNoCreditoPorDia(LocalDate.now().minusYears(1), LocalDate.now()));
-    }
-
-    @Test
-    void agruparTransferenciasQueSaemDoTotalTest() {
-        Assertions.assertDoesNotThrow(() -> lancamentoRepository.agruparTransferenciasQueSaemDoTotal(LocalDate.now().minusYears(1), LocalDate.now().plusMonths(1), LocalDate.now()));
-    }
-
-    @Test
-    void agruparTransferenciasQueEntramNoTotalTest() {
-        Assertions.assertDoesNotThrow(() -> lancamentoRepository.agruparTransferenciasQueEntramNoTotal(LocalDate.now().minusYears(1), LocalDate.now().plusMonths(1), LocalDate.now()));
+    void agruparMovimentosDoTotalPorDiaTest() {
+        Assertions.assertDoesNotThrow(() -> lancamentoRepository.agruparMovimentosDoTotalPorDia(LocalDate.now().minusYears(1), LocalDate.now().plusMonths(1), LocalDate.now()));
     }
 
     @Test
@@ -147,7 +127,7 @@ class LancamentoRepositoryTest extends AbstractTest {
 
     @Test
     void agruparDespesasDosCartoesTest() {
-        Assertions.assertDoesNotThrow(() -> lancamentoRepository.agruparDespesasDosCartoes(List.of(UUID.randomUUID())));
+        Assertions.assertDoesNotThrow(() -> lancamentoRepository.agruparDespesasDosCartoes(List.of(UUID.randomUUID()), LocalDate.now().minusMonths(3)));
     }
 
     @Test

@@ -1,13 +1,11 @@
 package br.com.prismaapi.service.recorrente;
 
+import br.com.prismaapi.config.cache.LimparCachesDeLancamento;
 import br.com.prismaapi.enums.Frequencia;
 import br.com.prismaapi.enums.SituacaoRecorrente;
 import br.com.prismaapi.enums.TipoCartao;
 import br.com.prismaapi.enums.TipoCategoria;
 import br.com.prismaapi.enums.TipoRecorrente;
-import br.com.prismaapi.exceptions.CategoriaDeDespesaException;
-import br.com.prismaapi.exceptions.CategoriaDeReceitaException;
-import br.com.prismaapi.exceptions.CategoriaInexistenteException;
 import br.com.prismaapi.exceptions.CategoriaObrigatoriaException;
 import br.com.prismaapi.exceptions.OrigemDeReceitaInvalidaException;
 import br.com.prismaapi.exceptions.OrigemInexistenteException;
@@ -15,28 +13,25 @@ import br.com.prismaapi.exceptions.RecorrenteNaoEncontradaException;
 import br.com.prismaapi.model.dto.recorrente.RecorrenteDTO;
 import br.com.prismaapi.model.dto.recorrente.ResumoRecorrentesDTO;
 import br.com.prismaapi.model.dto.recorrente.SalvarRecorrenteDTO;
-import br.com.prismaapi.model.entity.categoria.Categoria;
 import br.com.prismaapi.model.entity.lancamento.Lancamento;
 import br.com.prismaapi.model.entity.recorrente.Recorrente;
 import br.com.prismaapi.model.mapper.recorrente.RecorrenteMapper;
 import br.com.prismaapi.repository.cartao.CartaoRepository;
-import br.com.prismaapi.repository.categoria.CategoriaRepository;
 import br.com.prismaapi.repository.conta.ContaRepository;
 import br.com.prismaapi.repository.recorrente.RecorrenteRepository;
+import br.com.prismaapi.service.categoria.CategoriaService;
+import br.com.prismaapi.util.TextoUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.text.Collator;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 
 @Slf4j
@@ -47,10 +42,9 @@ public class RecorrenteService {
     private final ContaRepository contaRepository;
     private final CartaoRepository cartaoRepository;
     private final RecorrenteMapper recorrenteMapper;
-    private final CategoriaRepository categoriaRepository;
+    private final CategoriaService categoriaService;
     private final RecorrenteRepository recorrenteRepository;
     private final LancamentoRecorrenteService lancamentoRecorrenteService;
-    private static final Collator ORDEM_ALFABETICA = Collator.getInstance(Locale.forLanguageTag("pt-BR"));
 
     @Cacheable("recorrentes")
     @Transactional(readOnly = true)
@@ -63,7 +57,7 @@ public class RecorrenteService {
                 .map(recorrente -> toDTO(recorrente, hoje))
                 .sorted(Comparator.comparing((RecorrenteDTO recorrente) -> recorrente.situacao() != SituacaoRecorrente.ATIVO)
                         .thenComparing(RecorrenteDTO::proximoVencimento)
-                        .thenComparing(RecorrenteDTO::descricao, ORDEM_ALFABETICA))
+                        .thenComparing(RecorrenteDTO::descricao, TextoUtil.ORDEM_ALFABETICA))
                 .toList();
 
         var custoMensal = somarPorMes(recorrentes, TipoRecorrente.DESPESA);
@@ -82,7 +76,7 @@ public class RecorrenteService {
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "contas", "dashboard", "faturas", "lancamentos", "orcamentos", "previsao", "recorrentes", "relatorios"}, allEntries = true)
+    @LimparCachesDeLancamento
     public RecorrenteDTO salvar(SalvarRecorrenteDTO salvarRecorrenteDTO) {
         log.info("Salvando a recorrente... - Descrição: {} - Tipo: {}", salvarRecorrenteDTO.descricao(), salvarRecorrenteDTO.tipo());
         var hoje = LocalDate.now();
@@ -96,7 +90,7 @@ public class RecorrenteService {
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "contas", "dashboard", "faturas", "lancamentos", "orcamentos", "previsao", "recorrentes", "relatorios"}, allEntries = true)
+    @LimparCachesDeLancamento
     public RecorrenteDTO atualizar(UUID id, SalvarRecorrenteDTO salvarRecorrenteDTO) {
         log.info("Atualizando a recorrente... - ID: [{}]", id);
         var hoje = LocalDate.now();
@@ -110,7 +104,7 @@ public class RecorrenteService {
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "contas", "dashboard", "faturas", "lancamentos", "orcamentos", "previsao", "recorrentes", "relatorios"}, allEntries = true)
+    @LimparCachesDeLancamento
     public void deletar(UUID id) {
         log.info("Deletando a recorrente... - ID: [{}]", id);
         recorrenteRepository.delete(buscar(id));
@@ -178,14 +172,14 @@ public class RecorrenteService {
     }
 
     private void preencher(Recorrente recorrente, SalvarRecorrenteDTO salvarRecorrenteDTO, LocalDate hoje) {
-        recorrente.setDescricao(salvarRecorrenteDTO.descricao().strip());
-        recorrente.setObservacoes(textoOuNulo(salvarRecorrenteDTO.observacoes()));
+        recorrente.setDescricao(salvarRecorrenteDTO.descricao());
+        recorrente.setObservacoes(TextoUtil.textoOuNulo(salvarRecorrenteDTO.observacoes()));
 
         recorrente.setConta(null);
         recorrente.setCartao(null);
 
         vincularOrigem(recorrente, salvarRecorrenteDTO.idOrigem());
-        recorrente.setCategoria(buscarCategoria(salvarRecorrenteDTO.idCategoria(), recorrente.getTipo()));
+        recorrente.setCategoria(salvarRecorrenteDTO.idCategoria() == null ? null : categoriaService.buscarDoTipo(salvarRecorrenteDTO.idCategoria(), TipoCategoria.valueOf(recorrente.getTipo().name())));
 
         if (Boolean.TRUE.equals(recorrente.getLancarAutomaticamente()) && recorrente.getCategoria() == null) {
             log.error("Escolha a categoria para a recorrente ser lançada automaticamente!");
@@ -219,28 +213,6 @@ public class RecorrenteService {
         recorrente.setCartao(cartao);
     }
 
-    private Categoria buscarCategoria(UUID idCategoria, TipoRecorrente tipo) {
-        if (idCategoria == null) return null;
-
-        var categoria = categoriaRepository.findById(idCategoria)
-                .orElseThrow(() -> {
-                    log.error("A categoria informada não existe!");
-                    return new CategoriaInexistenteException("A categoria informada não existe!");
-                });
-
-        if (tipo == TipoRecorrente.DESPESA && categoria.getTipo() != TipoCategoria.DESPESA) {
-            log.error("Escolha uma categoria de despesa!");
-            throw new CategoriaDeReceitaException("Escolha uma categoria de despesa!");
-        }
-
-        if (tipo == TipoRecorrente.RECEITA && categoria.getTipo() != TipoCategoria.RECEITA) {
-            log.error("Escolha uma categoria de receita!");
-            throw new CategoriaDeDespesaException("Escolha uma categoria de receita!");
-        }
-
-        return categoria;
-    }
-
     private static boolean ativa(RecorrenteDTO recorrente, TipoRecorrente tipo) {
         return recorrente.tipo() == tipo && recorrente.situacao() == SituacaoRecorrente.ATIVO;
     }
@@ -269,9 +241,5 @@ public class RecorrenteService {
 
     private static BigDecimal porMes(BigDecimal valor, int meses) {
         return valor.divide(BigDecimal.valueOf(meses), 10, RoundingMode.HALF_UP);
-    }
-
-    private static String textoOuNulo(String texto) {
-        return texto == null || texto.isBlank() ? null : texto.strip();
     }
 }

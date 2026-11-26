@@ -30,15 +30,18 @@ Backend / API — release: branch + Pull Request (`origin`: `ByGustavoo/PrismaAP
 ```
 src/main/java/br/com/prismaapi/
   PrismaAPIApplication.java
-  config/          CorsConfig (origens por propriedade), DataBaseConfig, JacksonConfig, RedisConfig
+  config/          CorsConfig (origens por propriedade), DataBaseConfig, JacksonConfig, RedisConfig;
+                   cache/ com as anotações compostas de limpeza (LimparCachesDeLancamento, ...DeFatura etc.)
   controller/      um pacote por recurso: <Recurso>Controller + <Recurso>Docs (mapeamento e OpenAPI)
   enums/           enums do domínio
   exceptions/      uma RuntimeException por falha de negócio, dto/ e handler/GlobalExceptionHandler
   model/dto/       DTOs de entrada e saída, e projeções por recurso
   model/entity/    entidades JPA
   model/mapper/    mappers MapStruct
-  repository/      repositórios Spring Data e Specifications
+  repository/      repositórios Spring Data, Specifications e BuscaSemAcento (busca com unaccent)
   service/         regras de negócio e cálculos (faturas, saldo, previsão, dashboard, relatórios, avisos)
+  util/            ValorUtil (dinheiro, fracao, somar, zeroSeNulo) e TextoUtil (textoOuNulo, normalizar,
+                   ORDEM_ALFABETICA e PT_BR): helper que mais de um service usa mora aqui, não copiado
 src/main/resources/
   application.yaml config base + perfis dev, prod e test
   banner.txt       banner do start, com ${build.version} e ${build.data}
@@ -244,7 +247,19 @@ mudar um sem os outros quebra rotas, migrations ou logs:
   compra) e parcela (na data de `parcelasPorDataDePagamento`) só entram na projeção, depois de hoje:
   a compra em si não mexe em `contas.saldo`, então descontá-las no passado devolvia ao saldo dos meses
   anteriores um valor que nunca saiu da conta. O que o pagamento debitou entra no passado pelos
-  lançamentos gerados e pelo pagamento de fatura das despesas do cartão.
+  lançamentos gerados e pelo pagamento de fatura das despesas do cartão. São duas consultas JPQL:
+  `agruparMovimentosDoTotalPorDia` soma por dia, num `CASE`, as quatro origens que caem na data do
+  lançamento (receita e despesa das contas do total, despesa no crédito depois de hoje, transferência
+  que sai e que entra no total — cada lançamento cabe em no máximo uma), e
+  `agruparPagamentosDeFaturaDoTotalPorDia` lê o pagamento de fatura, que cai em outra data.
+- **As faturas são montadas a partir de um mês** (`FaturaService.montarFaturas`, parâmetro `desde`). Só
+  `GET /faturas` monta o histórico inteiro, porque devolve todas. O detalhe e o pagamento montam o mês
+  pedido e o anterior, por causa do `totalAnterior` (o total da fatura anterior existente), e voltam ao
+  histórico completo só quando o mês anterior não tem fatura. O limite comprometido e os avisos usam
+  `faturasRecentes` (dois meses para trás): fatura mais antiga já está vencida ou paga e não pesa em
+  nenhum dos dois. O card do dashboard sai da mesma montagem (`FaturaMapper.toResumoDTO`), sem
+  consulta por cartão. Pagar a fatura carrega "Outras despesas" uma vez só, e desfazer apaga os
+  pagamentos de parcela e os lançamentos deles em lote.
 - `VariacaoDTO.entre` devolve sempre a `diferenca` em reais e omite o `percentual` (`NON_NULL`) quando
   a janela anterior é zero ou quando ele passaria de 999% — com R$ 2,74 de receita na janela anterior,
   o relatório de produção mostrava "+175257,3%", e com a base zero a variação saía "estável", como se
@@ -334,6 +349,17 @@ mudar um sem os outros quebra rotas, migrations ou logs:
   novos um aviso sem marca não faz nada. "Ler todos" apaga as marcas de avisos que deixaram de existir,
   para a tabela não crescer sem limite. As preferências passam pelo cache `preferencias-avisos`, e
   gravá-las limpa também `avisos`.
+- **O cálculo dos avisos e o estado deles são separados.** `DerivacaoAvisosService.derivar(hoje)` calcula
+  os avisos e é ele que fica no cache `avisos`; o `AvisoService` só aplica as leituras de
+  `leituras_avisos` (uma consulta) a cada `GET` e não tem cache próprio. Por isso ler, adiar e devolver
+  aos novos não limpam cache nenhum: marcar como lido não recalcula os avisos, nem obriga o próximo
+  `GET` a recalculá-los. Quem muda os dados dos avisos continua limpando `avisos`.
+- **"Esta recorrente já foi lançada no mês?" tem uma regra só** (`DespesasLancadasPorMes`, em
+  `model/dto/recorrente`), usada pelo aviso de recorrente e pela previsão: conta o lançamento ligado à
+  recorrente e, entre os lançamentos sem recorrente, a mesma descrição normalizada. O lançador automático
+  tem regra própria (mesma origem e tipo, janela de três dias para semanal e quinzenal).
+- **A categoria do lado do tipo é conferida num lugar só** (`CategoriaService.buscarDoTipo`), usado por
+  lançamento, recorrente e compra parcelada, com as mesmas exceções e mensagens.
 - **Telas ocultas** (`V1.9`, `GET` e `PUT /telas/ocultas`). `telas_ocultas` guarda uma linha por tela
   que o usuário tirou do menu em Configurações, com `tela` única e um `CHECK` das quatorze opções do enum
   `Tela` — Dashboard e Configurações não entram, porque nunca ficam ocultos. O `PUT` substitui a lista
@@ -362,8 +388,12 @@ mudar um sem os outros quebra rotas, migrations ou logs:
   `SUM(CASE ...)` sobre a mesma `LancamentoSpecification`, para somar no banco sem carregar linhas. O
   `findAll` paginado leva o mesmo `@EntityGraph` do antigo, contra N+1.
 - **A busca de lançamentos casa também com a observação**, além de descrição, categoria e contas, sem
-  acento (`unaccent`). `GET /v1/lancamentos/{id}` (`buscarLancamento`, `LancamentoService.buscarPorId`)
-  devolve um lançamento no formato da listagem, para o frontend abrir um que não está na página.
+  acento (`unaccent`). Categoria, conta, cartão e conta de destino entram por subconsulta de ids
+  (`id_categoria IN (...)`), sem `JOIN`, para o `unaccent` rodar uma vez por cadastro e não uma vez por
+  lançamento, e para os filtros não duplicarem os `JOIN FETCH` do `@EntityGraph`. `GET /v1/lancamentos/{id}` (`buscarLancamento`, `LancamentoService.buscarPorId`)
+  devolve um lançamento no formato da listagem, para o frontend abrir um que não está na página, numa
+  consulta só (`buscarCompleto`). O `@EntityGraph` da listagem e o `buscarRecentes` do dashboard trazem
+  também a `recorrente`, que o `LancamentoMapper` lê: sem ela, cada recorrente da página era uma consulta.
 - **Recorrente é um cadastro só, de receita ou de despesa** (`V2.4`, tabela `recorrentes`, rota
   `/v1/recorrentes`, `TipoRecorrente`). A tabela era `despesas_recorrentes`; a `V2.4` a renomeia junto
   com restrições e índices e cria `tipo` com `DESPESA` como padrão, então as linhas antigas continuam
@@ -427,8 +457,15 @@ mudar um sem os outros quebra rotas, migrations ou logs:
   montada no `RedisConfig`, leva a data de hoje, a geração, o método e os parâmetros, porque quase todo cálculo
   depende de `LocalDate.now()` e a virada do dia não pode servir o resultado de ontem. Cada escrita
   limpa com `@CacheEvict(allEntries = true)` todos os caches que leem a tabela alterada — lançamento
-  mexe em saldo, fatura, previsão, avisos, orçamento, dashboard e relatório, então leva todos eles. Um
-  `GET` novo ou uma leitura nova de outra tabela exige revisar esses `@CacheEvict`.
+  mexe em saldo, fatura, previsão, avisos, orçamento, dashboard e relatório, então leva todos eles. As
+  listas repetidas são anotações compostas em `config/cache` (`@LimparCachesDeLancamento`,
+  `...DeFatura`, `...DeCartao`, `...DeConta`, `...DeInvestimento`, `...DeMeta`, `...DeOrcamento`), e a
+  lista é escrita uma vez só; a de uso único fica direto no método. O lançador automático usa
+  `@LimparCachesDeLancamento(condition = "#result > 0")` e só limpa quando lançou algo. Um `GET` novo ou
+  uma leitura nova de outra tabela exige revisar essas anotações. A exceção ao `@Cacheable` é a
+  listagem de avisos, descrita acima.
+- **As respostas saem comprimidas** (`server.compression.enabled`) para quem pede `gzip`: o dashboard de
+  12 meses cai de 19 KB para 3,4 KB.
 - O cache nunca derruba a API. Com o Redis fora, o `errorHandler` do `RedisConfig` registra a falha e a
   leitura vai ao banco; o Lettuce recusa comandos enquanto está desconectado e desiste em 2 segundos, em
   vez dos 60 do padrão. Uma limpeza que falha não pode deixar dado velho para quando o Redis voltar: a

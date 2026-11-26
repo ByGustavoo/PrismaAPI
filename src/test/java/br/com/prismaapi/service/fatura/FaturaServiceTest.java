@@ -92,6 +92,21 @@ class FaturaServiceTest extends AbstractTest {
     }
 
     @Test
+    void faturasRecentesTest() {
+        var faturas = Assertions.assertDoesNotThrow(() -> faturaService.faturasRecentes(cartaoRepository.findAll(), LocalDate.now()));
+        Assertions.assertNotNull(faturas);
+    }
+
+    @Test
+    void somarLimitesComprometidosTest() {
+        var cartoes = cartaoRepository.findAll();
+        var faturas = faturaService.faturasRecentes(cartoes, LocalDate.now());
+
+        var limites = Assertions.assertDoesNotThrow(() -> faturaService.somarLimitesComprometidos(cartoes, faturas));
+        Assertions.assertNotNull(limites);
+    }
+
+    @Test
     void cronogramaTest() {
         var compra = buscar(compraParceladaRepository, encontrada -> encontrada.getDescricao().equals("Notebook"));
 

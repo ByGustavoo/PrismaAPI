@@ -13,6 +13,7 @@ import br.com.prismaapi.model.dto.previsao.CenarioPrevisao;
 import br.com.prismaapi.model.dto.previsao.MenorSaldoDTO;
 import br.com.prismaapi.model.dto.previsao.MesPrevisaoDTO;
 import br.com.prismaapi.model.dto.previsao.PrevisaoDTO;
+import br.com.prismaapi.model.dto.recorrente.DespesasLancadasPorMes;
 import br.com.prismaapi.model.entity.cartao.Cartao;
 import br.com.prismaapi.model.entity.conta.Conta;
 import br.com.prismaapi.model.entity.recorrente.Recorrente;
@@ -21,6 +22,8 @@ import br.com.prismaapi.repository.conta.ContaRepository;
 import br.com.prismaapi.repository.recorrente.RecorrenteRepository;
 import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import br.com.prismaapi.service.fatura.FaturaService;
+import br.com.prismaapi.util.TextoUtil;
+import br.com.prismaapi.util.ValorUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
@@ -35,8 +38,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -80,15 +82,16 @@ public class PrevisaoService {
 
         var base = base(mesesDaBase, lancamentos, recorrentes);
         var cenario = new CenarioPrevisao(
-                lancamentos,
+                agendadosPorMes(lancamentos),
+                DespesasLancadasPorMes.de(lancamentos),
                 recorrentes,
                 faturaService.parcelasPorDataDePagamento(hoje),
                 base,
                 base.despesaMedia().subtract(base.recorrentesMedia()).max(BigDecimal.ZERO),
                 despesasRepetidas(mesesDaBase, lancamentos),
-                recorrentes.stream().map(despesa -> normalizar(despesa.getDescricao())).collect(Collectors.toSet()));
+                recorrentes.stream().map(despesa -> TextoUtil.normalizar(despesa.getDescricao())).collect(Collectors.toSet()));
 
-        var saldoAtual = dinheiro(zeroSeNulo(contaRepository.somarSaldoDoTotal()));
+        var saldoAtual = ValorUtil.dinheiro(contaRepository.somarSaldoDoTotal());
         var emAberto = lancamentoRepository.buscarNaoPagosAte(mesAtual.atEndOfMonth());
         var restanteMesAtual = projetarRestante(cenario, emAberto, hoje, saldoAtual);
 
@@ -106,7 +109,7 @@ public class PrevisaoService {
                 .map(mes -> new MenorSaldoDTO(mes.mes(), mes.saldoFinal()))
                 .orElseThrow();
 
-        var resultadoMedio = somar(projecao.stream().map(MesPrevisaoDTO::resultado))
+        var resultadoMedio = ValorUtil.somar(projecao.stream().map(MesPrevisaoDTO::resultado))
                 .divide(BigDecimal.valueOf(projecao.size()), 2, RoundingMode.HALF_UP);
 
         return new PrevisaoDTO(
@@ -125,7 +128,7 @@ public class PrevisaoService {
         var fim = mesesDaBase.getLast().atEndOfMonth();
         var daBase = lancamentos.stream().filter(lancamento -> entre(lancamento.getData(), inicio, fim)).toList();
 
-        var recorrentesDaBase = somar(mesesDaBase.stream()
+        var recorrentesDaBase = ValorUtil.somar(mesesDaBase.stream()
                 .map(mes -> somarRecorrentes(recorrentes, mes.atDay(1), mes.atEndOfMonth())));
 
         return new BaseCalculoPrevisaoDTO(
@@ -158,11 +161,11 @@ public class PrevisaoService {
     private static MesPrevisaoDTO projetarMes(CenarioPrevisao cenario, YearMonth mes, BigDecimal saldoInicial) {
         var inicio = mes.atDay(1);
         var fim = mes.atEndOfMonth();
-        var agendados = agendadosEntre(cenario.lancamentos(), inicio, fim);
+        var agendados = cenario.agendadosPorMes().getOrDefault(mes, List.of());
 
         var despesasAgendadas = agendados.stream()
                 .filter(lancamento -> {
-                    var descricao = normalizar(lancamento.getDescricao());
+                    var descricao = TextoUtil.normalizar(lancamento.getDescricao());
                     return !cenario.despesasRepetidasNaBase().contains(descricao) || cenario.nomesDasRecorrentes().contains(descricao);
                 })
                 .toList();
@@ -179,42 +182,26 @@ public class PrevisaoService {
     }
 
     private static MesPrevisaoDTO montarMes(YearMonth mes, BigDecimal receita, BigDecimal recorrentes, BigDecimal parcelas, BigDecimal variavel, BigDecimal agendados, BigDecimal aportes, BigDecimal saldoInicial) {
-        var despesa = dinheiro(recorrentes).add(dinheiro(parcelas)).add(dinheiro(variavel)).add(dinheiro(agendados));
-        var resultado = dinheiro(receita).subtract(despesa).subtract(dinheiro(aportes));
+        var despesa = ValorUtil.dinheiro(recorrentes).add(ValorUtil.dinheiro(parcelas)).add(ValorUtil.dinheiro(variavel)).add(ValorUtil.dinheiro(agendados));
+        var resultado = ValorUtil.dinheiro(receita).subtract(despesa).subtract(ValorUtil.dinheiro(aportes));
 
         return new MesPrevisaoDTO(
                 mes,
                 MesDoAno.rotulo(mes),
-                dinheiro(receita),
-                dinheiro(recorrentes),
-                dinheiro(parcelas),
-                dinheiro(variavel),
-                dinheiro(agendados),
+                ValorUtil.dinheiro(receita),
+                ValorUtil.dinheiro(recorrentes),
+                ValorUtil.dinheiro(parcelas),
+                ValorUtil.dinheiro(variavel),
+                ValorUtil.dinheiro(agendados),
                 despesa,
-                dinheiro(aportes),
+                ValorUtil.dinheiro(aportes),
                 resultado,
                 saldoInicial.add(resultado));
     }
 
     private static BigDecimal recorrentesSemLancamento(CenarioPrevisao cenario, YearMonth mes, LocalDate inicio, LocalDate fim) {
-        var lancadasNoMes = cenario.lancamentos().stream()
-                .filter(lancamento -> lancamento.getTipo() == TipoLancamento.DESPESA)
-                .filter(lancamento -> YearMonth.from(lancamento.getData()).equals(mes))
-                .toList();
-
-        var descricoesLancadas = lancadasNoMes.stream()
-                .map(lancamento -> normalizar(lancamento.getDescricao()))
-                .collect(Collectors.toSet());
-
-        var recorrentesLancadas = lancadasNoMes.stream()
-                .map(Lancamento::getRecorrente)
-                .filter(Objects::nonNull)
-                .map(Recorrente::getId)
-                .collect(Collectors.toSet());
-
         var semLancamento = cenario.recorrentes().stream()
-                .filter(despesa -> !recorrentesLancadas.contains(despesa.getId()))
-                .filter(despesa -> !descricoesLancadas.contains(normalizar(despesa.getDescricao())))
+                .filter(despesa -> !cenario.despesasLancadas().contem(despesa, mes))
                 .toList();
 
         return somarRecorrentes(semLancamento, inicio, fim);
@@ -225,27 +212,26 @@ public class PrevisaoService {
                 .map(mes -> lancamentos.stream()
                         .filter(PrevisaoService::despesaDoTotal)
                         .filter(lancamento -> YearMonth.from(lancamento.getData()).equals(mes))
-                        .map(lancamento -> normalizar(lancamento.getDescricao()))
+                        .map(lancamento -> TextoUtil.normalizar(lancamento.getDescricao()))
                         .collect(Collectors.toSet()))
                 .reduce((acumuladas, doMes) -> acumuladas.stream().filter(doMes::contains).collect(Collectors.toSet()))
                 .orElse(Set.of());
     }
 
-    private static List<Lancamento> agendadosEntre(List<Lancamento> lancamentos, LocalDate inicio, LocalDate fim) {
+    private static Map<YearMonth, List<Lancamento>> agendadosPorMes(List<Lancamento> lancamentos) {
         return lancamentos.stream()
                 .filter(lancamento -> lancamento.getSituacao() != SituacaoLancamento.PAGO)
-                .filter(lancamento -> entre(lancamento.getData(), inicio, fim))
-                .toList();
+                .collect(Collectors.groupingBy(lancamento -> YearMonth.from(lancamento.getData())));
     }
 
     private static BigDecimal parcelasEntre(CenarioPrevisao cenario, LocalDate inicio, LocalDate fim) {
         if (inicio.isAfter(fim)) return BigDecimal.ZERO;
 
-        return somar(cenario.parcelas().subMap(inicio, true, fim, true).values().stream());
+        return ValorUtil.somar(cenario.parcelas().subMap(inicio, true, fim, true).values().stream());
     }
 
     private static BigDecimal somarRecorrentes(Collection<Recorrente> recorrentes, LocalDate inicio, LocalDate fim) {
-        return somar(recorrentes.stream()
+        return ValorUtil.somar(recorrentes.stream()
                 .map(despesa -> despesa.getValor().multiply(BigDecimal.valueOf(ocorrenciasEntre(despesa, inicio, fim)))));
     }
 
@@ -265,7 +251,7 @@ public class PrevisaoService {
     }
 
     private static BigDecimal somarLancamentos(List<Lancamento> lancamentos, Predicate<Lancamento> criterio) {
-        return somar(lancamentos.stream()
+        return ValorUtil.somar(lancamentos.stream()
                 .filter(criterio)
                 .map(Lancamento::getValor));
     }
@@ -294,23 +280,7 @@ public class PrevisaoService {
         return !data.isBefore(inicio) && !data.isAfter(fim);
     }
 
-    private static String normalizar(String descricao) {
-        return descricao.strip().toLowerCase(Locale.ROOT);
-    }
-
     private static BigDecimal media(BigDecimal total) {
-        return dinheiro(total.divide(BigDecimal.valueOf(MESES_DA_BASE), 10, RoundingMode.HALF_UP));
-    }
-
-    private static BigDecimal somar(Stream<BigDecimal> valores) {
-        return valores.reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
-
-    private static BigDecimal dinheiro(BigDecimal valor) {
-        return valor.setScale(2, RoundingMode.HALF_UP);
-    }
-
-    private static BigDecimal zeroSeNulo(BigDecimal valor) {
-        return valor != null ? valor : BigDecimal.ZERO;
+        return ValorUtil.dinheiro(total.divide(BigDecimal.valueOf(MESES_DA_BASE), 10, RoundingMode.HALF_UP));
     }
 }

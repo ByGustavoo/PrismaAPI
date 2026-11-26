@@ -19,18 +19,15 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class PreferenciasAvisosService {
 
-    private static final Set<Integer> LEMBRETES = Set.of(15, 30, 60, 90);
     private final PreferenciasAvisosMapper preferenciasAvisosMapper;
+    private static final Set<Integer> LEMBRETES = Set.of(15, 30, 60, 90);
     private final PreferenciasAvisosRepository preferenciasAvisosRepository;
 
     @Cacheable("preferencias-avisos")
     @Transactional(readOnly = true)
     public PreferenciasAvisosDTO buscar() {
         log.info("Buscando as preferências dos avisos...");
-
-        return preferenciasAvisosRepository.findFirstByOrderByDataAtualizacaoAsc()
-                .map(preferenciasAvisosMapper::toDTO)
-                .orElseGet(() -> preferenciasAvisosMapper.toDTO(padrao()));
+        return preferenciasAvisosMapper.toDTO(preferencias());
     }
 
     @Transactional
@@ -39,10 +36,17 @@ public class PreferenciasAvisosService {
         log.info("Atualizando as preferências dos avisos... - Preferências: {}", preferenciasAvisosDTO);
         validar(preferenciasAvisosDTO);
 
-        var preferencias = preferenciasAvisosRepository.findFirstByOrderByDataAtualizacaoAsc().orElseGet(PreferenciasAvisosService::padrao);
+        var preferencias = preferencias();
         preferenciasAvisosMapper.updateEntity(preferenciasAvisosDTO, preferencias);
 
         return preferenciasAvisosMapper.toDTO(preferenciasAvisosRepository.save(preferencias));
+    }
+
+    private PreferenciasAvisos preferencias() {
+        return preferenciasAvisosRepository.buscarComTiposDesligados()
+                .stream()
+                .findFirst()
+                .orElseGet(PreferenciasAvisosService::padrao);
     }
 
     private static void validar(PreferenciasAvisosDTO preferenciasAvisosDTO) {

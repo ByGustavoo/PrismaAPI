@@ -13,7 +13,7 @@ class PreferenciasAvisosRepositoryTest extends AbstractTest {
     private PreferenciasAvisosRepository preferenciasAvisosRepository;
 
     @Test
-    void findFirstByOrderByDataAtualizacaoAscTest() {
-        Assertions.assertDoesNotThrow(() -> preferenciasAvisosRepository.findFirstByOrderByDataAtualizacaoAsc());
+    void buscarComTiposDesligadosTest() {
+        Assertions.assertDoesNotThrow(() -> preferenciasAvisosRepository.buscarComTiposDesligados());
     }
 }

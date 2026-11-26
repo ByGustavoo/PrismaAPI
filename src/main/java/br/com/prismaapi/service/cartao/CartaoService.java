@@ -1,5 +1,6 @@
 package br.com.prismaapi.service.cartao;
 
+import br.com.prismaapi.config.cache.LimparCachesDeCartao;
 import br.com.prismaapi.enums.Situacao;
 import br.com.prismaapi.enums.TipoCartao;
 import br.com.prismaapi.exceptions.CartaoComHistoricoException;
@@ -17,18 +18,16 @@ import br.com.prismaapi.repository.conta.ContaRepository;
 import br.com.prismaapi.repository.recorrente.RecorrenteRepository;
 import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import br.com.prismaapi.service.fatura.FaturaService;
+import br.com.prismaapi.util.TextoUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.text.Collator;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -44,7 +43,6 @@ public class CartaoService {
     private final LancamentoRepository lancamentoRepository;
     private final RecorrenteRepository recorrenteRepository;
     private final CompraParceladaRepository compraParceladaRepository;
-    private static final Collator ORDEM_ALFABETICA = Collator.getInstance(Locale.forLanguageTag("pt-BR"));
     private static final List<TipoCartao> ORDEM_DOS_TIPOS = List.of(TipoCartao.CREDITO, TipoCartao.DEBITO, TipoCartao.VALE_ALIMENTACAO, TipoCartao.VALE_REFEICAO);
 
     @Cacheable("cartoes")
@@ -58,13 +56,13 @@ public class CartaoService {
                 .map(cartao -> cartaoMapper.toDTO(cartao, limitesComprometidos.get(cartao.getId())))
                 .sorted(Comparator.comparing((CartaoDTO cartao) -> ORDEM_DOS_TIPOS.indexOf(cartao.tipo()))
                         .thenComparing(cartao -> cartao.situacao() != Situacao.ATIVO)
-                        .thenComparing(CartaoDTO::nome, ORDEM_ALFABETICA)
-                        .thenComparing(CartaoDTO::instituicao, ORDEM_ALFABETICA))
+                        .thenComparing(CartaoDTO::nome, TextoUtil.ORDEM_ALFABETICA)
+                        .thenComparing(CartaoDTO::instituicao, TextoUtil.ORDEM_ALFABETICA))
                 .toList();
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "contas", "dashboard", "recorrentes", "faturas", "lancamentos", "previsao", "relatorios"}, allEntries = true)
+    @LimparCachesDeCartao
     public CartaoDTO salvar(SalvarCartaoDTO salvarCartaoDTO) {
         log.info("Salvando o cartão... - Nome: {} - Tipo: {}", salvarCartaoDTO.nome(), salvarCartaoDTO.tipo());
         var cartao = cartaoMapper.toEntity(salvarCartaoDTO);
@@ -74,7 +72,7 @@ public class CartaoService {
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "contas", "dashboard", "recorrentes", "faturas", "lancamentos", "previsao", "relatorios"}, allEntries = true)
+    @LimparCachesDeCartao
     public CartaoDTO atualizar(UUID id, SalvarCartaoDTO salvarCartaoDTO) {
         log.info("Atualizando o cartão... - ID: [{}]", id);
         var cartao = buscar(id);
@@ -86,7 +84,7 @@ public class CartaoService {
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "contas", "dashboard", "recorrentes", "faturas", "lancamentos", "previsao", "relatorios"}, allEntries = true)
+    @LimparCachesDeCartao
     public void deletar(UUID id) {
         log.info("Deletando o cartão... - ID: [{}]", id);
         var cartao = buscar(id);
@@ -120,10 +118,10 @@ public class CartaoService {
     }
 
     private void preencher(Cartao cartao, SalvarCartaoDTO salvarCartaoDTO) {
-        cartao.setNome(salvarCartaoDTO.nome().strip());
-        cartao.setInstituicao(salvarCartaoDTO.instituicao().strip());
-        cartao.setBandeira(textoOuNulo(salvarCartaoDTO.bandeira()));
-        cartao.setUltimosDigitos(textoOuNulo(salvarCartaoDTO.ultimosDigitos()));
+        cartao.setNome(salvarCartaoDTO.nome());
+        cartao.setInstituicao(salvarCartaoDTO.instituicao());
+        cartao.setBandeira(TextoUtil.textoOuNulo(salvarCartaoDTO.bandeira()));
+        cartao.setUltimosDigitos(TextoUtil.textoOuNulo(salvarCartaoDTO.ultimosDigitos()));
 
         cartao.setConta(null);
         cartao.setSaldo(null);
@@ -169,9 +167,5 @@ public class CartaoService {
         }
 
         return valor;
-    }
-
-    private static String textoOuNulo(String texto) {
-        return texto == null || texto.isBlank() ? null : texto.strip();
     }
 }

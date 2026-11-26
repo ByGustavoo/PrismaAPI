@@ -4,6 +4,8 @@ logging:
 server:
   servlet:
     context-path: /PrismaAPI
+  compression:
+    enabled: true
 
 prismaapi:
   cors:

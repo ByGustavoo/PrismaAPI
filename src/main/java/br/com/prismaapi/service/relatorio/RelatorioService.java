@@ -7,7 +7,6 @@ import br.com.prismaapi.exceptions.RequisicaoInvalidaException;
 import br.com.prismaapi.model.dto.dashboard.LinhaDoSaldo;
 import br.com.prismaapi.model.dto.dashboard.fluxo.FluxoDTO;
 import br.com.prismaapi.model.dto.dashboard.gasto.categoria.GastoCategoriaDTO;
-import br.com.prismaapi.model.dto.dashboard.projection.GastoCategoriaProjecao;
 import br.com.prismaapi.model.dto.dashboard.projection.MovimentoDiarioProjecao;
 import br.com.prismaapi.model.dto.dashboard.saldo.SaldoDTO;
 import br.com.prismaapi.model.dto.dashboard.variacao.VariacaoDTO;
@@ -15,12 +14,11 @@ import br.com.prismaapi.model.dto.relatorio.BaldeRelatorio;
 import br.com.prismaapi.model.dto.relatorio.GastoOrigemDTO;
 import br.com.prismaapi.model.dto.relatorio.PatrimonioDTO;
 import br.com.prismaapi.model.dto.relatorio.RelatorioDTO;
-import br.com.prismaapi.model.entity.categoria.Categoria;
 import br.com.prismaapi.model.mapper.categoria.CategoriaMapper;
-import br.com.prismaapi.repository.categoria.CategoriaRepository;
 import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import br.com.prismaapi.service.investimento.InvestimentoService;
 import br.com.prismaapi.service.saldo.SaldoService;
+import br.com.prismaapi.util.ValorUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
@@ -28,15 +26,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Slf4j
@@ -45,9 +40,7 @@ import java.util.stream.Stream;
 public class RelatorioService {
 
     private final SaldoService saldoService;
-    private static final int CASAS_DA_FRACAO = 4;
     private final CategoriaMapper categoriaMapper;
-    private final CategoriaRepository categoriaRepository;
     private final InvestimentoService investimentoService;
     private final LancamentoRepository lancamentoRepository;
     private static final DateTimeFormatter FORMATO_DO_DIA = DateTimeFormatter.ofPattern("dd/MM");
@@ -63,8 +56,9 @@ public class RelatorioService {
         var fimAnterior = dataInicial.minusDays(1);
         var inicioAnterior = fimAnterior.minusDays(dias - 1);
 
-        var receitas = somarPorTipo(TipoLancamento.RECEITA, dataInicial, dataFinal);
-        var despesas = somarPorTipo(TipoLancamento.DESPESA, dataInicial, dataFinal);
+        var resumo = lancamentoRepository.resumirPeriodos(dataInicial, dataFinal, inicioAnterior, fimAnterior);
+        var receitas = ValorUtil.dinheiro(resumo.receitas());
+        var despesas = ValorUtil.dinheiro(resumo.despesas());
 
         var baldes = baldes(dataInicial, dataFinal, dias);
         var mesesDoPatrimonio = mesesDoPatrimonio(dataInicial, dataFinal);
@@ -81,14 +75,14 @@ public class RelatorioService {
                 receitas,
                 despesas,
                 receitas.subtract(despesas),
-                VariacaoDTO.entre(receitas, somarPorTipo(TipoLancamento.RECEITA, inicioAnterior, fimAnterior)),
-                VariacaoDTO.entre(despesas, somarPorTipo(TipoLancamento.DESPESA, inicioAnterior, fimAnterior)),
-                (int) lancamentoRepository.countByTipoNotAndDataBetween(TipoLancamento.TRANSFERENCIA, dataInicial, dataFinal),
+                VariacaoDTO.entre(receitas, ValorUtil.dinheiro(resumo.receitasAnteriores())),
+                VariacaoDTO.entre(despesas, ValorUtil.dinheiro(resumo.despesasAnteriores())),
+                resumo.quantidade().intValue(),
                 porCategoria(TipoLancamento.DESPESA, dataInicial, dataFinal, despesas),
                 porCategoria(TipoLancamento.RECEITA, dataInicial, dataFinal, receitas),
                 fluxoCaixa(baldes, dataInicial, dataFinal),
                 despesasPorOrigem(dataInicial, dataFinal, despesas),
-                baldes.stream().map(balde -> new SaldoDTO(balde.rotulo(), dinheiro(linhaDoSaldo.em(balde.fim())))).toList(),
+                baldes.stream().map(balde -> new SaldoDTO(balde.rotulo(), ValorUtil.dinheiro(linhaDoSaldo.em(balde.fim())))).toList(),
                 patrimonio(mesesDoPatrimonio, linhaDoSaldo, hoje));
     }
 
@@ -102,11 +96,6 @@ public class RelatorioService {
             log.warn("O período informado é inválido!");
             throw new RequisicaoInvalidaException("O período informado é inválido!");
         }
-    }
-
-    private BigDecimal somarPorTipo(TipoLancamento tipo, LocalDate inicio, LocalDate fim) {
-        var total = lancamentoRepository.somarPorTipo(tipo, inicio, fim);
-        return dinheiro(total != null ? total : BigDecimal.ZERO);
     }
 
     private static List<BaldeRelatorio> baldes(LocalDate inicio, LocalDate fim, long dias) {
@@ -148,21 +137,12 @@ public class RelatorioService {
     }
 
     private List<GastoCategoriaDTO> porCategoria(TipoLancamento tipo, LocalDate inicio, LocalDate fim, BigDecimal total) {
-        var grupos = lancamentoRepository.agruparPorCategoria(tipo, inicio, fim);
-
-        if (grupos.isEmpty()) {
-            return List.of();
-        }
-
-        var categorias = categoriaRepository.findAllById(grupos.stream().map(GastoCategoriaProjecao::categoriaId).toList())
+        return lancamentoRepository.agruparPorCategoria(tipo, inicio, fim)
                 .stream()
-                .collect(Collectors.toMap(Categoria::getId, Function.identity()));
-
-        return grupos.stream()
                 .map(grupo -> new GastoCategoriaDTO(
-                        categoriaMapper.toDTO(categorias.get(grupo.categoriaId())),
-                        dinheiro(grupo.valor()),
-                        fracao(grupo.valor(), total)))
+                        categoriaMapper.toDTO(grupo.categoria()),
+                        ValorUtil.dinheiro(grupo.valor()),
+                        ValorUtil.fracao(grupo.valor(), total)))
                 .toList();
     }
 
@@ -181,8 +161,8 @@ public class RelatorioService {
         return lancamentoRepository.agruparDespesasPorOrigem(inicio, fim)
                 .stream()
                 .map(gasto -> gasto.idConta() != null
-                        ? new GastoOrigemDTO(gasto.idConta(), gasto.nomeConta(), GrupoOrigem.CONTA, dinheiro(gasto.valor()), fracao(gasto.valor(), total))
-                        : new GastoOrigemDTO(gasto.idCartao(), gasto.nomeCartao(), GrupoOrigem.CARTAO, dinheiro(gasto.valor()), fracao(gasto.valor(), total)))
+                        ? new GastoOrigemDTO(gasto.idConta(), gasto.nomeConta(), GrupoOrigem.CONTA, ValorUtil.dinheiro(gasto.valor()), ValorUtil.fracao(gasto.valor(), total))
+                        : new GastoOrigemDTO(gasto.idCartao(), gasto.nomeCartao(), GrupoOrigem.CARTAO, ValorUtil.dinheiro(gasto.valor()), ValorUtil.fracao(gasto.valor(), total)))
                 .toList();
     }
 
@@ -190,33 +170,20 @@ public class RelatorioService {
         return investimentoService.evolucaoNosMeses(meses)
                 .stream()
                 .map(carteira -> {
-                    var contas = dinheiro(linhaDoSaldo.em(fechamento(carteira.mes(), hoje)));
+                    var contas = ValorUtil.dinheiro(linhaDoSaldo.em(fechamento(carteira.mes(), hoje)));
                     return new PatrimonioDTO(carteira.mes(), carteira.rotulo(), contas, carteira.valor(), contas.add(carteira.valor()));
                 })
                 .toList();
     }
 
     private static BigDecimal somarNoBalde(List<MovimentoDiarioProjecao> movimentos, BaldeRelatorio balde, TipoLancamento tipo) {
-        return dinheiro(movimentos.stream()
+        return ValorUtil.dinheiro(ValorUtil.somar(movimentos.stream()
                 .filter(movimento -> movimento.tipo() == tipo)
                 .filter(movimento -> balde.contem(movimento.data()))
-                .map(MovimentoDiarioProjecao::valor)
-                .reduce(BigDecimal.ZERO, BigDecimal::add));
+                .map(MovimentoDiarioProjecao::valor)));
     }
 
     private static LocalDate fechamento(YearMonth mes, LocalDate hoje) {
         return mes.equals(YearMonth.from(hoje)) ? hoje : mes.atEndOfMonth();
-    }
-
-    private static BigDecimal fracao(BigDecimal parte, BigDecimal total) {
-        if (total.signum() == 0) {
-            return BigDecimal.ZERO.setScale(CASAS_DA_FRACAO, RoundingMode.HALF_UP);
-        }
-
-        return parte.divide(total, CASAS_DA_FRACAO, RoundingMode.HALF_UP);
-    }
-
-    private static BigDecimal dinheiro(BigDecimal valor) {
-        return valor.setScale(2, RoundingMode.HALF_UP);
     }
 }

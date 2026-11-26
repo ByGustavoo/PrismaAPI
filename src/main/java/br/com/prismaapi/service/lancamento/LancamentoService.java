@@ -1,5 +1,6 @@
 package br.com.prismaapi.service.lancamento;
 
+import br.com.prismaapi.config.cache.LimparCachesDeLancamento;
 import br.com.prismaapi.enums.DirecaoOrdenacao;
 import br.com.prismaapi.enums.FormaLancamento;
 import br.com.prismaapi.enums.Frequencia;
@@ -18,14 +19,14 @@ import br.com.prismaapi.model.entity.conta.Conta;
 import br.com.prismaapi.model.entity.lancamento.Lancamento;
 import br.com.prismaapi.model.mapper.lancamento.LancamentoMapper;
 import br.com.prismaapi.repository.cartao.CartaoRepository;
-import br.com.prismaapi.repository.categoria.CategoriaRepository;
 import br.com.prismaapi.repository.conta.ContaRepository;
 import br.com.prismaapi.repository.lancamento.LancamentoRepository;
 import br.com.prismaapi.repository.lancamento.LancamentoSpecification;
+import br.com.prismaapi.service.categoria.CategoriaService;
 import br.com.prismaapi.service.recorrente.RecorrenteService;
+import br.com.prismaapi.util.TextoUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -45,8 +46,8 @@ public class LancamentoService {
     private final ContaRepository contaRepository;
     private final CartaoRepository cartaoRepository;
     private final LancamentoMapper lancamentoMapper;
+    private final CategoriaService categoriaService;
     private final RecorrenteService recorrenteService;
-    private final CategoriaRepository categoriaRepository;
     private final LancamentoRepository lancamentoRepository;
 
     @Cacheable("lancamentos")
@@ -74,7 +75,7 @@ public class LancamentoService {
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "contas", "dashboard", "faturas", "lancamentos", "orcamentos", "previsao", "recorrentes", "relatorios"}, allEntries = true)
+    @LimparCachesDeLancamento
     public LancamentoDTO salvar(SalvarLancamentoDTO salvarLancamentoDTO) {
         log.info("Salvando o lançamento... - Descrição: {} - Tipo: {}", salvarLancamentoDTO.descricao(), salvarLancamentoDTO.tipo());
         var lancamento = lancamentoMapper.toEntity(salvarLancamentoDTO);
@@ -88,7 +89,7 @@ public class LancamentoService {
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "contas", "dashboard", "faturas", "lancamentos", "orcamentos", "previsao", "recorrentes", "relatorios"}, allEntries = true)
+    @LimparCachesDeLancamento
     public LancamentoDTO atualizar(UUID id, SalvarLancamentoDTO salvarLancamentoDTO) {
         log.info("Atualizando o lançamento... - ID: [{}]", id);
         var lancamento = buscar(id);
@@ -105,7 +106,7 @@ public class LancamentoService {
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "contas", "dashboard", "faturas", "lancamentos", "orcamentos", "previsao", "recorrentes", "relatorios"}, allEntries = true)
+    @LimparCachesDeLancamento
     public void deletar(UUID id) {
         log.info("Deletando o lançamento... - ID: [{}]", id);
         var lancamento = buscar(id);
@@ -127,7 +128,7 @@ public class LancamentoService {
     }
 
     private Lancamento buscar(UUID id) {
-        return lancamentoRepository.findById(id)
+        return lancamentoRepository.buscarCompleto(id)
                 .orElseThrow(() -> {
                     log.warn("Lançamento não encontrado! - ID: [{}]", id);
                     return new LancamentoNaoEncontradoException("Lançamento não encontrado!");
@@ -137,8 +138,8 @@ public class LancamentoService {
     private void preencher(Lancamento lancamento, SalvarLancamentoDTO salvarLancamentoDTO) {
         validarSituacao(salvarLancamentoDTO);
 
-        lancamento.setDescricao(salvarLancamentoDTO.descricao().strip());
-        lancamento.setObservacoes(textoOuNulo(salvarLancamentoDTO.observacoes()));
+        lancamento.setDescricao(salvarLancamentoDTO.descricao());
+        lancamento.setObservacoes(TextoUtil.textoOuNulo(salvarLancamentoDTO.observacoes()));
 
         lancamento.setConta(null);
         lancamento.setCartao(null);
@@ -150,7 +151,7 @@ public class LancamentoService {
         if (salvarLancamentoDTO.tipo() == TipoLancamento.TRANSFERENCIA) {
             vincularContaDestino(lancamento, salvarLancamentoDTO.idContaDestino());
         } else {
-            vincularCategoria(lancamento, salvarLancamentoDTO.idCategoria(), salvarLancamentoDTO.tipo());
+            lancamento.setCategoria(categoriaService.buscarDoTipo(salvarLancamentoDTO.idCategoria(), TipoCategoria.valueOf(salvarLancamentoDTO.tipo().name())));
         }
 
         validarForma(lancamento, salvarLancamentoDTO.forma());
@@ -207,27 +208,6 @@ public class LancamentoService {
         }
 
         lancamento.setContaDestino(contaDestino);
-    }
-
-    private void vincularCategoria(Lancamento lancamento, UUID idCategoria, TipoLancamento tipo) {
-        var categoria = Optional.ofNullable(idCategoria)
-                .flatMap(categoriaRepository::findById)
-                .orElseThrow(() -> {
-                    log.error("A categoria informada não existe!");
-                    return new CategoriaInexistenteException("A categoria informada não existe!");
-                });
-
-        if (tipo == TipoLancamento.DESPESA && categoria.getTipo() != TipoCategoria.DESPESA) {
-            log.error("Escolha uma categoria de despesa!");
-            throw new CategoriaDeReceitaException("Escolha uma categoria de despesa!");
-        }
-
-        if (tipo == TipoLancamento.RECEITA && categoria.getTipo() != TipoCategoria.RECEITA) {
-            log.error("Escolha uma categoria de receita!");
-            throw new CategoriaDeDespesaException("Escolha uma categoria de receita!");
-        }
-
-        lancamento.setCategoria(categoria);
     }
 
     private static void movimentarSaldos(Lancamento lancamento, BigDecimal sentido) {
@@ -326,9 +306,5 @@ public class LancamentoService {
         };
 
         return principal.and(Sort.by(Sort.Order.asc("id")));
-    }
-
-    private static String textoOuNulo(String texto) {
-        return texto == null || texto.isBlank() ? null : texto.strip();
     }
 }

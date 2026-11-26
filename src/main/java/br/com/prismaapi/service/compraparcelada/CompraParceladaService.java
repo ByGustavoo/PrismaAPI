@@ -1,12 +1,11 @@
 package br.com.prismaapi.service.compraparcelada;
 
+import br.com.prismaapi.config.cache.LimparCachesDeFatura;
 import br.com.prismaapi.enums.SituacaoParcela;
 import br.com.prismaapi.enums.TipoCartao;
 import br.com.prismaapi.enums.TipoCategoria;
 import br.com.prismaapi.exceptions.CartaoInexistenteException;
 import br.com.prismaapi.exceptions.CartaoNaoAceitaParcelamentoException;
-import br.com.prismaapi.exceptions.CategoriaDeReceitaException;
-import br.com.prismaapi.exceptions.CategoriaInexistenteException;
 import br.com.prismaapi.exceptions.CompraParceladaNaoEncontradaException;
 import br.com.prismaapi.exceptions.PagamentoDeParcelaNaoEncontradoException;
 import br.com.prismaapi.exceptions.ParcelaJaPagaException;
@@ -18,17 +17,16 @@ import br.com.prismaapi.model.dto.compraparcelada.ParcelaDTO;
 import br.com.prismaapi.model.dto.compraparcelada.PlanoCompraParceladaDTO;
 import br.com.prismaapi.model.dto.compraparcelada.SalvarCompraParceladaDTO;
 import br.com.prismaapi.model.entity.cartao.Cartao;
-import br.com.prismaapi.model.entity.categoria.Categoria;
 import br.com.prismaapi.model.entity.compraparcelada.CompraParcelada;
 import br.com.prismaapi.model.mapper.compraparcelada.CompraParceladaMapper;
 import br.com.prismaapi.repository.cartao.CartaoRepository;
-import br.com.prismaapi.repository.categoria.CategoriaRepository;
 import br.com.prismaapi.repository.compraparcelada.CompraParceladaRepository;
 import br.com.prismaapi.repository.parcelapaga.ParcelaPagaRepository;
+import br.com.prismaapi.service.categoria.CategoriaService;
 import br.com.prismaapi.service.fatura.FaturaService;
+import br.com.prismaapi.util.TextoUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,7 +47,7 @@ public class CompraParceladaService {
 
     private final FaturaService faturaService;
     private final CartaoRepository cartaoRepository;
-    private final CategoriaRepository categoriaRepository;
+    private final CategoriaService categoriaService;
     private final CompraParceladaMapper compraParceladaMapper;
     private final ParcelaPagaRepository parcelaPagaRepository;
     private final CompraParceladaRepository compraParceladaRepository;
@@ -71,7 +69,7 @@ public class CompraParceladaService {
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "contas", "dashboard", "faturas", "lancamentos", "orcamentos", "previsao", "relatorios"}, allEntries = true)
+    @LimparCachesDeFatura
     public CompraParceladaDTO salvar(SalvarCompraParceladaDTO salvarCompraParceladaDTO) {
         log.info("Salvando a compra parcelada... - Descrição: {}", salvarCompraParceladaDTO.descricao());
         var compra = compraParceladaMapper.toEntity(salvarCompraParceladaDTO);
@@ -81,7 +79,7 @@ public class CompraParceladaService {
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "contas", "dashboard", "faturas", "lancamentos", "orcamentos", "previsao", "relatorios"}, allEntries = true)
+    @LimparCachesDeFatura
     public CompraParceladaDTO atualizar(UUID id, SalvarCompraParceladaDTO salvarCompraParceladaDTO) {
         log.info("Atualizando a compra parcelada... - ID: [{}]", id);
         var compra = buscar(id);
@@ -94,14 +92,14 @@ public class CompraParceladaService {
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "contas", "dashboard", "faturas", "lancamentos", "orcamentos", "previsao", "relatorios"}, allEntries = true)
+    @LimparCachesDeFatura
     public void deletar(UUID id) {
         log.info("Deletando a compra parcelada... - ID: [{}]", id);
         compraParceladaRepository.delete(buscar(id));
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "contas", "dashboard", "faturas", "lancamentos", "orcamentos", "previsao", "relatorios"}, allEntries = true)
+    @LimparCachesDeFatura
     public PagamentoParcelaDTO registrarPagamento(UUID id, Integer numero) {
         log.info("Registrando o pagamento da parcela... - ID: [{}] - Parcela: {}", id, numero);
         var compra = buscar(id);
@@ -126,7 +124,7 @@ public class CompraParceladaService {
     }
 
     @Transactional
-    @CacheEvict(value = {"avisos", "cartoes", "compras-parceladas", "contas", "dashboard", "faturas", "lancamentos", "orcamentos", "previsao", "relatorios"}, allEntries = true)
+    @LimparCachesDeFatura
     public void deletarPagamento(UUID id, Integer numero) {
         log.info("Deletando o pagamento da parcela... - ID: [{}] - Parcela: {}", id, numero);
         var pagamento = parcelaPagaRepository.findByCompraParceladaIdAndNumero(id, numero.shortValue())
@@ -180,11 +178,11 @@ public class CompraParceladaService {
             throw new PrimeiroMesAnteriorACompraException("A primeira parcela não pode cair antes do mês da compra!");
         }
 
-        compra.setDescricao(salvarCompraParceladaDTO.descricao().strip());
+        compra.setDescricao(salvarCompraParceladaDTO.descricao());
         compra.setPrimeiroMes(salvarCompraParceladaDTO.primeiroMes().atDay(1));
-        compra.setObservacoes(textoOuNulo(salvarCompraParceladaDTO.observacoes()));
+        compra.setObservacoes(TextoUtil.textoOuNulo(salvarCompraParceladaDTO.observacoes()));
         compra.setCartao(buscarCartaoDeCredito(salvarCompraParceladaDTO.idCartao()));
-        compra.setCategoria(buscarCategoriaDeDespesa(salvarCompraParceladaDTO.idCategoria()));
+        compra.setCategoria(salvarCompraParceladaDTO.idCategoria() == null ? null : categoriaService.buscarDoTipo(salvarCompraParceladaDTO.idCategoria(), TipoCategoria.DESPESA));
     }
 
     private Cartao buscarCartaoDeCredito(UUID idCartao) {
@@ -200,26 +198,5 @@ public class CompraParceladaService {
         }
 
         return cartao;
-    }
-
-    private Categoria buscarCategoriaDeDespesa(UUID idCategoria) {
-        if (idCategoria == null) return null;
-
-        var categoria = categoriaRepository.findById(idCategoria)
-                .orElseThrow(() -> {
-                    log.error("A categoria informada não existe!");
-                    return new CategoriaInexistenteException("A categoria informada não existe!");
-                });
-
-        if (categoria.getTipo() != TipoCategoria.DESPESA) {
-            log.error("Escolha uma categoria de despesa!");
-            throw new CategoriaDeReceitaException("Escolha uma categoria de despesa!");
-        }
-
-        return categoria;
-    }
-
-    private static String textoOuNulo(String texto) {
-        return texto == null || texto.isBlank() ? null : texto.strip();
     }
 }
