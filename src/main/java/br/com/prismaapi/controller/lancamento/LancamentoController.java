@@ -1,9 +1,12 @@
 package br.com.prismaapi.controller.lancamento;
 
+import br.com.prismaapi.enums.DirecaoOrdenacao;
+import br.com.prismaapi.enums.OrdenacaoLancamento;
 import br.com.prismaapi.enums.SituacaoLancamento;
 import br.com.prismaapi.enums.TipoLancamento;
 import br.com.prismaapi.model.dto.lancamento.FiltroLancamentoDTO;
 import br.com.prismaapi.model.dto.lancamento.LancamentoDTO;
+import br.com.prismaapi.model.dto.lancamento.PaginaLancamentosDTO;
 import br.com.prismaapi.model.dto.lancamento.SalvarLancamentoDTO;
 import br.com.prismaapi.service.lancamento.LancamentoService;
 import lombok.RequiredArgsConstructor;
@@ -13,7 +16,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -24,9 +26,14 @@ public class LancamentoController implements LancamentoDocs {
     private final LancamentoService lancamentoService;
 
     @Override
-    public ResponseEntity<List<LancamentoDTO>> listarLancamentos(TipoLancamento tipo, String busca, LocalDate dataInicial, LocalDate dataFinal, UUID idCategoria, UUID idOrigem, SituacaoLancamento situacao) {
-        var filtro = new FiltroLancamentoDTO(tipo, busca, dataInicial, dataFinal, idCategoria, idOrigem, situacao);
+    public ResponseEntity<PaginaLancamentosDTO> listarLancamentos(TipoLancamento tipo, String busca, LocalDate dataInicial, LocalDate dataFinal, UUID idCategoria, UUID idOrigem, SituacaoLancamento situacao, int pagina, int tamanho, OrdenacaoLancamento ordenacao, DirecaoOrdenacao direcao) {
+        var filtro = new FiltroLancamentoDTO(tipo, busca, dataInicial, dataFinal, idCategoria, idOrigem, situacao, pagina, tamanho, ordenacao, direcao);
         return ResponseEntity.ok(lancamentoService.listar(filtro));
+    }
+
+    @Override
+    public ResponseEntity<LancamentoDTO> buscarLancamento(UUID id) {
+        return ResponseEntity.ok(lancamentoService.buscarPorId(id));
     }
 
     @Override

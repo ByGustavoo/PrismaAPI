@@ -884,7 +884,7 @@
                         "method": "GET",
                         "header": [],
                         "url": {
-                            "raw": "{{baseUrl}}/lancamentos?dataInicial={{inicioDoAno}}&dataFinal={{hoje}}",
+                            "raw": "{{baseUrl}}/lancamentos?dataInicial={{inicioDoAno}}&dataFinal={{hoje}}&pagina=0&tamanho=25&ordenacao=DATA&direcao=DESC",
                             "host": [
                                 "{{baseUrl}}"
                             ],
@@ -899,6 +899,22 @@
                                 {
                                     "key": "dataFinal",
                                     "value": "{{hoje}}"
+                                },
+                                {
+                                    "key": "pagina",
+                                    "value": "0"
+                                },
+                                {
+                                    "key": "tamanho",
+                                    "value": "25"
+                                },
+                                {
+                                    "key": "ordenacao",
+                                    "value": "DATA"
+                                },
+                                {
+                                    "key": "direcao",
+                                    "value": "DESC"
                                 },
                                 {
                                     "key": "tipo",
@@ -925,6 +941,34 @@
                                     "value": "PAGO",
                                     "disabled": true
                                 }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Buscar lançamento",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/lancamentos/{{idLancamento}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "lancamentos",
+                                "{{idLancamento}}"
                             ]
                         }
                     }

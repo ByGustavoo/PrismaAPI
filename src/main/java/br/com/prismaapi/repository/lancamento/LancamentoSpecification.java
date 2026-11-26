@@ -72,6 +72,7 @@ public final class LancamentoSpecification {
 
             predicados.add(builder.or(
                     contem(builder, root.get("descricao"), padrao),
+                    contem(builder, root.get("observacoes"), padrao),
                     contem(builder, categoria.get("nome"), padrao),
                     contem(builder, conta.get("nome"), padrao),
                     contem(builder, cartao.get("nome"), padrao),

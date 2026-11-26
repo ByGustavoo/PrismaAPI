@@ -1,7 +1,9 @@
 package br.com.prismaapi.service.lancamento;
 
+import br.com.prismaapi.enums.DirecaoOrdenacao;
 import br.com.prismaapi.enums.FormaLancamento;
 import br.com.prismaapi.enums.Frequencia;
+import br.com.prismaapi.enums.OrdenacaoLancamento;
 import br.com.prismaapi.enums.SituacaoLancamento;
 import br.com.prismaapi.enums.TipoCartao;
 import br.com.prismaapi.enums.TipoCategoria;
@@ -9,6 +11,7 @@ import br.com.prismaapi.enums.TipoLancamento;
 import br.com.prismaapi.exceptions.*;
 import br.com.prismaapi.model.dto.lancamento.FiltroLancamentoDTO;
 import br.com.prismaapi.model.dto.lancamento.LancamentoDTO;
+import br.com.prismaapi.model.dto.lancamento.PaginaLancamentosDTO;
 import br.com.prismaapi.model.dto.lancamento.SalvarLancamentoDTO;
 import br.com.prismaapi.model.entity.cartao.Cartao;
 import br.com.prismaapi.model.entity.conta.Conta;
@@ -24,13 +27,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -46,18 +49,28 @@ public class LancamentoService {
     private final CategoriaRepository categoriaRepository;
     private final LancamentoRepository lancamentoRepository;
 
-    private static final Sort MAIS_RECENTES_PRIMEIRO = Sort.by(Sort.Order.desc("data"), Sort.Order.desc("dataCriacao"));
-
     @Cacheable("lancamentos")
     @Transactional(readOnly = true)
-    public List<LancamentoDTO> listar(FiltroLancamentoDTO filtro) {
+    public PaginaLancamentosDTO listar(FiltroLancamentoDTO filtro) {
         log.info("Listando os lançamentos... - Filtro: {}", filtro);
         validar(filtro);
 
-        return lancamentoRepository.findAll(LancamentoSpecification.filtrar(filtro), MAIS_RECENTES_PRIMEIRO)
-                .stream()
-                .map(lancamentoMapper::toDTO)
-                .toList();
+        var especificacao = LancamentoSpecification.filtrar(filtro);
+        var pagina = lancamentoRepository.findAll(especificacao, PageRequest.of(filtro.pagina(), filtro.tamanho(), ordenar(filtro)));
+
+        return new PaginaLancamentosDTO(
+                pagina.getContent().stream().map(lancamentoMapper::toDTO).toList(),
+                pagina.getNumber(),
+                pagina.getSize(),
+                pagina.getTotalElements(),
+                pagina.getTotalPages(),
+                lancamentoRepository.somarResultado(especificacao));
+    }
+
+    @Transactional(readOnly = true)
+    public LancamentoDTO buscarPorId(UUID id) {
+        log.info("Buscando o lançamento... - ID: [{}]", id);
+        return lancamentoMapper.toDTO(buscar(id));
     }
 
     @Transactional
@@ -290,6 +303,29 @@ public class LancamentoService {
             log.warn("O período informado é inválido!");
             throw new RequisicaoInvalidaException("O período informado é inválido!");
         }
+
+        if (filtro.pagina() < 0) {
+            log.warn("A página informada é inválida! - Página: {}", filtro.pagina());
+            throw new RequisicaoInvalidaException("A página precisa ser zero ou maior!");
+        }
+
+        if (filtro.tamanho() < 1 || filtro.tamanho() > 100) {
+            log.warn("O tamanho de página informado é inválido! - Tamanho: {}", filtro.tamanho());
+            throw new RequisicaoInvalidaException("O tamanho da página precisa ficar entre 1 e 100!");
+        }
+    }
+
+    private static Sort ordenar(FiltroLancamentoDTO filtro) {
+        var direcao = filtro.direcao() == DirecaoOrdenacao.ASC ? Sort.Direction.ASC : Sort.Direction.DESC;
+        var maisRecentes = Sort.by(Sort.Order.desc("data"), Sort.Order.desc("dataCriacao"));
+
+        var principal = switch (filtro.ordenacao() == null ? OrdenacaoLancamento.DATA : filtro.ordenacao()) {
+            case DATA -> Sort.by(new Sort.Order(direcao, "data"), new Sort.Order(direcao, "dataCriacao"));
+            case DESCRICAO -> Sort.by(new Sort.Order(direcao, "descricao").ignoreCase()).and(maisRecentes);
+            case VALOR -> Sort.by(new Sort.Order(direcao, "valor")).and(maisRecentes);
+        };
+
+        return principal.and(Sort.by(Sort.Order.asc("id")));
     }
 
     private static String textoOuNulo(String texto) {

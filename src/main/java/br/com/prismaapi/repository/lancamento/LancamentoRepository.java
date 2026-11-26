@@ -9,8 +9,8 @@ import br.com.prismaapi.model.dto.dashboard.projection.ValorPorDataProjecao;
 import br.com.prismaapi.model.dto.relatorio.projection.GastoOrigemProjecao;
 import br.com.prismaapi.model.entity.conta.Conta;
 import br.com.prismaapi.model.entity.lancamento.Lancamento;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -27,10 +27,10 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface LancamentoRepository extends JpaRepository<Lancamento, UUID>, JpaSpecificationExecutor<Lancamento> {
+public interface LancamentoRepository extends JpaRepository<Lancamento, UUID>, JpaSpecificationExecutor<Lancamento>, LancamentoRepositoryCustom {
 
     @EntityGraph(attributePaths = {"categoria", "conta", "cartao", "contaDestino", "parcelaPaga.compraParcelada", "movimentacaoInvestimento.investimento"})
-    List<Lancamento> findAll(Specification<Lancamento> specification, Sort sort);
+    Page<Lancamento> findAll(Specification<Lancamento> specification, Pageable pageable);
 
     Optional<Lancamento> findByParcelaPagaId(UUID parcelaPagaId);
 

@@ -348,6 +348,22 @@ mudar um sem os outros quebra rotas, migrations ou logs:
   compatível com a origem (cartão exige `CARTAO_CREDITO`, conta recusa), cartão de débito não é
   origem e `PAGO` não pode ter data futura. Compra parcelada recusa categoria de receita e primeira
   parcela antes do mês da compra.
+- **`GET /v1/lancamentos` é paginado** (pedido do usuário para o PrismaWeb carregar 25 por vez): recebe
+  `pagina` (a partir de 0, padrão 0), `tamanho` (1 a 100, padrão 25), `ordenacao` (`OrdenacaoLancamento`:
+  `DATA`, `DESCRICAO`, `VALOR`; padrão `DATA`) e `direcao` (`DirecaoOrdenacao`, padrão `DESC`), além dos
+  filtros, todos no `FiltroLancamentoDTO`, que é também a chave do cache `lancamentos`. Devolve
+  `PaginaLancamentosDTO` (`itens`, `pagina`, `tamanho`, `quantidadeTotal`, `quantidadePaginas` e
+  `resultado`, receitas menos despesas do filtro inteiro, sem transferências). Página negativa ou tamanho
+  fora da faixa responde `400` (`RequisicaoInvalidaException`). Empates de descrição e valor seguem do
+  mais recente para o mais antigo, e o `id` fecha a ordem, para uma página não repetir item da outra.
+  É a única listagem paginada, com DTO próprio, e não um `Page<T>` genérico.
+- **O resultado do filtro sai de um fragmento de repositório** (`LancamentoRepositoryCustom` e
+  `LancamentoRepositoryImpl`; o sufixo `Impl` é o que o Spring Data procura): uma Criteria com
+  `SUM(CASE ...)` sobre a mesma `LancamentoSpecification`, para somar no banco sem carregar linhas. O
+  `findAll` paginado leva o mesmo `@EntityGraph` do antigo, contra N+1.
+- **A busca de lançamentos casa também com a observação**, além de descrição, categoria e contas, sem
+  acento (`unaccent`). `GET /v1/lancamentos/{id}` (`buscarLancamento`, `LancamentoService.buscarPorId`)
+  devolve um lançamento no formato da listagem, para o frontend abrir um que não está na página.
 - **Recorrente é um cadastro só, de receita ou de despesa** (`V2.4`, tabela `recorrentes`, rota
   `/v1/recorrentes`, `TipoRecorrente`). A tabela era `despesas_recorrentes`; a `V2.4` a renomeia junto
   com restrições e índices e cria `tipo` com `DESPESA` como padrão, então as linhas antigas continuam

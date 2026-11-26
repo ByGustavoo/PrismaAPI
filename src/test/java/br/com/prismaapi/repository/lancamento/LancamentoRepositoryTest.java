@@ -1,6 +1,8 @@
 package br.com.prismaapi.repository.lancamento;
 
 import br.com.prismaapi.config.AbstractTest;
+import br.com.prismaapi.enums.DirecaoOrdenacao;
+import br.com.prismaapi.enums.OrdenacaoLancamento;
 import br.com.prismaapi.enums.SituacaoLancamento;
 import br.com.prismaapi.enums.TipoLancamento;
 import br.com.prismaapi.model.dto.lancamento.FiltroLancamentoDTO;
@@ -27,9 +29,16 @@ class LancamentoRepositoryTest extends AbstractTest {
 
     @Test
     void findAllTest() {
-        var filtro = new FiltroLancamentoDTO(TipoLancamento.DESPESA, "Mercado", LocalDate.now().minusYears(1), LocalDate.now(), null, null, SituacaoLancamento.PAGO);
+        var filtro = new FiltroLancamentoDTO(TipoLancamento.DESPESA, "Mercado", LocalDate.now().minusYears(1), LocalDate.now(), null, null, SituacaoLancamento.PAGO, 0, 25, OrdenacaoLancamento.DATA, DirecaoOrdenacao.DESC);
 
-        Assertions.assertDoesNotThrow(() -> lancamentoRepository.findAll(LancamentoSpecification.filtrar(filtro), Sort.by(Sort.Order.desc("data"))));
+        Assertions.assertDoesNotThrow(() -> lancamentoRepository.findAll(LancamentoSpecification.filtrar(filtro), PageRequest.of(0, 25, Sort.by(Sort.Order.desc("data")))));
+    }
+
+    @Test
+    void somarResultadoTest() {
+        var filtro = new FiltroLancamentoDTO(null, "reajuste", LocalDate.now().minusYears(1), LocalDate.now(), null, null, null, 0, 25, OrdenacaoLancamento.DATA, DirecaoOrdenacao.DESC);
+
+        Assertions.assertDoesNotThrow(() -> lancamentoRepository.somarResultado(LancamentoSpecification.filtrar(filtro)));
     }
 
     @Test
