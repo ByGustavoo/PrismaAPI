@@ -43,7 +43,7 @@ src/main/java/br/com/prismaapi/
   model/mapper/    mappers MapStruct
   repository/      repositórios Spring Data, Specifications e BuscaSemAcento (busca com unaccent)
   service/         regras de negócio e cálculos (faturas, saldo, previsão, dashboard, relatórios, avisos)
-  util/            ValorUtil (dinheiro, fracao, somar, zeroSeNulo), TextoUtil (textoOuNulo, normalizar,
+  util/            ValorUtil (dinheiro, fracao, somar, somarEmReais, zeroSeNulo), TextoUtil (textoOuNulo, normalizar,
                    ORDEM_ALFABETICA e PT_BR) e PeriodoUtil (validar: início depois do fim responde 400):
                    helper que mais de um service usa mora aqui, não copiado
 src/main/resources/
@@ -64,16 +64,18 @@ docker-compose-postgres.yml   PostgreSQL 18 local na 5432 e Redis na 6379
 docker-compose-prismaapi.yml  a imagem do Docker Hub na 9027, variáveis vindas do .env
 src/test/java/br/com/prismaapi/
   config/          AbstractTest, AbstractControllerTest e TestDataBaseConfig (datasource dos testes)
+  controller/      um pacote por recurso: <Recurso>ControllerTest, um teste por endpoint
+  service/         um pacote por service: <Recurso>ServiceTest, um teste por método público
   repository/      um pacote por repositório, espelhando o main: <Recurso>RepositoryTest
 src/test/resources/
   db/test/         V1.2__PopularBanco.sql, V1.4__PopularParcelasPagas.sql e
                    V1.7__PopularContasDePagamento.sql, dados de exemplo aplicados só no perfil test
 ```
 
-São 15 recursos sob `/v1`, com 64 endpoints no total: `avisos`, `cartoes`, `categorias`,
+São 16 recursos sob `/v1`, com 64 endpoints no total: `avisos`, `cartoes`, `categorias`,
 `compras-parceladas`, `contas`, `dashboard`, `faturas`, `investimentos`,
-`lancamentos`, `metas`, `orcamentos`, `previsao`, `recorrentes`, `relatorios` e `sistema`. O esquema tem 15
-tabelas, todas em `prisma`.
+`lancamentos`, `metas`, `orcamentos`, `previsao`, `recorrentes`, `relatorios`, `sistema` e `telas`. O
+esquema tem 16 tabelas, todas em `prisma`.
 
 ## Comandos
 
@@ -150,9 +152,9 @@ relatório HTML em `build/reports/jacoco`.
   `--generate-notes` monta com os títulos dos PRs; a descrição entra por variável de ambiente, nunca
   interpolada no script, e a execução manual sai sem ela. Push direto em `main`, sem PR, não gera release.
 - A versão vem da tag, não do arquivo: o `build.gradle.kts` declara
-  `version = providers.gradleProperty("versao").getOrElse("1.0.0")`, e o workflow passa a versão
+  `version = providers.gradleProperty("versao").getOrElse("1.0.1")`, e o workflow passa a versão
   calculada como `-Pversao`, então o que `GET /v1/sistema/versao` devolve é a versão da Release. O
-  `1.0.0` é só o valor de builds locais e a base da primeira release, quando ainda não há tag.
+  `1.0.1` é só o valor de builds locais e a base da primeira release, quando ainda não há tag.
 
 ## Convenções
 
@@ -228,8 +230,7 @@ mudar um sem os outros quebra rotas, migrations ou logs:
   - **Despesa lançada direto no cartão**: já conta como despesa na data da compra, então o pagamento da
     fatura não cria outra. Ela recebe `id_conta_pagamento_fatura` junto de `data_pagamento_fatura`, e o
     valor sai do saldo da conta. Como não há lançamento na conta, quem reconstrói saldo lê esse
-    pagamento à parte: `SaldoService` (`agruparPagamentosDeFaturaDoTotalPorDia`) e
-    `EvolucaoContaService` (`buscarPagamentosDeFaturaDasContas`, como `RESGATE` na data do pagamento).
+    pagamento à parte: o `SaldoService`, por `agruparPagamentosDeFaturaDoTotalPorDia`.
     `LancamentoService.movimentarSaldos` desfaz e reaplica esse débito no `PUT` e no `DELETE` da despesa,
     e o `PUT` que tira a despesa do cartão limpa as duas colunas.
 - Parcela de compra parcelada pode ser marcada como paga antes de vencer (`parcelas_pagas`, uma linha
@@ -328,8 +329,9 @@ mudar um sem os outros quebra rotas, migrations ou logs:
   à movimentação por `lancamentos.id_movimentacao_investimento`, no mesmo arranjo da despesa do
   pagamento de parcela: no aporte ela sai da conta e não tem destino, no resgate ela entra na conta e
   não tem origem, e o saldo da conta muda na hora. Os `CHECK` de origem e de transferência aceitam o
-  lado vazio só nesse caso. `agruparTransferenciasQueSaemDoTotal` e `...QueEntramNoTotal` usam
-  `LEFT JOIN` no lado do investimento, e a previsão já conta como aporte a transferência que sai do
+  lado vazio só nesse caso. No `agruparMovimentosDoTotalPorDia`, a transferência que sai e a que entra
+  no total ligam a conta de destino por `LEFT JOIN` e aceitam o lado vazio (`destino IS NULL`,
+  `conta IS NULL`), que é o lado do investimento, e a previsão já conta como aporte a transferência que sai do
   total sem destino. `LancamentoDTO.investimento` identifica esse lançamento, o nome do investimento vai
   em `nomeOrigem` ou `nomeContaDestino`, e `PUT` e `DELETE` nele respondem `409`. Excluir o investimento
   apaga essas transferências e devolve o saldo das contas antes de apagar as movimentações.
